@@ -15,6 +15,7 @@ define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
+	DEPENDS:=+uclibcxx
 endef
 define Package/usbconnectiontester/description
 	This package provides an abstracted 3D printing interface supporting many different brands and types of 3D printers.

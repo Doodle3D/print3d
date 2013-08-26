@@ -6,7 +6,6 @@
 
 #ifdef __APPLE__
 //TODO: check minimum version (tiger)? -> http://mstat.googlecode.com/svn-history/r7/trunk/mstat/SerialPortCommunication.c
-#warning "serial not implemented for OSX yet"
 //...
 #elif __linux
 # include <linux/serial.h>
@@ -92,10 +91,10 @@ SET_SPEED_RESULT serial_set_speed(int fd, int speed) {
 
 bool serial_send(const char* code) {
 	if (serial_fd >= 0) {
-		log_msg(INFO, "serial_send: '%s'", code);
+		//log_msg(INFO, "serial_send: '%s'", code);
 		write(serial_fd, code, strlen(code));
-		return TRUE;
+		return true;
 	} else {
-		return FALSE;
+		return false;
 	}
 }

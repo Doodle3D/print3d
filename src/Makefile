@@ -1,11 +1,11 @@
-SRC := print3d.c logger.c serial.c
+SRC := print3d.c logger.cpp serial.cpp
 OBJ := print3d.o logger.o serial.o
 HDR := print3d.h
 EXEC := print3d
 CFLAGS += -Wall
 
 ifndef ($(OPENWRT_BUILD))
-	CC := gcc
+	CC := g++
 endif
 
 all: $(EXEC)

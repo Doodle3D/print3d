@@ -1,2 +1,3 @@
 src/*.o
 src/print3d
+build

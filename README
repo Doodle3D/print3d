@@ -1,0 +1,4 @@
+HOW TO BUILD
+
+This package is intended to be built either for embedded devices using the Openwrt build system or natively using CMake.
+To build using cmake, create a directory called 'build', cd there and run 'ccmake ../src'. Then hit 'c' twice (wait until the UI finishes its chores) and then 'g' to finish and return to the prompt. Finally running a simple 'make' will compile the program.

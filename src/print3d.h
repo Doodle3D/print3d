@@ -4,11 +4,6 @@
 #include <inttypes.h>
 #include <stdio.h>
 
-typedef uint8_t bool;
-#define TRUE 1
-#define FALSE 0
-
-
 /* declarations for serial_io.c */
 bool serial_send(const char* code);
 
