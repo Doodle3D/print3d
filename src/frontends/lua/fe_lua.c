@@ -18,8 +18,7 @@ static int l_cos(lua_State *L) {
 
 //number getGcodeBufferSize(id?)
 //void clearGcodeBuffer(id?)
-//--bool appendToGcodeBuffer(id?) --kan dus niet (teveel data), in plaats daarvan:
-//stream getGcodeBufferAppendStream(id?)
+//--bool appendToGcodeBuffer(id?)
 //bool printGcodeBuffer(id?)
 //bool isPrintingGcodeBuffer(id?) //--weglaten en getPos <0 laten teruggeven bij niet printen?
 //number getGcodeBufferPrintPosition(id?, bool relative) //--absoluut, of /size -> 0-1 bereik
@@ -30,12 +29,12 @@ static int l_cos(lua_State *L) {
 //number getTemperature(id?)
 //...
 
-static const struct luaL_Reg print3dlib[] = {
+static const struct luaL_Reg print3d[] = {
 		{"p3dcos", l_cos},
 		{NULL, NULL}
 };
 
-int luaopen_print3dlib(lua_State *L) {
-	luaL_newlib(L, print3dlib);
+int luaopen_print3d(lua_State *L) {
+	luaL_newlib(L, print3d);
 	return 1;
 }
