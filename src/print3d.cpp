@@ -1,8 +1,9 @@
-#include "print3d.h"
 #include <stdlib.h>
+#include "Logger.h"
 
 int main(int argc, char** argv) {
-	log_open_stream(stderr, BULK);
+	Logger l;
+	l.open(stderr, Logger::BULK);
 
 	//handle cmdline args
 	//serial open

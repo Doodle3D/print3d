@@ -2,31 +2,41 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-#include "print3d.h"
+
+#include "Serial.h"
+
+#include <termios.h> /* cfmakeraw */
+#include <sys/ioctl.h> /* ioctl */
 
 #ifdef __APPLE__
-//TODO: check minimum version (tiger)? -> http://mstat.googlecode.com/svn-history/r7/trunk/mstat/SerialPortCommunication.c
-//...
+# if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_4) /* require at least 10.4 (OSX Tiger) */
+#  include <IOKit/serial/ioss.h>
+
+#  define TERMIOS_TYPE termios
+# else
+#  error "cannot set serial port speed on OSX versions below 10.4 (Tiger)"
+# endif
 #elif __linux
 # include <linux/serial.h>
 # include <linux/termios.h>
-//# include <sys/ioctl.h>
+
+# define TERMIOS_TYPE termios2
 #else
-# error "unknown OS, cannot compile serial code"
+# error "cannot set serial port speed for this OS"
 #endif
 
-static int serial_fd = -1;
-//static char* dev_name;
-//static int baud_rate;
 
+Serial::Serial()
+: portFd_(0)
+{ /* empty */ }
 
-int serial_open(const char* file) {
+int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-	serial_fd = open(file, O_RDWR);
-	if (serial_fd < 0) {
+	portFd_ = ::open(file, O_RDWR);
+	if (portFd_ < 0) {
 		//logger(ERROR, "%s: could not open port %s (%s)\n", argv[0], file, strerror(errno));
-		return serial_fd;
+		return portFd_;
 	}
 
 	//spdResult = setPortSpeed(serial_fd,baud_rate);
@@ -34,23 +44,21 @@ int serial_open(const char* file) {
 	return 0;
 }
 
-int serial_close() {
-	if (serial_fd >= 0) return close(serial_fd);
+int Serial::close() {
+	if (portFd_ >= 0) return ::close(portFd_);
 
 	return 0;
 }
 
-#ifdef __linux
-
-typedef enum ESERIAL_SET_SPEED_RESULT {
-	SSR_OK = 0, SSR_IO_GET, SSR_IO_SET, SSR_IO_MGET, SSR_IO_MSET1, SSR_IO_MSET2
-} SET_SPEED_RESULT;
-
-SET_SPEED_RESULT serial_set_speed(int fd, int speed) {
-	struct termios2 options;
+Serial::SET_SPEED_RESULT Serial::setSpeed(int fd, int speed) {
+	struct TERMIOS_TYPE options;
 	int modemBits;
 
+#ifdef __APPLE__
+	if (tcgetattr(fd, &options) < 0) return SSR_IO_GET;
+#else
 	if (ioctl(fd, TCGETS2, &options) < 0) return SSR_IO_GET;
+#endif
 
 	cfmakeraw(&options);
 
@@ -65,14 +73,22 @@ SET_SPEED_RESULT serial_set_speed(int fd, int speed) {
 	options.c_cflag &= ~CSIZE;
 
 	//set speed
+#ifdef __APPLE__
+	if (ioctl(portFd_, IOSSIOSPEED, &speed) == -1) return SSR_IO_IOSSIOSPEED;
+#elif __linux
 	options.c_ospeed = options.c_ispeed = speed;
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
+#endif
 
 	options.c_cflag |= CS8;
 	options.c_cflag |= CLOCAL;
 
+#ifdef __APPLE__
+	if (tcsetattr(fd, TCSANOW, &options) < 0) return SSR_IO_SET;
+#else
 	if (ioctl(fd, TCSETS2, &options) < 0) return SSR_IO_SET;
+#endif
 
 	//toggle DTR
 	if (ioctl(fd, TIOCMGET, &modemBits) < 0) return SSR_IO_MGET;
@@ -82,17 +98,13 @@ SET_SPEED_RESULT serial_set_speed(int fd, int speed) {
 	modemBits &=~TIOCM_DTR;
 	if (ioctl(fd, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET2;
 
-	currentSpeed = speed;
-
 	return SSR_OK;
 }
 
-#endif /* __linux */
-
-bool serial_send(const char* code) {
-	if (serial_fd >= 0) {
+bool Serial::send(const char* code) const {
+	if (portFd_ >= 0) {
 		//log_msg(INFO, "serial_send: '%s'", code);
-		write(serial_fd, code, strlen(code));
+		::write(portFd_, code, strlen(code));
 		return true;
 	} else {
 		return false;
