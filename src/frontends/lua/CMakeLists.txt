@@ -34,14 +34,14 @@ if(NOT LUAPATH)
 		OUTPUT_STRIP_TRAILING_WHITESPACE
 	)
 
-	if(BUILD_LUA)
+	if(LUA_FRONTEND)
 		if(NOT ${LUA_CHECK_RES} EQUAL 0 OR ${LUAPATH} EQUAL "")
 			message(SEND_ERROR "Lua was not found on your system")
 		endif()
 	endif()
 endif()
 
-if(BUILD_LUA)
+if(LUA_FRONTEND)
 	add_library(print3d_lua MODULE fe_lua.c)
 	set_target_properties(print3d_lua PROPERTIES
 		OUTPUT_NAME print3d
