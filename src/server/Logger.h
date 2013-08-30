@@ -14,7 +14,7 @@ public:
 		BULK = 4
 	} ELOG_LEVEL;
 
-	Logger();
+	static Logger& getInstance();
 
 	int open(FILE* stream, ELOG_LEVEL level);
 	int open(const char* file, ELOG_LEVEL level);
@@ -24,10 +24,16 @@ public:
 	ELOG_LEVEL getLevel() const;
 	void setLevel(ELOG_LEVEL level);
 	void log(ELOG_LEVEL level, const char* format, ...) const;
+	bool checkError(int rv, const char* format, ...) const;
 
 private:
 	ELOG_LEVEL level_;
 	FILE* stream_;
+
+	Logger();
+
+	Logger(const Logger& o);
+	void operator=(const Logger& o);
 };
 
 #endif /* ! LOGGER_H_SEEN */

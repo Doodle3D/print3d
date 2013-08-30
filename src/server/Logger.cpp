@@ -1,10 +1,17 @@
+#include <errno.h>
 #include <stdarg.h>
+#include <string.h>
 #include <time.h>
 #include "Logger.h"
 
-Logger::Logger()
-: level_(BULK), stream_(0)
-{ /* empty */ }
+/* STATIC */
+Logger& Logger::getInstance() {
+	/* instance will be correctly destroyed but is NOT thread safe
+	 * (see: http://stackoverflow.com/questions/1008019/c-singleton-design-pattern/1008289#1008289)
+	 */
+	static Logger instance;
+	return instance;
+}
 
 int Logger::open(FILE* stream, ELOG_LEVEL level) {
 	int rv = 0;
@@ -63,3 +70,28 @@ void Logger::log(ELOG_LEVEL level, const char* format, ...) const {
 	vfprintf(stream_, format, args);
 	va_end(args);
 }
+
+bool Logger::checkError(int rv, const char* format, ...) const {
+	if (rv >= 0) return false;
+
+	int savedErrno = errno;
+	va_list args;
+	char *buf = 0;
+
+	va_start(args, format);
+	vasprintf(&buf, format, args);
+	va_end(args);
+
+	log(ERROR, "%s (%s)", buf, strerror(savedErrno));
+
+	return true;
+}
+
+
+/*********************
+ * PRIVATE FUNCTIONS *
+ *********************/
+
+Logger::Logger()
+: level_(BULK), stream_(0)
+{ /* empty */ }

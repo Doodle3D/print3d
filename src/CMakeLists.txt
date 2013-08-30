@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(print3d)
 
-add_definitions(-Wall -Werror)
+#add_definitions(-Wall -Werror)
+add_definitions(-Wall)
 
 #option(PRINT3D_DEBUG "debugging support" OFF)
 
