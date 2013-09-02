@@ -12,7 +12,8 @@ int main(int argc, char** argv) {
 	Logger& log = Logger::getInstance();
 	log.open(stderr, Logger::BULK);
 
-	Server s(serialDevice, "/tmp/testserver.socket");
+	//Server s(serialDevice, "/tmp/testserver.socket");
+	Server s(serialDevice, "/tmp/print3d-xyz");
 
 	if (s.start() >= 0) exit(0);
 	else exit(1);

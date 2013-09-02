@@ -42,7 +42,13 @@ if(NOT LUAPATH)
 endif()
 
 if(LUA_FRONTEND)
-	add_library(print3d_lua MODULE fe_lua.c)
+	set(EXTERNAL_SOURCES
+		../../server/shared.c ../../server/shared.h
+		../communicator.c ../communicator.h
+		../logger.c ../logger.h
+	)
+	
+	add_library(print3d_lua MODULE fe_lua.c ${EXTERNAL_SOURCES})
 	set_target_properties(print3d_lua PROPERTIES
 		OUTPUT_NAME print3d
 		PREFIX ""

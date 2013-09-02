@@ -1,11 +1,31 @@
 #define LUA_LIB
-#include <math.h> /* TEMP for l_cos() */
+
+#include <string.h>
 #include "lua.h"
 #include "lauxlib.h"
+#include "../communicator.h"
+#include "../logger.h"
 
-static int l_cos(lua_State *L) {
-	double d = luaL_checknumber(L, 1);
-	lua_pushnumber(L, cos(d));
+static int l_getTemperature(lua_State *L) {
+	size_t devLen;
+	const char* dev = luaL_checklstring(L, 1, &devLen);
+	int rv = getTemperature((devLen > 0) ? dev : "-");
+
+	if (rv > INT_MIN) {
+		lua_pushnumber(L, rv);
+		return 1;
+	} else {
+		const char* errMsg = "error comunicating with server (TODO: return real C error)"; //TODO: return real C error
+		lua_pushnil(L);
+		lua_pushlstring(L, errMsg, strlen(errMsg));
+		return 2;
+	}
+}
+
+static int l_setTemperatureCheckInterval(lua_State *L) {
+	//double d = luaL_checknumber(L, 1);
+	//setTemperatureCheckInterval(d);
+	lua_pushboolean(L, 1);
 	return 1;
 }
 
@@ -30,7 +50,8 @@ static int l_cos(lua_State *L) {
 //...
 
 static const struct luaL_Reg print3d[] = {
-		{"p3dcos", l_cos},
+		{"getTemperature", l_getTemperature},
+		{"setTemperatureCheckInterval", l_setTemperatureCheckInterval},
 		{NULL, NULL}
 };
 

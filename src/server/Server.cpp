@@ -4,24 +4,26 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include "Server.h"
+#include "Client.h"
 
 using std::string;
 
-const bool Server::FORK_BY_DEFAULT = true;
+const bool Server::FORK_BY_DEFAULT = false;
 const int Server::SOCKET_MAX_BACKLOG = 5; //private
 
 Server::Server(const string& serialPortPath, const string& socketPath)
-: serialPortName_(serialPortPath), socketPath_(socketPath),
-  log_(Logger::getInstance()), socketFd_(-1)
+: socketPath_(socketPath),
+  log_(Logger::getInstance()), socketFd_(-1),
+  printer_(serialPortPath)
 { /* empty */ }
 
 Server::~Server() {
 	closeSocket();
-	serial_.close();
 }
 
 //returns -1 on error, >0 after fork or 0 after successful (not-fork) exit
 int Server::start(bool fork) {
+	log_.log(Logger::INFO, "starting printserver with socket path '%s'", socketPath_.c_str());
 	if (!openSocket()) return false;
 
 	if (fork) {
@@ -35,11 +37,11 @@ int Server::start(bool fork) {
 	}
 
 	//HIER *** foutafhandeling niet vergeten
-	openPort();
-	//set (detected?) speed
+	//printer_.openConnection();
 
 	fd_set masterFds;
 	fd_set readFds;
+	int maxFd = socketFd_;
 	FD_ZERO(&masterFds);
 	FD_SET(socketFd_, &masterFds);
 
@@ -47,29 +49,53 @@ int Server::start(bool fork) {
 		//TODO: add timeout (or something more complex to accomodate periodic temperature readings etc)
 
 		readFds = masterFds;
+		log_.log(Logger::VERBOSE, "entering select(), maxfd=%i", maxFd);
 		if (log_.checkError(
-				select(FD_SETSIZE, &readFds, NULL, NULL, NULL),
+				select(maxFd + 1, &readFds, NULL, NULL, NULL), /* use FD_SETSIZE instead of keeping maxfd? */
 				"error in select()")) {
 			//TODO: handle error (close down server <- needs function... and return with proper error value)
 		}
+		log_.log(Logger::VERBOSE, "returned from select()");
 
 		if (FD_ISSET(socketFd_, &readFds)) {
 			socklen_t len = sizeof(struct sockaddr_un);
-			struct sockaddr_un remote;
-			int connFd = accept(socketFd_, (struct sockaddr*)&remote, &len);
+			struct sockaddr_un peerAddr;
+			int connFd = accept(socketFd_, (struct sockaddr*)&peerAddr, &len);
+			maxFd = (connFd > maxFd ? connFd : maxFd);
 
 			FD_SET(connFd, &masterFds);
-			//TODO: store connFd and add to readFds
+			clients_.push_back(new Client(*this, connFd));
+			log_.log(Logger::VERBOSE, "new client with fd %i", connFd);
 		}
 
-		//TODO: loop through all connected clients with incoming data and handle their commands
-		//  CHOICE: just store in masterFds (and remove on read()==0) unless we need to keep state
-		//  if no printer object yet, or type config changed, create printer object
-		//  dispatch request to printer object
+		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); /* increment inside loop */) {
+			int rv = (*it)->readData();
+			log_.checkError(rv, "cannot read from client");
+
+			if (rv == 0) {
+				log_.log(Logger::VERBOSE, "connection closed from client with fd %i", (*it)->getFileDescriptor());
+				FD_CLR((*it)->getFileDescriptor(), &masterFds);
+				delete(*it);
+				it = clients_.erase(it);
+			} else {
+				log_.log(Logger::BULK, "read %i bytes from client with fd %i", rv, (*it)->getFileDescriptor());
+				(*it)->runCommands();
+				it++;
+			}
+		}
 	}
 
 	return 0;
 }
+
+Printer& Server::getPrinter() {
+	return printer_;
+}
+
+const Printer& Server::getPrinter() const {
+	return printer_;
+}
+
 
 /*********************
  * PRIVATE FUNCTIONS *
@@ -80,7 +106,7 @@ bool Server::openSocket() {
 
 	struct sockaddr_un addr;
 	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, socketPath_.c_str());
+	strncpy(addr.sun_path, socketPath_.c_str(), sizeof(addr.sun_path));
 
 	socketFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (log_.checkError(socketFd_, "could not create domain socket")) return false;
@@ -128,8 +154,4 @@ int Server::forkProcess() {
 		log_.log(Logger::INFO, "printserver forked to background. pid=%i\n", child_pid);
 		return child_pid;
 	}
-}
-
-int Server::openPort() {
-	return serial_.open(serialPortName_.c_str());
 }

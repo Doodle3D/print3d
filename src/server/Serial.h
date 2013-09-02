@@ -15,6 +15,9 @@ public:
 	bool send(const char* code) const;
 
 private:
+	Serial(const Serial& o);
+	void operator=(const Serial& o);
+
 	int portFd_;
 	//static char* dev_name;
 	//static int baud_rate;

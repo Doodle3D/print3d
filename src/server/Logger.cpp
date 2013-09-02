@@ -4,6 +4,7 @@
 #include <time.h>
 #include "Logger.h"
 
+
 /* STATIC */
 Logger& Logger::getInstance() {
 	/* instance will be correctly destroyed but is NOT thread safe
@@ -57,30 +58,41 @@ void Logger::setLevel(ELOG_LEVEL level) {
 
 void Logger::log(ELOG_LEVEL level, const char* format, ...) const {
 	va_list args;
+	va_start(args, format);
+	vaLog(level, format, args);
+	va_end(args);
+}
+
+void Logger::vaLog(ELOG_LEVEL level, const char* format, va_list args) const {
 	time_t ltime;
 	struct tm* now;
 
 	if (!stream_ || level > level_) return;
 
+	char* buf = 0;
+	vasprintf(&buf, format, args);
+
 	ltime = time(NULL);
 	now = localtime(&ltime);
-	fprintf(stream_, "%02i-%02i %02i:%02i:%02i  ",now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec);
-
-	va_start(args, format);
-	vfprintf(stream_, format, args);
-	va_end(args);
+	fprintf(stream_, "%02i-%02i %02i:%02i:%02i  %s\n",
+			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, buf);
 }
 
 bool Logger::checkError(int rv, const char* format, ...) const {
+	va_list args;
+	va_start(args, format);
+	bool result = vaCheckError(rv, format, args);
+	va_end(args);
+	return result;
+}
+
+bool Logger::vaCheckError(int rv, const char* format, va_list args) const {
 	if (rv >= 0) return false;
 
 	int savedErrno = errno;
-	va_list args;
-	char *buf = 0;
+	char* buf = 0;
 
-	va_start(args, format);
 	vasprintf(&buf, format, args);
-	va_end(args);
 
 	log(ERROR, "%s (%s)", buf, strerror(savedErrno));
 

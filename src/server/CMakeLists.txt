@@ -6,7 +6,7 @@ set(CMAKE_INSTALL_PREFIX /)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR})
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../drivers)
 
-set(SOURCES ${SOURCES} main.cpp Logger.cpp Serial.cpp Server.cpp)
-set(HEADERS ${HEADERS} Logger.h Serial.h Server.h)
+set(SOURCES ${SOURCES} main.cpp Client.cpp CommandHandler.cpp Logger.cpp Printer.cpp Serial.cpp Server.cpp shared.c)
+set(HEADERS ${HEADERS} Client.h CommandHandler.h Logger.h Printer.h Serial.h Server.h shared.h)
 
 add_executable(print3d ${SOURCES} ${HEADERS})

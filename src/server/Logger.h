@@ -3,6 +3,9 @@
 
 #include <stdio.h>
 
+
+#ifdef __cplusplus
+
 class Logger {
 public:
 	typedef enum ELOG_LEVEL {
@@ -24,7 +27,9 @@ public:
 	ELOG_LEVEL getLevel() const;
 	void setLevel(ELOG_LEVEL level);
 	void log(ELOG_LEVEL level, const char* format, ...) const;
+	void vaLog(ELOG_LEVEL level, const char* format, va_list args) const;
 	bool checkError(int rv, const char* format, ...) const;
+	bool vaCheckError(int rv, const char* format, va_list args) const;
 
 private:
 	ELOG_LEVEL level_;
@@ -35,5 +40,7 @@ private:
 	Logger(const Logger& o);
 	void operator=(const Logger& o);
 };
+
+#endif /* __cplusplus */
 
 #endif /* ! LOGGER_H_SEEN */
