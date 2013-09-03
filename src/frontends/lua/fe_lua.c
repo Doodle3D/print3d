@@ -23,9 +23,13 @@ static int l_getTemperature(lua_State *L) {
 }
 
 static int l_setTemperatureCheckInterval(lua_State *L) {
-	//double d = luaL_checknumber(L, 1);
-	//setTemperatureCheckInterval(d);
-	lua_pushboolean(L, 1);
+	size_t devLen;
+	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : "-";
+	double ival = luaL_checknumber(L, 1);
+
+	int rv = setTemperatureCheckInterval(dev, ival);
+
+	lua_pushboolean(L, rv);
 	return 1;
 }
 

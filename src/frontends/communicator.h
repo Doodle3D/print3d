@@ -4,5 +4,6 @@
 #include <stdlib.h>
 
 int getTemperature(const char* deviceId);
+int setTemperatureCheckInterval(const char* deviceId, int interval);
 
 #endif /* COMMUNICATOR_H_SEEN */
