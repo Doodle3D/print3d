@@ -4,7 +4,6 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "../communicator.h"
-#include "../logger.h"
 
 static int l_getTemperature(lua_State *L) {
 	size_t devLen;

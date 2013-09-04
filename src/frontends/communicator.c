@@ -1,16 +1,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <math.h>
 #include <poll.h>
 #include <signal.h>
-#include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "communicator.h"
 #include "../ipc_shared.h"
-#include "logger.h"
+#include "../logger.h"
 
 static int openSocket(const char* path) {
 	static int fd_static = -1;
@@ -42,51 +41,6 @@ static int openSocket(const char* path) {
 
 	return fd_static;
 }
-
-static char* number_to_string(int n) {
-	int asclen = (int)((ceil(log10(fabs(n))) + 2) * sizeof(char));
-	char* arglenbuf = (char*)malloc(asclen);
-
-	snprintf(arglenbuf, asclen, "%i", n); //TODO: check return value?
-
-	return arglenbuf;
-}
-
-//returns newly allocated buffer (size is written to *len), arg is ignored atm
-static char* constructCommand(const char* name, const char* arg, int* len) {
-	const char* colon = ":";
-	if (len) *len = strlen(name) + 2;
-	char* buf = (char*)malloc(*len);
-
-	if(arg) {
-		int arglen = strlen(arg);
-		char* arglenbuf = number_to_string(arglen);
-
-		int totalcmdlen = *len + 1 + strlen(arglenbuf) + 1 + strlen(arg); //includes NUL but still misses semicolon!
-		log_message(LLVL_WARNING, "CMD '%s:%s:%s', cmdlen=%i (arglen=%i)", name, arglenbuf, arg, totalcmdlen, strlen(arg));//TEMP
-
-		//TODO: HIER (update length etc)
-
-		//increment *len with strlen(arg) + arglenbuf + 2 //2 colons...and still allowing room for the final ';\0'
-		//strcat colon; then strcat arglenbuf; then strcat another colon
-
-		free(arglenbuf);
-	}
-
-	strcpy(buf, name);
-	buf[*len - 2] = ';';
-	buf[*len - 1] = '\0';
-
-	return buf;
-}
-
-static char* constructSocketPath(const char* deviceId) {
-	char* buf = (char*)malloc(strlen(SOCKET_PATH_PREFIX) + strlen(deviceId) + 1);
-	strcpy(buf, SOCKET_PATH_PREFIX);
-	strcat(buf, deviceId);
-	return buf;
-}
-
 
 static const int READ_BUF_SIZE = 256;
 static const int READ_POLL_INTERVAL = 500;
@@ -130,7 +84,7 @@ static char* readAvailableData(int fd, int* totallen) {
 }
 
 static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const char* arg) {
-	char* socketPath = constructSocketPath(deviceId);
+	char* socketPath = ipc_construct_socket_path(deviceId);
 	int fd = openSocket(socketPath);
 
 	if (fd < 0) {
@@ -139,7 +93,7 @@ static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const
 	}
 
 	int bufLen;
-	char* sbuf = constructCommand(COMMAND_NAMES[idx], arg, &bufLen);
+	char* sbuf = ipc_construct_command(IPC_COMMAND_NAMES[idx], arg, &bufLen);
 	bufLen--; //do not send the '\0'
 	int rv = send(fd, sbuf, bufLen, 0); //this should block until all data has been sent
 

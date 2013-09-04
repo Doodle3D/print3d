@@ -12,7 +12,7 @@ add_subdirectory(server)
 add_subdirectory(drivers)
 add_subdirectory(frontends)
 
-set(SOURCES ipc_shared.c)
-set(HEADERS ipc_shared.h)
+add_library(logger logger.c logger.h)
 
-add_library(ipc_shared ${SOURCES} ${HEADERS})
+add_library(ipc_shared ipc_shared.c ipc_shared.h)
+target_link_libraries(ipc_shared logger)

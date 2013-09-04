@@ -9,8 +9,8 @@ using std::string;
 
 //private static
 const CommandHandler::cmdHandlerFunc CommandHandler::HANDLERS[] = {
-		{ COMMAND_NAMES[CMD_TEST_IDX], &CommandHandler::hnd_test },
-		{ COMMAND_NAMES[CMD_GET_TEMPERATURE_IDX], &CommandHandler::hnd_getTemperature },
+		{ IPC_COMMAND_NAMES[CMD_TEST_IDX], &CommandHandler::hnd_test },
+		{ IPC_COMMAND_NAMES[CMD_GET_TEMPERATURE_IDX], &CommandHandler::hnd_getTemperature },
 		{ "", 0 } /* sentinel */
 };
 
