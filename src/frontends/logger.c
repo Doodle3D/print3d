@@ -10,6 +10,8 @@ static ELOG_LEVEL level_ = LLVL_BULK;
 static FILE* stream_ = NULL;
 
 int log_open_stream(FILE* stream, ELOG_LEVEL level) {
+	if (stream_ == stream) return 0;
+
 	int rv = log_close();
 	//TODO: return error if not writable
 	if (rv >= 0) {

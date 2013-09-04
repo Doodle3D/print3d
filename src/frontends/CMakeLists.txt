@@ -3,10 +3,10 @@ project(print3d)
 
 option(LUA_FRONTEND "build Lua frontend" ON)
 
-link_directories(${CMAKE_CURRENT_SOURCE_DIR})
-link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../drivers)
+set(SOURCES communicator.c logger.c)
+set(HEADERS communicator.h logger.h)
 
-#set(SOURCES ${SOURCES} communicator.c)
-#set(HEADERS ${HEADERS} communicator.h)
+add_library(fe_common ${SOURCES} ${HEADERS})
+target_link_libraries(fe_common ipc_shared)
 
 add_subdirectory(lua)

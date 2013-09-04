@@ -3,7 +3,7 @@
 #include "Client.h"
 #include "Server.h"
 #include "Logger.h"//TEMP
-#include "shared.h"
+#include "../ipc_shared.h"
 
 using std::string;
 
@@ -75,8 +75,10 @@ void CommandHandler::hnd_test(Client& client, std::string& arg) {
 }
 
 //static
+//FIXME: check for null-pointer and return error if so (part of more elaborate IPC protocol)
 void CommandHandler::hnd_getTemperature(Client& client, std::string& arg) {
-	int temp = client.getServer().getPrinter().getTemperature();
+	AbstractDriver* driver = client.getServer().getDriver();
+	int temp = driver->getTemperature();
 
 	char* buf = 0;
 	asprintf(&buf, "%i", temp);

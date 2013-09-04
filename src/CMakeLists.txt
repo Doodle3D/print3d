@@ -8,8 +8,11 @@ add_definitions(-Wall)
 
 #configure_file( ${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/config.h )
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
 add_subdirectory(server)
 add_subdirectory(drivers)
 add_subdirectory(frontends)
+
+set(SOURCES ipc_shared.c)
+set(HEADERS ipc_shared.h)
+
+add_library(ipc_shared ${SOURCES} ${HEADERS})

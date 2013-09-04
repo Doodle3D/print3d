@@ -1,4 +1,4 @@
-#include "shared.h"
+#include "ipc_shared.h"
 
 //NOTE: this construct is here to provide plain C access to command names for frontends/communicator.c
 #ifdef __cplusplus

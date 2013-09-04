@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 #include "Logger.h"
-#include "Printer.h"
+#include "../drivers/AbstractDriver.h"
 
 class Client;
 
@@ -20,8 +20,8 @@ public:
 
 	int start(bool fork = FORK_BY_DEFAULT);
 
-	Printer& getPrinter();
-	const Printer& getPrinter() const;
+	AbstractDriver* getDriver();
+	const AbstractDriver* getDriver() const;
 
 private:
 	static const int SOCKET_MAX_BACKLOG;
@@ -33,7 +33,7 @@ private:
 
 	const Logger& log_;
 	int socketFd_;
-	Printer printer_;
+	AbstractDriver* printerDriver_;
 
 	vec_ClientP clients_;
 

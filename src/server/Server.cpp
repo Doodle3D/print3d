@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include "Server.h"
 #include "Client.h"
+#include "../drivers/DriverFactory.h"
 
 using std::string;
 
@@ -14,7 +15,7 @@ const int Server::SOCKET_MAX_BACKLOG = 5; //private
 Server::Server(const string& serialPortPath, const string& socketPath)
 : socketPath_(socketPath),
   log_(Logger::getInstance()), socketFd_(-1),
-  printer_(serialPortPath)
+  printerDriver_(DriverFactory::createDriver("ultimaker", serialPortPath))
 { /* empty */ }
 
 Server::~Server() {
@@ -98,12 +99,12 @@ int Server::start(bool fork) {
 	return 0;
 }
 
-Printer& Server::getPrinter() {
-	return printer_;
+AbstractDriver* Server::getDriver() {
+	return printerDriver_;
 }
 
-const Printer& Server::getPrinter() const {
-	return printer_;
+const AbstractDriver* Server::getDriver() const {
+	return printerDriver_;
 }
 
 

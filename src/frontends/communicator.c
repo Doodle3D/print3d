@@ -1,37 +1,55 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <math.h>
 #include <poll.h>
+#include <signal.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "communicator.h"
-#include "../server/shared.h"
+#include "../ipc_shared.h"
 #include "logger.h"
 
 static int openSocket(const char* path) {
+	static int fd_static = -1;
 	struct sockaddr_un remote;
-	int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	int len;
 
-	if (log_check_error(fd, "could not open domain socket with path '%s'", path)) return -1;
+	if (fd_static >= 0) return fd_static;
+
+	fd_static = socket(AF_UNIX, SOCK_STREAM, 0);
+
+	if (log_check_error(fd_static, "could not open domain socket with path '%s'", path)) return -1;
 
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
 
-	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
-		close(fd);
+	if (log_check_error(connect(fd_static, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
+		close(fd_static);
+		fd_static = -1;
 		return -1;
 	}
 
-	int flags = fcntl(fd, F_GETFL, 0);
+	int flags = fcntl(fd_static, F_GETFL, 0);
 	log_check_error(flags, "could not obtain flags for domain socket");
-	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
+	log_check_error(fcntl(fd_static, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
 	//int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
-	return fd;
+	signal(SIGPIPE, SIG_IGN);
+
+	return fd_static;
+}
+
+static char* number_to_string(int n) {
+	int asclen = (int)((ceil(log10(fabs(n))) + 2) * sizeof(char));
+	char* arglenbuf = (char*)malloc(asclen);
+
+	snprintf(arglenbuf, asclen, "%i", n); //TODO: check return value?
+
+	return arglenbuf;
 }
 
 //returns newly allocated buffer (size is written to *len), arg is ignored atm
@@ -41,9 +59,18 @@ static char* constructCommand(const char* name, const char* arg, int* len) {
 	char* buf = (char*)malloc(*len);
 
 	if(arg) {
-		//obtain arglenbuf = length of arg as string
+		int arglen = strlen(arg);
+		char* arglenbuf = number_to_string(arglen);
+
+		int totalcmdlen = *len + 1 + strlen(arglenbuf) + 1 + strlen(arg); //includes NUL but still misses semicolon!
+		log_message(LLVL_WARNING, "CMD '%s:%s:%s', cmdlen=%i (arglen=%i)", name, arglenbuf, arg, totalcmdlen, strlen(arg));//TEMP
+
+		//TODO: HIER (update length etc)
+
 		//increment *len with strlen(arg) + arglenbuf + 2 //2 colons...and still allowing room for the final ';\0'
 		//strcat colon; then strcat arglenbuf; then strcat another colon
+
+		free(arglenbuf);
 	}
 
 	strcpy(buf, name);
@@ -138,7 +165,7 @@ static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const
 
 //returns temperature, or INT_MIN on error
 int getTemperature(const char* deviceId) {
-	log_open_stream(stderr, LLVL_INFO);
+	log_open_stream(stderr, LLVL_VERBOSE);
 	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, NULL);
 	char* endptr;
 	int temperature = INT_MIN;
@@ -153,6 +180,20 @@ int getTemperature(const char* deviceId) {
 }
 
 //returns 'boolean' 1 on success or 0 on failure
+//TODO: implement real call
 int setTemperatureCheckInterval(const char* deviceId, int interval) {
-	return 0;
+	log_open_stream(stderr, LLVL_VERBOSE);
+	char* ivalBuf = number_to_string(interval);
+	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, ivalBuf);
+	char* endptr;
+	int temperature = INT_MIN;
+
+	if (rbuf != NULL) {
+		temperature = strtol(rbuf, &endptr, 10);
+		if (*endptr != '\0') log_message(LLVL_WARNING, "could not properly parse IPC response to getTemperature as number (parsed %i from '%s')", temperature, rbuf);
+	}
+
+	free(ivalBuf);
+	free(rbuf);
+	return temperature;
 }
