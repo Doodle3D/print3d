@@ -4,12 +4,14 @@
 #include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include "communicator.h"
 #include "../ipc_shared.h"
 #include "../logger.h"
+#include "../utils.h"
 
 static int openSocket(const char* path) {
 	static int fd_static = -1;
@@ -83,7 +85,7 @@ static char* readAvailableData(int fd, int* totallen) {
 	return buf;
 }
 
-static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const char* arg) {
+static char* sendAndReceiveData(const char* deviceId, IPC_COMMAND_CODE code, const char* arg) {
 	char* socketPath = ipc_construct_socket_path(deviceId);
 	int fd = openSocket(socketPath);
 
@@ -93,7 +95,8 @@ static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const
 	}
 
 	int bufLen;
-	char* sbuf = ipc_construct_command(IPC_COMMAND_NAMES[idx], arg, &bufLen);
+	//char* sbuf = ipc_construct_command(IPC_COMMAND_NAMES[idx], arg, &bufLen);
+	char* sbuf = NULL; // reimplement using new IPC commands
 	bufLen--; //do not send the '\0'
 	int rv = send(fd, sbuf, bufLen, 0); //this should block until all data has been sent
 
@@ -120,7 +123,7 @@ static char* sendAndReceiveData(const char* deviceId, COMMAND_INDICES idx, const
 //returns temperature, or INT_MIN on error
 int getTemperature(const char* deviceId) {
 	log_open_stream(stderr, LLVL_VERBOSE);
-	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, NULL);
+	char* rbuf = sendAndReceiveData(deviceId, IPC_CMD_GET_TEMPERATURE, NULL);
 	char* endptr;
 	int temperature = INT_MIN;
 
@@ -136,18 +139,18 @@ int getTemperature(const char* deviceId) {
 //returns 'boolean' 1 on success or 0 on failure
 //TODO: implement real call
 int setTemperatureCheckInterval(const char* deviceId, int interval) {
-	log_open_stream(stderr, LLVL_VERBOSE);
-	char* ivalBuf = number_to_string(interval);
-	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, ivalBuf);
-	char* endptr;
-	int temperature = INT_MIN;
-
-	if (rbuf != NULL) {
-		temperature = strtol(rbuf, &endptr, 10);
-		if (*endptr != '\0') log_message(LLVL_WARNING, "could not properly parse IPC response to getTemperature as number (parsed %i from '%s')", temperature, rbuf);
-	}
-
-	free(ivalBuf);
-	free(rbuf);
-	return temperature;
+//	log_open_stream(stderr, LLVL_VERBOSE);
+//	char* ivalBuf = number_to_string(interval);
+//	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, ivalBuf);
+//	char* endptr;
+//	int temperature = INT_MIN;
+//
+//	if (rbuf != NULL) {
+//		temperature = strtol(rbuf, &endptr, 10);
+//		if (*endptr != '\0') log_message(LLVL_WARNING, "could not properly parse IPC response to getTemperature as number (parsed %i from '%s')", temperature, rbuf);
+//	}
+//
+//	free(ivalBuf);
+//	free(rbuf);
+//	return temperature;
 }

@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(print3d)
 
-set(CMAKE_INSTALL_PREFIX /)
-
 if(NOT LUA_CFLAGS)
 	find_program(PKG_CONFIG pkg-config)
 	if(PKG_CONFIG)

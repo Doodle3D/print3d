@@ -2,13 +2,15 @@
 #define COMMAND_HANDLER_H_SEEN
 
 #include <string>
+#include "../ipc_shared.h"
 
 class Client;
 
 class CommandHandler {
 public:
 	struct cmdHandlerFunc {
-		const char* name;
+		//const char* name;
+		IPC_COMMAND_CODE code;
 		void (*hndFunc)(Client& client, std::string& arg);
 	};
 
