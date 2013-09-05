@@ -55,7 +55,7 @@ int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen) {
 	return 0;
 }
 
-//returns 1 if the command is complete, 0 otherwise
+//returns command length if complete, 0 otherwise
 int ipc_cmd_is_complete(const char* buf, int buflen) {
 	if (buflen < 4) return 0;
 
@@ -72,7 +72,7 @@ int ipc_cmd_is_complete(const char* buf, int buflen) {
 		p += 4 + al;
 	}
 
-	return 1;
+	return p - buf;
 }
 
 //returns the number of arguments in the command
@@ -114,9 +114,19 @@ int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, 
 	return 0;
 }
 
-//removes the first complete command from the start of the buffer
-int ipc_cmd_remove_from_buf(const char** buf, int* buflen) {
-	//
+int ipc_cmd_remove(char** buf, int* buflen) {
+	int l = ipc_cmd_is_complete(*buf, *buflen);
+
+	if (l == 0) return 0;
+
+	memmove(*buf, *buf + l, *buflen - l);
+	char* t = (char*)realloc(*buf, *buflen - l);
+	if (!t) return -1;
+
+	*buf = t;
+	*buflen -= l;
+
+	return 1;
 }
 
 #ifdef __cplusplus
