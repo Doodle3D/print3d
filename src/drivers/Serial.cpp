@@ -50,14 +50,14 @@ int Serial::close() {
 	return 0;
 }
 
-Serial::SET_SPEED_RESULT Serial::setSpeed(int fd, int speed) {
+Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
 #ifdef __APPLE__
-	if (tcgetattr(fd, &options) < 0) return SSR_IO_GET;
+	if (tcgetattr(portFd_, &options) < 0) return SSR_IO_GET;
 #else
-	if (ioctl(fd, TCGETS2, &options) < 0) return SSR_IO_GET;
+	if (ioctl(portFd_, TCGETS2, &options) < 0) return SSR_IO_GET;
 #endif
 
 	cfmakeraw(&options);
@@ -85,18 +85,18 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int fd, int speed) {
 	options.c_cflag |= CLOCAL;
 
 #ifdef __APPLE__
-	if (tcsetattr(fd, TCSANOW, &options) < 0) return SSR_IO_SET;
+	if (tcsetattr(portFd_, TCSANOW, &options) < 0) return SSR_IO_SET;
 #else
-	if (ioctl(fd, TCSETS2, &options) < 0) return SSR_IO_SET;
+	if (ioctl(portFd_, TCSETS2, &options) < 0) return SSR_IO_SET;
 #endif
 
 	//toggle DTR
-	if (ioctl(fd, TIOCMGET, &modemBits) < 0) return SSR_IO_MGET;
+	if (ioctl(portFd_, TIOCMGET, &modemBits) < 0) return SSR_IO_MGET;
 	modemBits |= TIOCM_DTR;
-	if (ioctl(fd, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET1;
+	if (ioctl(portFd_, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET1;
 	usleep(100 * 1000);
 	modemBits &=~TIOCM_DTR;
-	if (ioctl(fd, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET2;
+	if (ioctl(portFd_, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET2;
 
 	return SSR_OK;
 }

@@ -15,8 +15,12 @@ const int Server::SOCKET_MAX_BACKLOG = 5; //private
 Server::Server(const string& serialPortPath, const string& socketPath)
 : socketPath_(socketPath),
   log_(Logger::getInstance()), socketFd_(-1),
-  printerDriver_(DriverFactory::createDriver("ultimaker", serialPortPath))
-{ /* empty */ }
+  printerDriver_(DriverFactory::createDriver("marlin_ultimaker", serialPortPath))
+{
+  if(printerDriver_ == 0) {
+    log_.log(Logger::ERROR, "no printer driver found for marlin_ultimaker");
+  }
+}
 
 Server::~Server() {
 	closeSocket();

@@ -11,7 +11,7 @@ public:
 
 	int open(const char* file);
 	int close();
-	SET_SPEED_RESULT setSpeed(int fd, int speed);
+	SET_SPEED_RESULT setSpeed(int speed);
 	bool send(const char* code) const;
 
 private:
