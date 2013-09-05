@@ -2,11 +2,16 @@
 #define DRIVER_FACTORY_H_SEEN
 
 #include <string>
+#include <vector>
 #include "AbstractDriver.h"
+#include "../server/Logger.h"
 
 class DriverFactory {
 public:
 	static AbstractDriver* createDriver(const std::string& driverName, const std::string& serialPortPath);
+
+private:
+  typedef std::vector<const AbstractDriver::DriverInfo*> vec_DriverInfoP;
 
 	/*
 	 * TODO:

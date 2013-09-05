@@ -14,7 +14,11 @@ int AbstractDriver::openConnection() {
 	int rv = serial_.open(serialPortPath_.c_str());
 
 	if (rv > 0) {
-		//TODO: set (detected?) speed
+		// TODO: get default baudrate from constructor
+    // TODO: when this baudrate is incorrect another should be tried
+    //  and it should be reported so that the one that does works gets
+    //  saved as preference.
+    serial_.setSpeed(115200);
 	}
 
 	return rv;
@@ -22,6 +26,10 @@ int AbstractDriver::openConnection() {
 
 int AbstractDriver::closeConnection() {
 	return serial_.close();
+}
+
+void AbstractDriver::readSerial() {
+
 }
 
 int AbstractDriver::getTemperature() const {
