@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 #include "Serial.h"
+#include "../utils.h"
 
 using std::string;
 
@@ -31,15 +32,14 @@ using std::string;
 const int Serial::READ_BUF_SIZE = 1024;
 
 Serial::Serial()
-: portFd_(-1) {
+: portFd_(-1), buffer_(0), bufferSize_(0) {
 }
 
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
   Logger& log = Logger::getInstance();
-	log.log(Logger::VERBOSE,"Serial::open");
-  log.log(Logger::VERBOSE,"  file: %s",file);
+	log.log(Logger::VERBOSE,"Serial::open: %s",file);
 
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
 	log.log(Logger::VERBOSE,"  serial opened %i",portFd_);
@@ -70,6 +70,8 @@ bool Serial::isOpen() {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
+  Logger& log = Logger::getInstance();
+	log.log(Logger::VERBOSE,"Serial::setSpeed: %i",speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -93,13 +95,18 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 
 	//set speed
 #ifdef __APPLE__
-	if (ioctl(portFd_, IOSSIOSPEED, &speed) == -1) return SSR_IO_IOSSIOSPEED;
+// TODO: make speed dynamic
+//	if (ioctl(portFd_, IOSSIOSPEED, &speed) == -1) return SSR_IO_IOSSIOSPEED;
+  cfsetispeed(&options, B115200);
+  cfsetospeed(&options, B115200);
+
 #elif __linux
 	options.c_ospeed = options.c_ispeed = speed;
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
 #endif
 
+  //FIXME: why is CLOCAL disabled above and re-enabled again here?
 	options.c_cflag |= CS8;
 	options.c_cflag |= CLOCAL;
 
@@ -131,7 +138,15 @@ bool Serial::send(const char* code) const {
 }
 
 int Serial::readData() {
-  int newSize = bufferSize_ + READ_BUF_SIZE;
+  Logger& log = Logger::getInstance();
+	log.log(Logger::VERBOSE,"Serial::readData");
+
+
+  int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_);
+
+
+
+  /*int newSize = bufferSize_ + READ_BUF_SIZE;
   buffer_ = (char*)realloc(buffer_, newSize);
 
   int rv = read(portFd_, buffer_ + bufferSize_, newSize - bufferSize_);
@@ -149,7 +164,9 @@ int Serial::readData() {
   }
 
   bufferSize_ += readLen;
-  buffer_ = (char*)realloc(buffer_, bufferSize_);
+  buffer_ = (char*)realloc(buffer_, bufferSize_);*/
+
+	if (bufferSize_ > 0) log.log(Logger::VERBOSE,"  byte: 0x%x (bufsize: %i)",buffer_[0], bufferSize_);
 
   return rv;
 }
@@ -163,21 +180,26 @@ int Serial::getBufferSize() {
 }
 
 string* Serial::extractLine() {
-  char* p = strchr(buffer_, '\n');
-  if (!p) return NULL;
+  char* p = buffer_;
+  while(p < buffer_ + bufferSize_) {
+    if (*p == '\n') break;
+    p++;
+  }
+  if (p == buffer_ + bufferSize_) return NULL;
 
   int lineLen = p - buffer_;
-  char* lineCopy = (char*)malloc(lineLen + 1);
+  char* lineCopy = (char*)malloc(lineLen);
   memcpy(lineCopy, buffer_, lineLen);
 
   //this is rather ugly but at least it should work...
-  lineCopy[lineLen] = '\0';
+  lineCopy[lineLen] = '\0'; //overwrite \n with nulbyte
+  if (lineCopy[lineLen - 1] == '\r') lineCopy[lineLen - 1] = '\0'; //also remove \r if present
   string* line = new string(lineCopy);
   free(lineCopy);
 
   //now resize the read buffer
-  memmove(buffer_, p + 1, bufferSize_ - lineLen - 1);
-  bufferSize_ -= lineLen - 1;
+  memmove(buffer_, p + 1, bufferSize_ - (lineLen + 1));
+  bufferSize_ -= lineLen + 1;
   buffer_ = (char*)realloc(buffer_, bufferSize_);
 
   return line;

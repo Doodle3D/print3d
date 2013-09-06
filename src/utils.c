@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include "utils.h"
 #include <sys/time.h>
@@ -74,15 +75,26 @@ int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *
 	return x->tv_sec < y->tv_sec;
 }
 
+/** Read as much data and append to the given buffer.
+ *
+ * @param fd The file descriptor to read from
+ * @param buf The buffer to read into, will be resized as necessary
+ * @param buflen The buffer length, will be updated to reflect new buffer size
+ * @return >0 if data has been read and no errors occurred
+ * @return 0 if no data could be read and no errors occurred
+ * @return -1 if a read error occurred (errno contains details)
+ * @return -2 if the file descriptor was closed
+ */
 int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
 	struct pollfd pfd = { .fd = fd, .events = POLLIN };
 	int newbuflen = 0, totalreadlen = 0;
 	int rv;
+  int exitValue;
 
 	while(1) {
 		newbuflen = *buflen + READ_BUF_SIZE;
-		*buf = (char*)realloc(buf, newbuflen);
-		rv = recv(fd, *buf + *buflen, newbuflen - *buflen, 0);
+		*buf = (char*)realloc(*buf, newbuflen);
+		rv = read(fd, *buf + *buflen, newbuflen - *buflen);
 
 		if (rv < 0) {
 			if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -90,17 +102,23 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
 				pfd.revents = 0;
 				poll(&pfd, 1, READ_POLL_INTERVAL);
 
-				if ((pfd.revents & POLLIN) == 0) break;
+				if ((pfd.revents & POLLIN) == 0) {
+          exitValue = totalreadlen;
+          break;
+        }
 			} else if (errno != EINTR) {
 				//ignore it if the call was interrupted (i.e. try again)
+        exitValue = -1;
 				break;
 			}
 		} else if (rv == 0) {
 			//nothing to read anymore (remote end closed?)
+      exitValue = -2;
 			break;
 		} else {
 			*buflen += rv;
 			totalreadlen += rv;
+      exitValue = totalreadlen;
 		}
 	}
 
@@ -111,5 +129,5 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
 		*buf = NULL;
 	}
 
-	return (rv > 0) ? totalreadlen : rv;
+  return exitValue;
 }

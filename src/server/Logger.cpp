@@ -87,7 +87,7 @@ bool Logger::checkError(int rv, const char* format, ...) const {
 }
 
 bool Logger::vaCheckError(int rv, const char* format, va_list args) const {
-	if (rv >= 0) return false;
+	if (rv != -1) return false; //treat _only_ -1 as error (since we can only handle system errors)
 
 	int savedErrno = errno;
 	char* buf = 0;
