@@ -20,6 +20,7 @@ Server::Server(const string& serialPortPath, const string& socketPath)
   if(printerDriver_ == 0) {
     log_.log(Logger::ERROR, "no printer driver found for marlin_ultimaker");
   }
+  driverDelay = 0;
 }
 
 Server::~Server() {
@@ -51,7 +52,7 @@ int Server::start(bool fork) {
 	}
 
 	//HIER *** foutafhandeling niet vergeten
-	//printer_.openConnection();
+	printerDriver_->openConnection();
 
 	fd_set masterFds;
 	fd_set readFds;
@@ -62,10 +63,10 @@ int Server::start(bool fork) {
 	while (true) {
 		//TODO: add timeout (or something more complex to accomodate periodic temperature readings etc)
 
-		readFds = masterFds;
+		/*readFds = masterFds;
 		log_.log(Logger::VERBOSE, "entering select(), maxfd=%i", maxFd);
 		if (log_.checkError(
-				::select(maxFd + 1, &readFds, NULL, NULL, NULL), /* use FD_SETSIZE instead of keeping maxfd? */
+				::select(maxFd + 1, &readFds, NULL, NULL, NULL), // use FD_SETSIZE instead of keeping maxfd?
 				"error in select()")) {
 			//TODO: handle error (close down server <- needs function... and return with proper error value)
 		}
@@ -82,7 +83,7 @@ int Server::start(bool fork) {
 			log_.log(Logger::VERBOSE, "new client with fd %i", connFd);
 		}
 
-		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); /* increment inside loop */) {
+		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); *//* increment inside loop *//*) {
 			int rv = (*it)->readData();
 			log_.checkError(rv, "cannot read from client");
 
@@ -96,8 +97,11 @@ int Server::start(bool fork) {
 				(*it)->runCommands();
 				it++;
 			}
-		}
-		log_.log(Logger::BULK, "looping");//TEMP
+		}*/
+
+    printerDriver_->update();
+
+		//log_.log(Logger::BULK, "looping");//TEMP
 	}
 
 	return 0;

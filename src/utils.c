@@ -4,6 +4,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include "utils.h"
+#include <sys/time.h>
+#include <time.h>
 
 //returns a newly allocated ASCIIZ string, or NULL if an error occured
 char* number_to_string(int n) {
@@ -37,3 +39,11 @@ void store_nl(char* p, uint32_t v) {
 	uint32_t nv = htonl(v);
 	memcpy(p, &nv, 4);
 }
+
+uint32_t getMillis() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+

@@ -5,6 +5,8 @@
 
 #include "Serial.h"
 
+using std::string;
+
 #include <termios.h> /* cfmakeraw */
 #include <sys/ioctl.h> /* ioctl */
 
@@ -26,16 +28,24 @@
 #endif
 
 
+const int Serial::READ_BUF_SIZE = 1024;
+
 Serial::Serial()
-: portFd_(0)
-{ /* empty */ }
+: portFd_(-1) {
+}
 
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-	portFd_ = ::open(file, O_RDWR);
+  Logger& log = Logger::getInstance();
+	log.log(Logger::VERBOSE,"Serial::open");
+  log.log(Logger::VERBOSE,"  file: %s",file);
+
+	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
+	log.log(Logger::VERBOSE,"  serial opened %i",portFd_);
 	if (portFd_ < 0) {
-		//logger(ERROR, "%s: could not open port %s (%s)\n", argv[0], file, strerror(errno));
+    Logger& log = Logger::getInstance();
+  	log.log(Logger::ERROR,"Could not open port %s\n", file);
 		return portFd_;
 	}
 
@@ -45,9 +55,18 @@ int Serial::open(const char* file) {
 }
 
 int Serial::close() {
-	if (portFd_ >= 0) return ::close(portFd_);
+  int rv = 0;
 
-	return 0;
+	if (portFd_ >= 0) {
+    rv = ::close(portFd_);
+    portFd_ = -1;
+  }
+
+	return rv;
+}
+
+bool Serial::isOpen() {
+  return portFd_ > -1;
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
@@ -109,4 +128,57 @@ bool Serial::send(const char* code) const {
 	} else {
 		return false;
 	}
+}
+
+int Serial::readData() {
+  int newSize = bufferSize_ + READ_BUF_SIZE;
+  buffer_ = (char*)realloc(buffer_, newSize);
+
+  int rv = read(portFd_, buffer_ + bufferSize_, newSize - bufferSize_);
+  int readLen;
+
+  if (rv < 0) {
+    //EINTR -> restart
+    //EWOULDBLOCK / EAGAIN -> would block in case of non-blocking fd
+    readLen = 0;
+  } else if (rv == 0) {
+    close();
+    readLen = 0;
+  } else {
+    readLen = rv;
+  }
+
+  bufferSize_ += readLen;
+  buffer_ = (char*)realloc(buffer_, bufferSize_);
+
+  return rv;
+}
+
+char* Serial::getBuffer() {
+  return buffer_;
+}
+
+int Serial::getBufferSize() {
+  return bufferSize_;
+}
+
+string* Serial::extractLine() {
+  char* p = strchr(buffer_, '\n');
+  if (!p) return NULL;
+
+  int lineLen = p - buffer_;
+  char* lineCopy = (char*)malloc(lineLen + 1);
+  memcpy(lineCopy, buffer_, lineLen);
+
+  //this is rather ugly but at least it should work...
+  lineCopy[lineLen] = '\0';
+  string* line = new string(lineCopy);
+  free(lineCopy);
+
+  //now resize the read buffer
+  memmove(buffer_, p + 1, bufferSize_ - lineLen - 1);
+  bufferSize_ -= lineLen - 1;
+  buffer_ = (char*)realloc(buffer_, bufferSize_);
+
+  return line;
 }

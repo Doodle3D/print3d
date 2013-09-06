@@ -8,5 +8,8 @@ uint16_t read_ns(const char* p);
 uint32_t read_nl(const char* p);
 void store_ns(char* p, uint16_t v);
 void store_nl(char* p, uint32_t v);
+uint32_t getMillis();
 
 #endif /* ! UTILS_H_SEEN */
+
+

@@ -45,13 +45,10 @@ public:
   void stopPrint();
 
   // should return in how much milliseconds it wants to be called again
-	virtual int update() = 0;
+	virtual void update() = 0;
 
-private:
-	const std::string serialPortPath_;
-	Serial serial_;
-
-	int temperature_;
+protected:
+  int temperature_;
 	int currentLine_;
 	int numLines_;
 
@@ -60,9 +57,14 @@ private:
   void checkTemperature();
 
   void sendCode(std::string code);
-  void readCode(std::string code);
+  virtual void readCode(std::string& code) = 0;
 
-  void readSerial();
+  int readData();
+	Serial serial_;
+
+private:
+	const std::string serialPortPath_;
+
 
 };
 

@@ -6,7 +6,7 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const
 
 
   Logger& log = Logger::getInstance();
-  log.log(Logger::VERBOSE, "DriverFactory::createDriver");
+  //log.log(Logger::VERBOSE, "DriverFactory::createDriver");
 
   // list all printer drivers (their driver info)
   if(driverInfos.empty()) {
@@ -28,9 +28,10 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const
          f != di.supportedFirmware.end();
          ++f) {
 
-      log.log(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
+      //log.log(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
       // if match create driver instance
       if((*f).name == driverName) {
+        log.log(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
         return di.creator(serialPortPath);
       }
     }
