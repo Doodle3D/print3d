@@ -7,12 +7,13 @@
 
 #include <inttypes.h>
 
-char* number_to_string(int n);
-uint16_t read_ns(const char* p);
-uint32_t read_nl(const char* p);
-void store_ns(char* p, uint16_t v);
-void store_nl(char* p, uint32_t v);
+char *number_to_string(int n);
+uint16_t read_ns(const char *p);
+uint32_t read_nl(const char *p);
+void store_ns(char *p, uint16_t v);
+void store_nl(char *p, uint32_t v);
 int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y);
+int readAndAppendAvailableData(int fd, char **buf, int *buflen);
 
 #ifdef __cplusplus
 	} //extern "C"
