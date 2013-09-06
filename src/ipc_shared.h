@@ -14,7 +14,7 @@ typedef enum IPC_COMMAND_CODE {
 	IPC_CMD_GET_TEMPERATURE = 0x10
 } IPC_COMMAND_CODE;
 
-/** Structure connecting an IPC command code to a human-readable name.
+/** Structure to associate an IPC command code to a human-readable name.
  */
 typedef struct ipc_cmd_name_s {
 	IPC_COMMAND_CODE code; //! The code as used in IPC messages
@@ -41,7 +41,14 @@ int ipc_cmd_is_complete(const char* buf, int buflen);
 int ipc_cmd_num_args(const char* buf, int buflen);
 IPC_COMMAND_CODE ipc_cmd_get(const char* buf, int buflen);
 int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, int argidx, int addzero);
-int ipc_cmd_remove_from_buf(const char** buf, int* buflen);
+
+/** Removes the first complete command from the start of the buffer.
+ *
+ * \param buf Command buffer
+ * \param buflen Command buffer length
+ * \return 1 if a command has been removed, 0 on success or -1 on system error
+ */
+int ipc_cmd_remove(char** buf, int* buflen);
 
 #ifdef __cplusplus
 } //extern "C"
