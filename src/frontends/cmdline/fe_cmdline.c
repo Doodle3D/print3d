@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include "../communicator.h"
 
 typedef enum ACTION_TYPE {
 		AT_NONE, AT_SHOW_HELP, AT_GET_TEMPERATURE, AT_GET_SUPPORTED, AT_PRINT_FILE, AT_SEND_CODE
@@ -66,6 +67,14 @@ void parse_options(int argc, char **argv) {
 }
 
 
+void printTemperature() {
+	int16_t temperature;
+	int rv = getTemperature(deviceId, &temperature);
+
+	if (rv > -1) printf("temperature: %i\n", temperature);
+	else fprintf(stderr, "could not read temperature (%s)\n", getError());
+}
+
 int main(int argc, char **argv) {
 	parse_options(argc, argv);
 
@@ -91,7 +100,7 @@ int main(int argc, char **argv) {
 		printf("\t-c,--gcode <gcode>\tPrint the specified line of g-code\n");
 		break;
 	case AT_GET_TEMPERATURE:
-		printf("[dummy] get temperature\n");
+		printTemperature();
 		break;
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");

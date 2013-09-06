@@ -11,22 +11,23 @@ public:
 	int readData();
 	void runCommands();
 
-	bool sendData(const std::string& data);
+	bool sendData(const char* buf, int buflen);
 
 	int getFileDescriptor() const;
+	const char* getBuffer() const;
+	int getBufferSize() const;
 	Server& getServer();
 	const Server& getServer() const;
 
 private:
-	static const int READ_BUFFER_LENGTH;
-
 	Client(const Client& o);
 	void operator=(const Client& o);
 
 	Server& server_;
 
 	int fd_;
-	std::string buffer_;
+	char* buffer_;
+	int bufferSize_;
 };
 
 #endif /* ! CLIENT_H_SEEN */

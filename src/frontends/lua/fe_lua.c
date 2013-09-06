@@ -1,5 +1,6 @@
 #define LUA_LIB
 
+#include <inttypes.h>
 #include <string.h>
 #include "lua.h"
 #include "lauxlib.h"
@@ -8,10 +9,11 @@
 static int l_getTemperature(lua_State *L) {
 	size_t devLen;
 	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : "-";
-	int rv = getTemperature(dev);
+	int16_t temperature;
+	int rv = getTemperature(dev, &temperature);
 
-	if (rv > INT_MIN) {
-		lua_pushnumber(L, rv);
+	if (rv > -1) {
+		lua_pushnumber(L, temperature);
 		return 1;
 	} else {
 		const char* errMsg = "error comunicating with server (TODO: return real C error)"; //TODO: return real C error

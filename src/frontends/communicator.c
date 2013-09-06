@@ -1,7 +1,4 @@
-#include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
-#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +9,14 @@
 #include "../ipc_shared.h"
 #include "../logger.h"
 #include "../utils.h"
+
+static const int IPC_WAIT_TIMEOUT = 1500;
+
+static const char* error = NULL;
+const char* getError() { return error; }
+static void clearError() { error = NULL; }
+const void setError(const char* e) { error = e; }
+
 
 static int openSocket(const char* path) {
 	static int fd_static = -1;
@@ -44,48 +49,8 @@ static int openSocket(const char* path) {
 	return fd_static;
 }
 
-static const int READ_BUF_SIZE = 256;
-static const int READ_POLL_INTERVAL = 500;
 
-static char* readAvailableData(int fd, int* totallen) {
-	struct pollfd pfd = { .fd = fd, .events = POLLIN };
-	int actlen = 0, buflen = 0;
-	char* buf = 0;
-
-	while(1) {
-		buflen = actlen + READ_BUF_SIZE;
-		buf = (char*)realloc(buf, buflen);
-		int rv = recv(fd, buf + actlen, buflen - actlen, 0);
-
-		if (rv < 0) {
-			if (errno == EWOULDBLOCK || errno == EAGAIN) {
-				//recv() would block...we wait using poll and then try again if data became available
-				pfd.revents = 0;
-				poll(&pfd, 1, READ_POLL_INTERVAL);
-
-				if ((pfd.revents & POLLIN) == 0) break;
-			} else if (errno != EINTR) {
-				//ignore it if the call was interrupted (i.e. try again)
-				log_check_error(rv, "error reading data from domain socket");
-				break;
-			}
-		} else if (rv == 0) {
-			//nothing to read anymore (remote end closed?)
-			break;
-		} else {
-			actlen += rv;
-		}
-	}
-
-	//reallocate buffer to correct size and append nul-byte
-	buf = (char*)realloc(buf, actlen + 1);
-	if (totallen) *totallen = actlen + 1;
-	buf[actlen] = '\0';
-
-	return buf;
-}
-
-static char* sendAndReceiveData(const char* deviceId, IPC_COMMAND_CODE code, const char* arg) {
+static char* sendAndReceiveData(const char* deviceId, const char* buf, int buflen, int* rbuflen) {
 	char* socketPath = ipc_construct_socket_path(deviceId);
 	int fd = openSocket(socketPath);
 
@@ -94,63 +59,71 @@ static char* sendAndReceiveData(const char* deviceId, IPC_COMMAND_CODE code, con
 		return NULL;
 	}
 
-	int bufLen;
-	//char* sbuf = ipc_construct_command(IPC_COMMAND_NAMES[idx], arg, &bufLen);
-	char* sbuf = NULL; // reimplement using new IPC commands
-	bufLen--; //do not send the '\0'
-	int rv = send(fd, sbuf, bufLen, 0); //this should block until all data has been sent
+	int rv = send(fd, buf, buflen, 0); //this should block until all data has been sent
 
-	if (log_check_error(rv, "error sending command '%s' to domain socket '%s'", sbuf, socketPath)) {
+	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(buf, buflen))) {
 		close(fd);
 		free(socketPath);
-		free(sbuf);
 		return NULL;
-	} else if (rv < bufLen) {
-		log_message(LLVL_WARNING, "could not write complete command '%s' (%i bytes written) to domain socket '%s'", sbuf, rv, socketPath);
+	} else if (rv < buflen) {
+		log_message(LLVL_WARNING, "could not write complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(buf, buflen), rv);
+	} else {
+		log_message(LLVL_VERBOSE, "ipc command 0x%x sent (%i bytes written)", ipc_cmd_get(buf, buflen), rv);
 	}
 
-	int rbuflen;
-	char* rbuf = readAvailableData(fd, &rbuflen);
+	char* rbuf = 0;
+	*rbuflen = 0;
+	//read only once to avoid unneccessary timeout but still allow for the timeout to happen
+	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "error reading data from domain socket");
 
 	close(fd);
 	free(socketPath);
-	free(sbuf);
 
 	return rbuf;
 }
 
 
-//returns temperature, or INT_MIN on error
-int getTemperature(const char* deviceId) {
-	log_open_stream(stderr, LLVL_VERBOSE);
-	char* rbuf = sendAndReceiveData(deviceId, IPC_CMD_GET_TEMPERATURE, NULL);
-	char* endptr;
-	int temperature = INT_MIN;
+//returns 0 on success, -1 on error (retrieved using getError())
+int getTemperature(const char* deviceId, int16_t* temperature) {
+	int rv, result = 0;
 
-	if (rbuf != NULL) {
-		temperature = strtol(rbuf, &endptr, 10);
-		if (*endptr != '\0') log_message(LLVL_WARNING, "could not properly parse IPC response to getTemperature as number (parsed %i from '%s')", temperature, rbuf);
+	log_open_stream(stderr, LLVL_VERBOSE);
+	clearError();
+
+	int cmdlen, rbuflen;
+	char* cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
+	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
+
+	if (!rbuf) {
+		setError("could not send/receive IPC command");
+		free(cmdbuf);
+		return -1;
+	} else {
+		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+	}
+
+	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	case IPC_CMDR_OK:
+		rv = ipc_cmd_get_short_arg(rbuf, rbuflen, 0, temperature);
+		break;
+	case IPC_CMDR_ERROR:
+		setError("server returned error");
+		result = -1;
+		break;
+	default:
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		setError("server returned unexpected response");
+		result = -1;
+		break;
 	}
 
 	free(rbuf);
-	return temperature;
+	free(cmdbuf);
+	return result;
 }
 
 //returns 'boolean' 1 on success or 0 on failure
 //TODO: implement real call
 int setTemperatureCheckInterval(const char* deviceId, int interval) {
-//	log_open_stream(stderr, LLVL_VERBOSE);
-//	char* ivalBuf = number_to_string(interval);
-//	char* rbuf = sendAndReceiveData(deviceId, CMD_GET_TEMPERATURE_IDX, ivalBuf);
-//	char* endptr;
-//	int temperature = INT_MIN;
-//
-//	if (rbuf != NULL) {
-//		temperature = strtol(rbuf, &endptr, 10);
-//		if (*endptr != '\0') log_message(LLVL_WARNING, "could not properly parse IPC response to getTemperature as number (parsed %i from '%s')", temperature, rbuf);
-//	}
-//
-//	free(ivalBuf);
-//	free(rbuf);
-//	return temperature;
+	return 0;
 }

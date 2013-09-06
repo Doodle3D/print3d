@@ -12,81 +12,55 @@ using std::string;
 //		{ IPC_COMMAND_NAMES[CMD_GET_TEMPERATURE_IDX], &CommandHandler::hnd_getTemperature },
 //		{ "", 0 } /* sentinel */
 //};
-const CommandHandler::cmdHandlerFunc CommandHandler::HANDLERS[] = {
-		{ IPC_CMD_TEST, &CommandHandler::hnd_test },
-		{ IPC_CMD_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
-		{ IPC_CMD_NONE, 0 } /* sentinel */
+const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
+		{ IPC_CMDQ_TEST, &CommandHandler::hnd_test },
+		{ IPC_CMDQ_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
+		{ IPC_CMDS_NONE, 0 } /* sentinel */
 };
 
 
 //static
-//returns true if a command could be extracted
-//commands are of either on of these forms: "name;" or "name:arglen:arg;"
-//whitespace (space,tab,\n,\r) in between commands is skipped
-bool CommandHandler::extractAndRun(Client& client, string& buf) {
-	const cmdHandlerFunc* hfunc = HANDLERS;
+//expects a complete command at start of buffer
+void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
+	const handlerFunctions* hfunc = HANDLERS;
+	IPC_COMMAND_CODE code = ipc_cmd_get(buf, buflen);
 
-	int skipIdx = buf.find_first_not_of(" \t\n\r");
+	while(hfunc->hndFunc) {
+			if (hfunc->code == code) hfunc->hndFunc(client, buf, buflen);
 
-	if (skipIdx == string::npos) {
-		buf.clear();
-		return false;
-	}	else if (skipIdx > 0) {
-		buf = buf.substr(skipIdx);
+		hfunc++;
 	}
-
-	//TODO: reimplement using new IPC commands
-//	while(hfunc->hndFunc) {
-//		int cmdLen = strlen(hfunc->name);
-//		if (strnstr(buf.c_str(), hfunc->name, buf.length()) == buf.c_str()) {
-//			string arg;
-//			int suffixLen = -1; //-1 is used to indicate incomplete/invalid command syntax below
-//
-//			switch (buf.at(cmdLen)) {
-//			case ';':
-//				suffixLen = 1;
-//				break;
-//			case ':':
-//				//TODO
-//				int lenTerm = buf.find(':', cmdLen + 1);
-//				//only if found (lenTerm != string::npos), return false otherwise: string& lenText = buf.substr(cmdLen + 2, lenTerm - 1);
-//				//ensure ';' exists after argument
-//				//extract argument
-//				break;
-//			}
-//
-//			//complete command found? then remove it from the buffer and handle it
-//			if (suffixLen >= 0) {
-//				buf = buf.substr(cmdLen + suffixLen);
-//				hfunc->hndFunc(client, arg);
-//				return true;
-//			}
-//		}
-//
-//		hfunc++;
-//	}
 
 	//  if no printer object yet, or type config changed, create printer object
 	//  dispatch request to printer object (aka handleRequest() --> temp dummy for testing?)
-
-	return false;
 }
 
 
 //static
-void CommandHandler::hnd_test(Client& client, std::string& arg) {
-	char* buf = 0;
-	asprintf(&buf, "printserver test echo. argument: '%s'\n", arg.c_str());
-	client.sendData(buf);
+void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
+//	char* argtext = 0;
+//	asprintf(&argtext, "printserver test echo. argument: '%s'\n", arg.c_str());
+//
+//	int cmdlen;
+//	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", argtext);
+//	free(argtext);
+
+	//TEMP placeholder
+	int cmdlen;
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, 0);
+
+	client.sendData(cmd, cmdlen);
 }
 
 //static
-//FIXME: check for null-pointer and return error if so (part of more elaborate IPC protocol)
-void CommandHandler::hnd_getTemperature(Client& client, std::string& arg) {
+void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buflen) {
 	AbstractDriver* driver = client.getServer().getDriver();
 	int temp = driver->getTemperature();
 
-	char* buf = 0;
-	asprintf(&buf, "%i", temp);
-	client.sendData(buf);
+	static int adder = 0;
+	temp += adder++;
+
+	int cmdlen;
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "w", temp);
+	client.sendData(cmd, cmdlen);
 }

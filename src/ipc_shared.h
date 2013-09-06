@@ -3,22 +3,50 @@
  *
  * This is all plain C code.
  */
+#ifndef IPC_SHARED_H
+#define IPC_SHARED_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include "inttypes.h"
+#include <stdarg.h>
+/* #include <varargs.h> //varargs.h has been superseded by stdarg.h */
+#include <inttypes.h>
 
 typedef enum IPC_COMMAND_CODE {
-	IPC_CMD_TEST = 0, IPC_CMD_NONE = 1,
-	IPC_CMD_GET_TEMPERATURE = 0x10
+	/* special codes (not sent or received) */
+	IPC_CMDS_INVALID = 0,
+	IPC_CMDS_NONE = 1,
+
+	/* request commands sent by clients */
+	IPC_CMDQ_TEST = 2,
+	IPC_CMDQ_GET_TEMPERATURE = 0x10,
+
+	/* response commands send by server */
+	IPC_CMDR_OK = 0xE0,
+	IPC_CMDR_ERROR = 0xE1,
+	IPC_CMDR_NOT_IMPLEMENTED = 0xE2,
 } IPC_COMMAND_CODE;
 
-/** Structure to associate an IPC command code to a human-readable name.
+/** Structure to associate an IPC command code with metadata.
+ *
+ * The specified meta-data is a human-readable name, a description of the
+ * expected arguments and a description of the expected response arguments (in
+ * case #IPC_CMDR_OK is returned).
+ *
+ * Argument descriptions consist of a single character for each argument (either
+ * on of {b,w,W,s,b}), '*' or '-'. '*' means argument count and types are
+ * unspecified, '-' means the command is not valid to send/receive at all.
+ *
+ * If #IPC_COMMAND_CODE.reply_fmt is NULL, no response is expected (typically
+ * for commands which are responses themselves).
  */
 typedef struct ipc_cmd_name_s {
-	IPC_COMMAND_CODE code; //! The code as used in IPC messages
-	const char* name; //! The corresponding human-readable name
+	IPC_COMMAND_CODE code;	/// The code as used in IPC messages
+	const char* name;				/// The corresponding human-readable name
+	const char* arg_fmt;		/// printf-like argument requirements for command
+	const char* reply_fmt;	/// printf-like argument requirements for response
 } ipc_cmd_name_s;
 
 /** Definitions of names for available IPC commands.
@@ -30,26 +58,82 @@ extern const char* IPC_SOCKET_PATH_PREFIX;
 /** Constructs an IPC socket path for the given deviceId on which a
  * corresponding server should listen and clients should connect to.
  *
- * \param deviceId the identifier of the printer to create a socket path for.
- * \return A newly allocated string
+ * @param deviceId the identifier of the printer to create a socket path for.
+ * @return A newly allocated string
  */
 char* ipc_construct_socket_path(const char* deviceId);
 
+//all-in-one function to construct IPC commands in printf style
+//please note the varargs are implemented by evil magic...
+char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, ...);
+
+//all-in-one function to construct IPC commands in printf style
+//please note the varargs are implemented by evil magic...
+char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, va_list args);
+
+//reallocates buf to 4 bytes (2 for command code and 2 argument count)
 int ipc_cmd_set(char** buf, int* buflen, IPC_COMMAND_CODE code);
+
+//reallocates buf to make room for arg (4 bytes for length + the argument itself)
+//if arg is NULL, an empty argument is added
 int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen);
+
+/** Returns the total command size if buffer contains a complete command, or 0.
+ *
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @retval >0 the command size, if a complete command is present
+ * @retval 0 if no complete command is present
+ */
 int ipc_cmd_is_complete(const char* buf, int buflen);
+
+/** Returns the number of arguments in the command.
+ *
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @retval >=0 the number of command arguments
+ * @retval -2 if the command is invalid
+ */
 int ipc_cmd_num_args(const char* buf, int buflen);
+
+/** Extracts the command code.
+ *
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @return The command code
+ * @retval #IPC_CMD_INVALID if the command is invalid
+ */
 IPC_COMMAND_CODE ipc_cmd_get(const char* buf, int buflen);
+
+/** Extracts an argument into the given buffer which is sufficiently reallocated.
+ *
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @param argbuf Argument buffer
+ * @param argbuflen Argument buffer length
+ * @param argidx The index of the argument to extract
+ * @param addzero Appends a nul-byte to create ASCIIZ string if !0
+ * @retval 0 on success
+ * @retval -1 on system error (see errno)
+ * @retval -2 if the command buffer is invalid
+ */
 int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, int argidx, int addzero);
+
+//get arg and convert to int16_t
+int ipc_cmd_get_short_arg(const char* buf, int buflen, int argidx, int16_t* out);
 
 /** Removes the first complete command from the start of the buffer.
  *
- * \param buf Command buffer
- * \param buflen Command buffer length
- * \return 1 if a command has been removed, 0 on success or -1 on system error
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @retval 1 if a command has been removed
+ * @retval 0 if no complete command was present
+ * @retval -1 on system error (see errno)
  */
 int ipc_cmd_remove(char** buf, int* buflen);
 
 #ifdef __cplusplus
 } //extern "C"
 #endif
+
+#endif /* ! IPC_SHARED_H */

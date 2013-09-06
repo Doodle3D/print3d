@@ -8,23 +8,24 @@ class Client;
 
 class CommandHandler {
 public:
-	struct cmdHandlerFunc {
-		//const char* name;
+	typedef void (*handler_func)(Client& client, const char* buf, int buflen);
+
+	struct handlerFunctions {
 		IPC_COMMAND_CODE code;
-		void (*hndFunc)(Client& client, std::string& arg);
+		handler_func hndFunc;
 	};
 
-	static const cmdHandlerFunc HANDLERS[];
+	static const handlerFunctions HANDLERS[];
 
-	static bool extractAndRun(Client& client, std::string& buf);
+	static void runCommand(Client& client, const char* buf, int buflen);
 
 private:
 	CommandHandler();
 	CommandHandler(const CommandHandler& o);
 	void operator=(const CommandHandler& o);
 
-	static void hnd_test(Client& client, std::string& arg);
-	static void hnd_getTemperature(Client& client, std::string& arg);
+	static void hnd_test(Client& client, const char* buf, int buflen);
+	static void hnd_getTemperature(Client& client, const char* buf, int buflen);
 };
 
 #endif /* ! COMMAND_HANDLER_H_SEEN */
