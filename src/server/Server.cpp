@@ -3,14 +3,18 @@
 #include <unistd.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include "Server.h"
 #include "Client.h"
+#include "Logger.h"
+#include "../utils.h"
 #include "../drivers/DriverFactory.h"
 
 using std::string;
 
 const bool Server::FORK_BY_DEFAULT = false;
 const int Server::SOCKET_MAX_BACKLOG = 5; //private
+const int Server::SELECT_LOG_FAST_LOOP = -1;
 
 Server::Server(const string& serialPortPath, const string& socketPath)
 : socketPath_(socketPath),
@@ -59,17 +63,25 @@ int Server::start(bool fork) {
 	FD_ZERO(&masterFds);
 	FD_SET(socketFd_, &masterFds);
 
+	bool timeoutEnabled = false;
+	struct timeval timeout = (struct timeval){ 0, 0 };
+	struct timeval startTime, endTime, diffTime;
 	while (true) {
-		//TODO: add timeout (or something more complex to accomodate periodic temperature readings etc)
-
 		readFds = masterFds;
-		log_.log(Logger::VERBOSE, "entering select(), maxfd=%i", maxFd);
+		::gettimeofday(&startTime, NULL);
+		//log_.log(Logger::BULK, "entering select(), maxfd=%i", maxFd);
 		if (log_.checkError(
-				::select(maxFd + 1, &readFds, NULL, NULL, NULL), /* use FD_SETSIZE instead of keeping maxfd? */
+				::select(maxFd + 1, &readFds, NULL, NULL, timeoutEnabled ? &timeout : NULL), /* use FD_SETSIZE instead of keeping maxfd? */
 				"error in select()")) {
 			//TODO: handle error (close down server <- needs function... and return with proper error value)
 		}
-		log_.log(Logger::VERBOSE, "returned from select()");
+		::gettimeofday(&endTime, NULL);
+		timeval_subtract(&diffTime, &endTime, &startTime);
+		long diffMillis = diffTime.tv_sec*1000 + diffTime.tv_usec/1000;
+
+		if (diffMillis <= SELECT_LOG_FAST_LOOP) {
+			log_.log(Logger::BULK, "returned from select() after %li ms", diffMillis);
+		}
 
 		if (FD_ISSET(socketFd_, &readFds)) {
 			socklen_t len = sizeof(struct sockaddr_un);
@@ -97,7 +109,16 @@ int Server::start(bool fork) {
 				it++;
 			}
 		}
-		log_.log(Logger::BULK, "looping");//TEMP
+
+		if (printerDriver_) {
+			int newTimeout = printerDriver_->update();
+
+			timeoutEnabled = true;
+			timeout.tv_sec = newTimeout / 1000;
+			timeout.tv_usec = (newTimeout % 1000) * 1000;
+		} else {
+			timeoutEnabled = false;
+		}
 	}
 
 	return 0;

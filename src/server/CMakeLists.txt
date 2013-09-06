@@ -6,4 +6,4 @@ set(HEADERS Client.h CommandHandler.h Logger.h Server.h)
 
 add_executable(print3d ${SOURCES} ${HEADERS})
 
-target_link_libraries(print3d drivers ipc_shared)
+target_link_libraries(print3d drivers ipc_shared utils)

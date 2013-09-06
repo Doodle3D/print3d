@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 
-
+#ifdef __cplusplus
+	extern "C" {
+#endif
 
 typedef enum ELOG_LEVEL {
 	LLVL_QUIET = -1,
@@ -27,5 +29,9 @@ int log_check_error(int rv, const char* format, ...);
 
 void log_va_message(ELOG_LEVEL level, const char* format, va_list args);
 int log_va_check_error(int rv, const char* format, va_list args);
+
+#ifdef __cplusplus
+	} //extern "C"
+#endif
 
 #endif /* ! LOGGER_H_SEEN */

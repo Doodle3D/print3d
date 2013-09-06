@@ -25,6 +25,7 @@ public:
 
 private:
 	static const int SOCKET_MAX_BACKLOG;
+	static const int SELECT_LOG_FAST_LOOP; ///A message will be logged if select returns quicker than this threshold (-1 to disable)
 
 	Server(const Server& o);
 	void operator=(const Server& o);
