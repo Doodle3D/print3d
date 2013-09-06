@@ -24,6 +24,7 @@ Server::Server(const string& serialPortPath, const string& socketPath)
   if(printerDriver_ == 0) {
     log_.log(Logger::ERROR, "no printer driver found for marlin_ultimaker");
   }
+  driverDelay = 0;
 }
 
 Server::~Server() {
@@ -55,7 +56,7 @@ int Server::start(bool fork) {
 	}
 
 	//HIER *** foutafhandeling niet vergeten
-	//printer_.openConnection();
+	printerDriver_->openConnection();
 
 	fd_set masterFds;
 	fd_set readFds;
@@ -94,7 +95,7 @@ int Server::start(bool fork) {
 			log_.log(Logger::VERBOSE, "new client with fd %i", connFd);
 		}
 
-		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); /* increment inside loop */) {
+		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); *//* increment inside loop *//*) {
 			int rv = (*it)->readData();
 			log_.checkError(rv, "cannot read from client");
 
@@ -109,7 +110,6 @@ int Server::start(bool fork) {
 				it++;
 			}
 		}
-
 		if (printerDriver_) {
 			int newTimeout = printerDriver_->update();
 

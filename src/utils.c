@@ -6,6 +6,8 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include "utils.h"
+#include <sys/time.h>
+#include <time.h>
 
 static const int READ_BUF_SIZE = 1024;
 static const int READ_POLL_INTERVAL = 500;
@@ -42,6 +44,12 @@ void store_ns(char *p, uint16_t v) {
 void store_nl(char *p, uint32_t v) {
 	uint32_t nv = htonl(v);
 	memcpy(p, &nv, 4);
+}
+
+uint32_t getMillis() {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1000 + tv.tv_usec / 1000;
 }
 
 //from: http://www.gnu.org/software/libc/manual/html_node/Elapsed-Time.html

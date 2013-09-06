@@ -42,6 +42,8 @@ private:
 	bool closeSocket();
 	int forkProcess();
 	int openPort();
+
+  int driverDelay;
 };
 
 #endif /* ! SERVER_H_SEEN */
