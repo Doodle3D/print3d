@@ -96,10 +96,10 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 	//set speed
 #ifdef __APPLE__
 // TODO: make speed dynamic
-//	if (ioctl(portFd_, IOSSIOSPEED, &speed) == -1) return SSR_IO_IOSSIOSPEED;
+  //speed_t tempSpeed = 115200; // Set 115200 baud
+	//if (ioctl(portFd_, IOSSIOSPEED, &tempSpeed) == -1) return SSR_IO_IOSSIOSPEED;
   cfsetispeed(&options, B115200);
   cfsetospeed(&options, B115200);
-
 #elif __linux
 	options.c_ospeed = options.c_ispeed = speed;
 	options.c_cflag &= ~CBAUD;
@@ -128,8 +128,10 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
+  Logger& log = Logger::getInstance();
+	log.log(Logger::VERBOSE,"Serial::send: %s",code);
+
 	if (portFd_ >= 0) {
-		//log_msg(INFO, "serial_send: '%s'", code);
 		::write(portFd_, code, strlen(code));
 		return true;
 	} else {

@@ -64,7 +64,7 @@ int Server::start(bool fork) {
 	FD_ZERO(&masterFds);
 	FD_SET(socketFd_, &masterFds);
 
-	bool timeoutEnabled = false;
+	bool timeoutEnabled = true;
 	struct timeval timeout = (struct timeval){ 0, 0 };
 	struct timeval startTime, endTime, diffTime;
 	while (true) {
@@ -95,7 +95,7 @@ int Server::start(bool fork) {
 			log_.log(Logger::VERBOSE, "new client with fd %i", connFd);
 		}
 
-		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); *//* increment inside loop *//*) {
+		for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); /* increment inside loop */) {
 			int rv = (*it)->readData();
 			log_.checkError(rv, "cannot read from client");
 

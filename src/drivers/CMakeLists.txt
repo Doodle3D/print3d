@@ -5,3 +5,5 @@ set(SOURCES ${SOURCES} AbstractDriver.cpp DriverFactory.cpp MarlinDriver.cpp Ser
 set(HEADERS ${HEADERS} AbstractDriver.h DriverFactory.h MarlinDriver.h Serial.h)
 
 add_library(drivers ${SOURCES} ${HEADERS})
+
+target_link_libraries(drivers timer)

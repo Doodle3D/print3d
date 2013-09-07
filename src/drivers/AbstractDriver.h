@@ -45,7 +45,7 @@ public:
   void stopPrint();
 
   // should return in how much milliseconds it wants to be called again
-	virtual void update() = 0;
+	virtual int update() = 0;
 
 protected:
   int temperature_;
@@ -56,7 +56,7 @@ protected:
 
   void checkTemperature();
 
-  void sendCode(std::string code);
+  virtual void sendCode(const std::string& code) = 0;
   virtual void readCode(std::string& code) = 0;
 
   int readData();

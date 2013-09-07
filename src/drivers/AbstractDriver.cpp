@@ -16,16 +16,17 @@ int AbstractDriver::openConnection() {
 	log.log(Logger::VERBOSE,"AbstractDriver::openConnection");
   log.log(Logger::VERBOSE,"  serialPortPath_: %s",serialPortPath_.c_str());
 	int rv = serial_.open(serialPortPath_.c_str());
-	log.log(Logger::VERBOSE,"  serial opened");
-	if (rv > 0) {
-		// TODO: get default baudrate from constructor
-    // TODO: when this baudrate is incorrect another should be tried
-    //  and it should be reported so that the one that does works gets
-    //  saved as preference.
-    serial_.setSpeed(115200);
-	}
-
-	return rv;
+	log.log(Logger::VERBOSE,"  serial opened (%i)",rv);
+	if (rv < 0) {
+    return rv;
+  }
+  // TODO: get default baudrate from constructor
+  // TODO: when this baudrate is incorrect another should be tried
+  //  and it should be reported so that the one that does works gets
+  //  saved as preference.
+  log.log(Logger::VERBOSE,"  try setting speed...");
+  Serial::ESERIAL_SET_SPEED_RESULT ssr = serial_.setSpeed(115200);
+  if(ssr != Serial::SSR_OK) log.log(Logger::ERROR,"  setting speed error");
 }
 
 int AbstractDriver::readData() {
@@ -34,9 +35,9 @@ int AbstractDriver::readData() {
 
   int rv = serial_.readData();
   log.checkError(rv, "cannot read from device");
-  if (rv == 0) {
+  if (rv == -2) {
     log.log(Logger::INFO, "connection closed with device");
-  } else {
+  } else if (rv >= 0) {
     log.log(Logger::BULK, "read %i bytes from device", rv);
   }
   return rv;
