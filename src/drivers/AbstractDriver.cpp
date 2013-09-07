@@ -24,8 +24,10 @@ int AbstractDriver::openConnection() {
   // TODO: when this baudrate is incorrect another should be tried
   //  and it should be reported so that the one that does works gets
   //  saved as preference.
-  log.log(Logger::VERBOSE,"  try setting speed...");
-  Serial::ESERIAL_SET_SPEED_RESULT ssr = serial_.setSpeed(115200);
+	uint32_t serialSpeed = 115200;
+	//uint32_t serialSpeed = 250000;
+  log.log(Logger::VERBOSE,"  setting speed to %lu baud...", serialSpeed);
+  Serial::ESERIAL_SET_SPEED_RESULT ssr = serial_.setSpeed(serialSpeed);
   if(ssr != Serial::SSR_OK) log.log(Logger::ERROR,"  setting speed error");
 }
 

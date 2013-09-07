@@ -93,25 +93,25 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 	options.c_cflag &= ~CSTOPB;
 	options.c_cflag &= ~CSIZE;
 
+  //FIXME: why is CLOCAL disabled above and re-enabled again here?
+	options.c_cflag |= CS8;
+	options.c_cflag |= CLOCAL;
+
 	//set speed
 #ifdef __APPLE__
-// TODO: make speed dynamic
-  //speed_t tempSpeed = 115200; // Set 115200 baud
-	//if (ioctl(portFd_, IOSSIOSPEED, &tempSpeed) == -1) return SSR_IO_IOSSIOSPEED;
-  cfsetispeed(&options, B115200);
-  cfsetospeed(&options, B115200);
+	//first set speed to 9600, then after tcsetattr set custom speed (as per ofxSerial addon)
+  cfsetispeed(&options, B9600);
+  cfsetospeed(&options, B9600);
+
 #elif __linux
 	options.c_ospeed = options.c_ispeed = speed;
 	options.c_cflag &= ~CBAUD;
 	options.c_cflag |= BOTHER;
 #endif
 
-  //FIXME: why is CLOCAL disabled above and re-enabled again here?
-	options.c_cflag |= CS8;
-	options.c_cflag |= CLOCAL;
-
 #ifdef __APPLE__
 	if (tcsetattr(portFd_, TCSANOW, &options) < 0) return SSR_IO_SET;
+	if (ioctl(portFd_, IOSSIOSPEED, &speed) == -1) return SSR_IO_IOSSIOSPEED;
 #else
 	if (ioctl(portFd_, TCSETS2, &options) < 0) return SSR_IO_SET;
 #endif

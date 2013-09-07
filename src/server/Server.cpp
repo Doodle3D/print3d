@@ -123,9 +123,7 @@ int Server::start(bool fork) {
 			}
 		}
 		if (printerDriver_) {
-			//int newTimeout = printerDriver_->update();
-			int newTimeout = 0; //TEMP
-			timeoutEnabled = false; //TEMP
+			int newTimeout = printerDriver_->update();
 
 			//timeoutEnabled = true;
 			timeout.tv_sec = newTimeout / 1000;
