@@ -6,5 +6,5 @@ set(HEADERS)
 
 if(CMDLINE_FRONTEND)
 	add_executable(p3d ${SOURCES} ${HEADERS})
-	target_link_libraries(p3d ipc_shared)
+	target_link_libraries(p3d fe_common)
 endif(CMDLINE_FRONTEND)

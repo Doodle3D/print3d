@@ -3,42 +3,45 @@
 #include "Logger.h"
 #include "Server.h"
 #include "CommandHandler.h"
-
-const int Client::READ_BUFFER_LENGTH = 256; //static
+#include "../ipc_shared.h"
+#include "../utils.h"
 
 Client::Client(Server& server, int fd)
-: server_(server), fd_(fd)
+: server_(server), fd_(fd), buffer_(0), bufferSize_(0)
 { /* empty */ }
 
+//TODO: find a way to use recv wit extra arg in readAndAppendAvailableData()
 int Client::readData() {
-	char rbuf[READ_BUFFER_LENGTH + 1] = "";
-
-	int rv = ::recv(fd_, rbuf, READ_BUFFER_LENGTH, 0);
-
-	if (rv > 0) {
-		rbuf[rv] = '\0';
-		buffer_ += rbuf;
-	}
-
-	return rv;
+	return readAndAppendAvailableData(fd_, &buffer_, &bufferSize_, 0, 0);
 }
 
 void Client::runCommands() {
-	while(CommandHandler::extractAndRun(*this, buffer_));
+	while (ipc_cmd_is_complete(buffer_, bufferSize_)) {
+		CommandHandler::runCommand(*this, buffer_, bufferSize_);
+		ipc_cmd_remove(&buffer_, &bufferSize_);
+	}
 }
 
-bool Client::sendData(const std::string& data) {
+bool Client::sendData(const char* buf, int buflen) {
 	if (fd_ == -1) return false;
 
-	int rv = ::send(fd_, data.c_str(), data.length(), 0);
+	int rv = ::send(fd_, buf, buflen, 0);
 
 	Logger::getInstance().checkError(rv, "could not send data in client with fd %i", getFileDescriptor());
 
-	return (rv == data.length());
+	return (rv == buflen);
 }
 
 int Client::getFileDescriptor() const {
 	return fd_;
+}
+
+const char* Client::getBuffer() const {
+	return buffer_;
+}
+
+int Client::getBufferSize() const {
+	return bufferSize_;
 }
 
 Server& Client::getServer() {

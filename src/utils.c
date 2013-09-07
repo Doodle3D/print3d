@@ -11,7 +11,6 @@
 #include <time.h>
 
 static const int READ_BUF_SIZE = 1024;
-static const int READ_POLL_INTERVAL = 500;
 
 
 //returns a newly allocated ASCIIZ string, or NULL if an error occured
@@ -29,20 +28,20 @@ char* number_to_string(int n) {
 	}
 }
 
-uint16_t read_ns(const char *p) {
-	return ntohs(*p);
+uint16_t read_ns(const void *p) {
+	return ntohs(*(uint16_t*)p);
 }
 
-uint32_t read_nl(const char *p) {
-	return ntohl(*p);
+uint32_t read_nl(const void *p) {
+	return ntohl(*(uint32_t*)p);
 }
 
-void store_ns(char *p, uint16_t v) {
+void store_ns(void *p, uint16_t v) {
 	uint16_t nv = htons(v);
 	memcpy(p, &nv, 2);
 }
 
-void store_nl(char *p, uint32_t v) {
+void store_nl(void *p, uint32_t v) {
 	uint32_t nv = htonl(v);
 	memcpy(p, &nv, 4);
 }
@@ -77,15 +76,21 @@ int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *
 
 /** Read as much data and append to the given buffer.
  *
+ * Note that the timeout will be reset each time any data could be read (i.e.,
+ * only when no data was available, and nothing changed after the timeout, the
+ * function will return).
+ *
  * @param fd The file descriptor to read from
  * @param buf The buffer to read into, will be resized as necessary
  * @param buflen The buffer length, will be updated to reflect new buffer size
+ * @param timeout How many milliseconds at most to wait for data (see note in function description)
+ * @param onlyOnce If non-zero, do not loop anymore after any data has been read
  * @return >0 if data has been read and no errors occurred
  * @return 0 if no data could be read and no errors occurred
  * @return -1 if a read error occurred (errno contains details)
  * @return -2 if the file descriptor was closed
  */
-int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
+int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int onlyOnce) {
 	struct pollfd pfd = { .fd = fd, .events = POLLIN };
 	int newbuflen = 0, totalreadlen = 0;
 	int rv;
@@ -98,9 +103,9 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
 
 		if (rv < 0) {
 			if (errno == EWOULDBLOCK || errno == EAGAIN) {
-				//recv() would block...we wait using poll and then try again if data became available
+				//recv() would block...if a timeout has been requested, we wait and then try again if data became available
 				pfd.revents = 0;
-				poll(&pfd, 1, READ_POLL_INTERVAL);
+				if (timeout > 0) poll(&pfd, 1, timeout);
 
 				if ((pfd.revents & POLLIN) == 0) {
           exitValue = totalreadlen;
@@ -119,6 +124,7 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen) {
 			*buflen += rv;
 			totalreadlen += rv;
       exitValue = totalreadlen;
+      if (onlyOnce) break;
 		}
 	}
 

@@ -144,7 +144,7 @@ int Serial::readData() {
 	log.log(Logger::VERBOSE,"Serial::readData");
 
 
-  int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_);
+  int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, 0, 0);
 
 
 
