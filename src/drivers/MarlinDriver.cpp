@@ -5,35 +5,46 @@ using std::string;
 MarlinDriver::MarlinDriver(const std::string& serialPortPath)
 : AbstractDriver(serialPortPath)
 {
-  updateDelay = 0;
+  //updateDelay = 0;
+  //timer_.start();
 }
 
-void MarlinDriver::update() {
+int MarlinDriver::update() {
 
-  if(updateDelay <= 0) {
-
+  if(timer_.getElapsedTimeInMilliSec() > 1000) {
     Logger& log = Logger::getInstance();
-    //log.log(Logger::BULK, "MarlinDriver::update");
-
+    log.log(Logger::BULK, "MarlinDriver::update");
     int rv = readData();
+    log.log(Logger::BULK, "  rv: %i",rv);
     if (rv > 0) {
-      string* line = serial_.extractLine();
-      readCode(*line);
-      delete line;
+      string* line;
+      while((line = serial_.extractLine()) != NULL) {
+        readCode(*line);
+        delete line;
+      }
     }
 
     /*std::string serialMessage;
     while((serialMessage = readData()) != "") {
       log.log(Logger::VERBOSE, "  serialMessage: %s",serialMessage.c_str());
     }*/
-    updateDelay = 10000;
+
+    timer_.start(); // restart timer
 	}
-  updateDelay--;
+
+  return 0;
 }
 
 void MarlinDriver::readCode(string& code) {
   Logger& log = Logger::getInstance();
-  log.log(Logger::BULK, "MarlinDriver::readCode: %s",code.c_str());
+  log.log(Logger::BULK, "MarlinDriver::readCode: '%s' (length: %i)",code.c_str(), code.length());
+
+  if(code == "start") {
+    sendCode("M105");
+  }
+}
+void MarlinDriver::sendCode(const std::string& code) {
+  serial_.send(code.c_str());
 }
 
 //STATIC

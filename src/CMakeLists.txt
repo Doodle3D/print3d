@@ -14,8 +14,8 @@ add_subdirectory(drivers)
 add_subdirectory(frontends)
 
 add_library(logger logger.c logger.h)
-
 add_library(utils utils.c utils.h)
+add_library(timer Timer.cpp Timer.h)
 
 add_library(ipc_shared ipc_shared.c ipc_shared.h)
 target_link_libraries(ipc_shared logger utils)

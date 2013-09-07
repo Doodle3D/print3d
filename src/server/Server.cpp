@@ -65,7 +65,7 @@ int Server::start(bool fork) {
 	FD_ZERO(&masterFds);
 	FD_SET(socketFd_, &masterFds);
 
-	bool timeoutEnabled = false;
+	bool timeoutEnabled = true;
 	struct timeval timeout = (struct timeval){ 0, 0 };
 	struct timeval startTime, endTime, diffTime;
 	while (true) {
