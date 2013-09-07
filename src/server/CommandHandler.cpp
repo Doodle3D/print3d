@@ -15,6 +15,9 @@ using std::string;
 const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
 		{ IPC_CMDQ_TEST, &CommandHandler::hnd_test },
 		{ IPC_CMDQ_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
+		{ IPC_CMDQ_CLEAR_GCODE, &CommandHandler::hnd_clearGcode },
+		{ IPC_CMDQ_APPEND_GCODE, &CommandHandler::hnd_appendGcode },
+		{ IPC_CMDQ_PRINT_GCODE, &CommandHandler::hnd_printGcode },
 		{ IPC_CMDS_NONE, 0 } /* sentinel */
 };
 
@@ -43,8 +46,9 @@ void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 	char* argtext = 0;
 	if (numargs > 0) {
 		char* arg = 0;
-		int rv = ipc_cmd_get_string_arg(buf, buflen, 0, &arg);
+		ipc_cmd_get_string_arg(buf, buflen, 0, &arg);
 		asprintf(&argtext, "printserver test answer to the question: '%s'", arg);
+		free(arg);
 	} else {
 		asprintf(&argtext, "printserver test answer without question");
 	}
@@ -63,11 +67,31 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 	AbstractDriver* driver = client.getServer().getDriver();
 	int temp = driver->getTemperature();
 
-	static int adder = 0;
-	temp += adder++;
-
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "w", temp);
 	client.sendData(cmd, cmdlen);
 	free(cmd);
+}
+
+//static
+void CommandHandler::hnd_clearGcode(Client& client, const char* buf, int buflen) {
+	Logger::getInstance().log(Logger::VERBOSE, "received clear gcode command");
+}
+
+//static
+void CommandHandler::hnd_appendGcode(Client& client, const char* buf, int buflen) {
+	if (ipc_cmd_num_args(buf, buflen) > 0) {
+		char* data = 0;
+		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
+		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
+		Logger::getInstance().log(Logger::VERBOSE, "received gcode was '%s'", data);
+		free(data);
+	} else {
+		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command without argument");
+	}
+}
+
+//static
+void CommandHandler::hnd_printGcode(Client& client, const char* buf, int buflen) {
+	Logger::getInstance().log(Logger::VERBOSE, "received print gcode command");
 }

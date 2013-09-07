@@ -12,57 +12,57 @@
 
 static const int IPC_WAIT_TIMEOUT = 1500;
 
+static int socketFd = -1;
 static const char* error = NULL;
 const char* getError() { return error; }
 static void clearError() { error = NULL; }
 const void setError(const char* e) { error = e; }
 
 
-static int openSocket(const char* path) {
-	int fd = -1;
+int openSocketForDeviceId(const char* deviceId) {
 	struct sockaddr_un remote;
 	int len;
 
-	if (fd >= 0) return fd;
+	if (socketFd >= 0) return socketFd;
 
-	fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	socketFd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	if (log_check_error(fd, "could not open domain socket with path '%s'", path)) return -1;
+	if (log_check_error(socketFd, "could not create domain socket")) return -1;
 
+	char* path = ipc_construct_socket_path(deviceId);
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
 
-	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
-		close(fd);
-		fd = -1;
+	if (log_check_error(connect(socketFd, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
+		close(socketFd);
+		free(path);
+		socketFd = -1;
 		return -1;
 	}
+	free(path);
 
-	int flags = fcntl(fd, F_GETFL, 0);
+	int flags = fcntl(socketFd, F_GETFL, 0);
 	log_check_error(flags, "could not obtain flags for domain socket");
-	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
+	log_check_error(fcntl(socketFd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
 
 	signal(SIGPIPE, SIG_IGN);
 
-	return fd;
+	return socketFd;
 }
 
+int closeSocket() {
+	int rv = close(socketFd);
+	socketFd = -1;
+	return rv;
+}
 
 static char* sendAndReceiveData(const char* deviceId, const char* buf, int buflen, int* rbuflen) {
-	char* socketPath = ipc_construct_socket_path(deviceId);
-	int fd = openSocket(socketPath);
+	if (socketFd < 0) return NULL;
 
-	if (fd < 0) {
-		free(socketPath);
-		return NULL;
-	}
-
-	int rv = send(fd, buf, buflen, 0); //this should block until all data has been sent
+	int rv = send(socketFd, buf, buflen, 0); //this should block until all data has been sent
 
 	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(buf, buflen))) {
-		close(fd);
-		free(socketPath);
 		return NULL;
 	} else if (rv < buflen) {
 		log_message(LLVL_WARNING, "could not write complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(buf, buflen), rv);
@@ -73,10 +73,7 @@ static char* sendAndReceiveData(const char* deviceId, const char* buf, int bufle
 	char* rbuf = 0;
 	*rbuflen = 0;
 	//read only once to avoid unneccessary timeout but still allow for the timeout to happen
-	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "error reading data from domain socket");
-
-	close(fd);
-	free(socketPath);
+	log_check_error(readAndAppendAvailableData(socketFd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "error reading data from domain socket");
 
 	return rbuf;
 }
@@ -121,6 +118,7 @@ int testCommand(const char* deviceId, const char* question, char** answer) {
 
 	free(rbuf);
 	free(cmdbuf);
+
 	return result;
 }
 
@@ -133,6 +131,7 @@ int getTemperature(const char* deviceId, int16_t* temperature) {
 
 	int cmdlen, rbuflen;
 	char* cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
+
 	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
 
 	if (!rbuf) {
@@ -163,8 +162,6 @@ int getTemperature(const char* deviceId, int16_t* temperature) {
 	return result;
 }
 
-//returns 'boolean' 1 on success or 0 on failure
-//TODO: implement real call
-int setTemperatureCheckInterval(const char* deviceId, int interval) {
-	return 0;
+int sendGcodeFile(const char* deviceId, int fd) {
+	//read contents of file and send (in chunks?)
 }

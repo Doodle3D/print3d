@@ -22,6 +22,9 @@ typedef enum IPC_COMMAND_CODE {
 	/* request commands sent by clients */
 	IPC_CMDQ_TEST = 2,
 	IPC_CMDQ_GET_TEMPERATURE = 0x10,
+	IPC_CMDQ_CLEAR_GCODE,
+	IPC_CMDQ_APPEND_GCODE,
+	IPC_CMDQ_PRINT_GCODE,
 
 	/* response commands send by server */
 	IPC_CMDR_OK = 0xE0,

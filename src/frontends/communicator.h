@@ -3,9 +3,11 @@
 
 #include <inttypes.h>
 
+int openSocketForDeviceId(const char* deviceId);
+int closeSocket();
 const char* getError();
 int testCommand(const char* deviceId, const char* question, char** answer);
 int getTemperature(const char* deviceId, int16_t* temperature);
-int setTemperatureCheckInterval(const char* deviceId, int interval);
+int sendGcodeFile(const char* deviceId, int fd);
 
 #endif /* COMMUNICATOR_H_SEEN */

@@ -7,7 +7,8 @@ extern char *print_file;
 extern char *send_gcode;
 
 /* from actions.c */
-void printTemperature();
-void printTestResponse();
+void printTemperatureAction();
+void printTestResponseAction();
+void sendGcodeFileAction(int fd);
 
 #endif /* ! FE_CMDLINE_H_SEEN */

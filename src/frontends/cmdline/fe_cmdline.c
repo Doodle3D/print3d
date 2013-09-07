@@ -1,7 +1,9 @@
+#include <errno.h>
+#include <fcntl.h>
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 #include "fe_cmdline.h"
 
 
@@ -97,10 +99,10 @@ int main(int argc, char **argv) {
 		printf("\t-c,--gcode <gcode>\tPrint the specified line of g-code\n");
 		break;
 	case AT_GET_TEMPERATURE:
-		printTemperature();
+		printTemperatureAction();
 		break;
 	case AT_GET_TEST:
-		printTestResponse();
+		printTestResponseAction();
 		break;
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");
@@ -110,7 +112,15 @@ int main(int argc, char **argv) {
 			fprintf(stderr, "error: missing filename to print\n");
 			exit(1);
 		}
-		printf("[dummy] print file: '%s'\n", print_file);
+
+		int fileFd = open(print_file, O_RDONLY);
+
+		if (fileFd >= 0) {
+			sendGcodeFileAction(fileFd);
+			close(fileFd);
+		} else {
+			fprintf(stderr, "error opening gcode file for printing '%s' (%s)\n", print_file, strerror(errno));
+		}
 		break;
 	case AT_SEND_CODE:
 		if (!send_gcode) {

@@ -20,6 +20,9 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* request commands sent by clients */
 		{ IPC_CMDQ_TEST, "test", "*", "*" },
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "", "w" },
+		{ IPC_CMDQ_CLEAR_GCODE, "clearGcode", "", "" },
+		{ IPC_CMDQ_APPEND_GCODE, "appendGcode", "s", "" },
+		{ IPC_CMDQ_PRINT_GCODE, "printGcode", "", "" },
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
