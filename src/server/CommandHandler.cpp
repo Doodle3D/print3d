@@ -38,18 +38,23 @@ void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
 
 //static
 void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
-//	char* argtext = 0;
-//	asprintf(&argtext, "printserver test echo. argument: '%s'\n", arg.c_str());
-//
-//	int cmdlen;
-//	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", argtext);
-//	free(argtext);
+	int numargs = ipc_cmd_num_args(buf, buflen);
 
-	//TEMP placeholder
+	char* argtext = 0;
+	if (numargs > 0) {
+		char* arg;
+		int rv = ipc_cmd_get_string_arg(buf, buflen, 0, &arg);
+		asprintf(&argtext, "printserver test answer to the question: '%s'\n", arg);
+	} else {
+		asprintf(&argtext, "printserver test answer without question\n");
+	}
+
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, 0);
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", argtext);
+	free(argtext);
 
 	client.sendData(cmd, cmdlen);
+	free(cmd);
 }
 
 //static
@@ -63,4 +68,5 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "w", temp);
 	client.sendData(cmd, cmdlen);
+	free(cmd);
 }

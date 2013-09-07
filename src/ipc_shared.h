@@ -119,6 +119,9 @@ IPC_COMMAND_CODE ipc_cmd_get(const char* buf, int buflen);
  */
 int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, int argidx, int addzero);
 
+//get arg and convert to asciiz string. out is newly allocated
+int ipc_cmd_get_string_arg(const char* buf, int buflen, int argidx, char** out);
+
 //get arg and convert to int16_t
 int ipc_cmd_get_short_arg(const char* buf, int buflen, int argidx, int16_t* out);
 

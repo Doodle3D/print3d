@@ -42,7 +42,6 @@ static int openSocket(const char* path) {
 	int flags = fcntl(fd_static, F_GETFL, 0);
 	log_check_error(flags, "could not obtain flags for domain socket");
 	log_check_error(fcntl(fd_static, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
-	//int one = 1; setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
 
 	signal(SIGPIPE, SIG_IGN);
 
@@ -82,6 +81,48 @@ static char* sendAndReceiveData(const char* deviceId, const char* buf, int bufle
 	return rbuf;
 }
 
+
+int testCommand(const char* deviceId, const char* question, char** answer) {
+	int rv, result = 0;
+
+	log_open_stream(stderr, LLVL_VERBOSE);
+	clearError();
+
+	int cmdlen, rbuflen;
+
+	char* cmdbuf;
+	if (question) cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, "s", question);
+	else cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, "");
+
+	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
+
+	if (!rbuf) {
+		setError("could not send/receive IPC command");
+		free(cmdbuf);
+		return -1;
+	} else {
+		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+	}
+
+	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	case IPC_CMDR_OK:
+		rv = ipc_cmd_get_string_arg(rbuf, rbuflen, 0, answer);
+		break;
+	case IPC_CMDR_ERROR:
+		setError("server returned error");
+		result = -1;
+		break;
+	default:
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		setError("server returned unexpected response");
+		result = -1;
+		break;
+	}
+
+	free(rbuf);
+	free(cmdbuf);
+	return result;
+}
 
 //returns 0 on success, -1 on error (retrieved using getError())
 int getTemperature(const char* deviceId, int16_t* temperature) {

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
-#include "../communicator.h"
+#include "fe_cmdline.h"
+
 
 typedef enum ACTION_TYPE {
-		AT_NONE, AT_SHOW_HELP, AT_GET_TEMPERATURE, AT_GET_SUPPORTED, AT_PRINT_FILE, AT_SEND_CODE
+		AT_NONE, AT_SHOW_HELP, AT_GET_TEMPERATURE, AT_GET_TEST, AT_GET_SUPPORTED, AT_PRINT_FILE, AT_SEND_CODE
 } ACTION_TYPE;
 
 static struct option long_options[] = {
@@ -24,9 +25,10 @@ static struct option long_options[] = {
 		{NULL, 0, NULL, 0}
 };
 
-static char *deviceId = NULL;
+char *deviceId = NULL;
+char *print_file = NULL, *send_gcode = NULL;
+
 static int deviceIdRequired = 0;
-static char *print_file = NULL, *send_gcode = NULL;
 static int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
 static ACTION_TYPE action = AT_NONE;
 
@@ -42,6 +44,8 @@ void parse_options(int argc, char **argv) {
 			if (strcmp(optarg, "temperature") == 0) {
 				action = AT_GET_TEMPERATURE;
 				deviceIdRequired = 1;
+			} else if (strcmp(optarg, "test") == 0) {
+				action = AT_GET_TEST;
 			}
 			break;
 		case 't':
@@ -67,20 +71,13 @@ void parse_options(int argc, char **argv) {
 }
 
 
-void printTemperature() {
-	int16_t temperature;
-	int rv = getTemperature(deviceId, &temperature);
-
-	if (rv > -1) printf("temperature: %i\n", temperature);
-	else fprintf(stderr, "could not read temperature (%s)\n", getError());
-}
-
 int main(int argc, char **argv) {
 	parse_options(argc, argv);
 
 	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 0) ? " (verbose mode)" : "");
 
 	if (deviceIdRequired && !deviceId) {
+		deviceId = "xyz"; //default tho this for now
 		fprintf(stderr, "error: missing device-id\n");
 		exit(1);
 	}
@@ -92,7 +89,7 @@ int main(int argc, char **argv) {
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
 		printf("\t-v,--verbose\t\tPrint verbose output\t\n");
-		printf("\t-g,--get <parameter>\tRetrieve the given parameter (currently only 'temperature')\n");
+		printf("\t-g,--get <parameter>\tRetrieve the given parameter (currently 'temperature' or 'test')\n");
 		printf("\t-t,--get-temperature\tRetrieve the printer temperature\n");
 		printf("\t-s,--supported\t\tRetrieve a list of supported printers\n");
 		printf("\t-d,--device <device-id>\tPrint to the given device-id\n");
@@ -101,6 +98,9 @@ int main(int argc, char **argv) {
 		break;
 	case AT_GET_TEMPERATURE:
 		printTemperature();
+		break;
+	case AT_GET_TEST:
+		printTestResponse();
 		break;
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");

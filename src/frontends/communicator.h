@@ -4,6 +4,7 @@
 #include <inttypes.h>
 
 const char* getError();
+int testCommand(const char* deviceId, const char* question, char** answer);
 int getTemperature(const char* deviceId, int16_t* temperature);
 int setTemperatureCheckInterval(const char* deviceId, int interval);
 
