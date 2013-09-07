@@ -92,13 +92,13 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 		}
 		case 's': {
 			char* arg = va_arg(args, char*);
-			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, strlen(arg));
+			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, strlen(arg));
 			break;
 		}
 		case 'x': { //add binary blob, requires a second length argument
 			char* arg = va_arg(args, char*);
-			char* arglen = va_arg(args, uint32_t);
-			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, arglen);
+			uint32_t arglen = va_arg(args, uint32_t);
+			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, arglen);
 			break;
 		}
 		}
@@ -188,11 +188,6 @@ int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, 
 	memcpy(*argbuf, p + 4, currarglen);
 	if (addzero) *(*argbuf + currarglen) = '\0';
 	*argbuflen = currarglen + addzero;
-
-//	//TEMP (further debugging: see what was added in add_arg and possibly in construct_cmd)
-//	printf("offset: %i\n", p + 4 - buf);
-//	printf("arglen in cmdbuf: %i first five bytes: %X %X %X %X %X\n", currarglen, *(p+4), *(p+5), *(p+6), *(p+7), *(p+8));
-//	printf("arglen after copy: %i first five bytes: %X %X %X %X %X\n", *argbuflen, (*argbuf)[0], (*argbuf)[1], (*argbuf)[2], (*argbuf)[3], (*argbuf)[4]);
 
 	return 0;
 }

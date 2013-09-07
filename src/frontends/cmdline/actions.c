@@ -12,10 +12,19 @@ void printTemperature() {
 }
 
 void printTestResponse() {
-	char *question = print_file;
+	char *question = "what?";
 	char *answer;
-	int rv = testCommand(deviceId, question, &answer);
+	int rv;
 
-	if (rv > -1) printf("test command returned: '%s'\n", answer);
-	else fprintf(stderr, "could not complete test command (%s)\n", getError());
+	rv = testCommand(deviceId, 0, &answer);
+	if (rv > -1) printf("first test command returned: '%s'\n", answer);
+	else fprintf(stderr, "could not complete first test command (%s)\n", getError());
+
+	//free(answer);
+
+	rv = testCommand(deviceId, question, &answer);
+	if (rv > -1) printf("second test command returned: '%s'\n", answer);
+	else fprintf(stderr, "could not complete second test command (%s)\n", getError());
+
+	//free(answer);
 }

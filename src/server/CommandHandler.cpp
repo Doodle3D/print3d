@@ -42,12 +42,13 @@ void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 
 	char* argtext = 0;
 	if (numargs > 0) {
-		char* arg;
+		char* arg = 0;
 		int rv = ipc_cmd_get_string_arg(buf, buflen, 0, &arg);
-		asprintf(&argtext, "printserver test answer to the question: '%s'\n", arg);
+		asprintf(&argtext, "printserver test answer to the question: '%s'", arg);
 	} else {
-		asprintf(&argtext, "printserver test answer without question\n");
+		asprintf(&argtext, "printserver test answer without question");
 	}
+	printf("argtext='%s'\n", argtext);
 
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", argtext);

@@ -19,33 +19,33 @@ const void setError(const char* e) { error = e; }
 
 
 static int openSocket(const char* path) {
-	static int fd_static = -1;
+	int fd = -1;
 	struct sockaddr_un remote;
 	int len;
 
-	if (fd_static >= 0) return fd_static;
+	if (fd >= 0) return fd;
 
-	fd_static = socket(AF_UNIX, SOCK_STREAM, 0);
+	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	if (log_check_error(fd_static, "could not open domain socket with path '%s'", path)) return -1;
+	if (log_check_error(fd, "could not open domain socket with path '%s'", path)) return -1;
 
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
 
-	if (log_check_error(connect(fd_static, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
-		close(fd_static);
-		fd_static = -1;
+	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
+		close(fd);
+		fd = -1;
 		return -1;
 	}
 
-	int flags = fcntl(fd_static, F_GETFL, 0);
+	int flags = fcntl(fd, F_GETFL, 0);
 	log_check_error(flags, "could not obtain flags for domain socket");
-	log_check_error(fcntl(fd_static, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
+	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
 
 	signal(SIGPIPE, SIG_IGN);
 
-	return fd_static;
+	return fd;
 }
 
 
