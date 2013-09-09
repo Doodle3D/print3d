@@ -62,12 +62,18 @@ char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, 
 }
 
 char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, va_list args) {
-	//TODO: use format associated with code, unless it is equal to "*", then use format
 	const ipc_cmd_name_s* description = findCommandDescription(code);
-	const char* fmtp = (strcmp(description->arg_fmt, "*") == 0) ? format : description->arg_fmt;
+	const char* fmtp = format;
 	int rv;
 
-	if (!fmtp) return NULL;
+	if (!fmtp) {
+		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
+		fmtp = "";
+	}
+
+	if (!equal(description->arg_fmt, "*") && !equal(description->arg_fmt, fmtp)) {
+		log_message(LLVL_WARNING, "[IPC] construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
+	}
 
 	char* cmd = 0;
 	*cmdlen = 0;

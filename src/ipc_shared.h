@@ -68,7 +68,7 @@ char* ipc_construct_socket_path(const char* deviceId);
 
 //all-in-one function to construct IPC commands in printf style
 //please note the varargs are implemented by evil magic...
-char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, ...);
+char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* fmtp, ...);
 
 //all-in-one function to construct IPC commands in printf style
 //please note the varargs are implemented by evil magic...

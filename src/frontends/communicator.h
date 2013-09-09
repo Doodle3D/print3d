@@ -7,8 +7,8 @@
 int openSocketForDeviceId(const char* deviceId);
 int closeSocket();
 const char* getError();
-int testCommand(const char* deviceId, const char* question, char** answer);
-int getTemperature(const char* deviceId, int16_t* temperature);
-int sendGcodeFile(const char* deviceId, const char *file);
+int comm_testCommand(const char* deviceId, const char* question, char** answer);
+int comm_getTemperature(const char* deviceId, int16_t* temperature);
+int comm_sendGcodeFile(const char* deviceId, const char *file);
 
 #endif /* COMMUNICATOR_H_SEEN */

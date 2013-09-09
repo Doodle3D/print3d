@@ -10,7 +10,7 @@ static int l_getTemperature(lua_State *L) {
 	size_t devLen;
 	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : "-";
 	int16_t temperature;
-	int rv = getTemperature(dev, &temperature);
+	int rv = comm_getTemperature(dev, &temperature);
 
 	if (rv > -1) {
 		lua_pushnumber(L, temperature);

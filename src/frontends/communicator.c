@@ -79,7 +79,7 @@ static char* sendAndReceiveData(const char* deviceId, const char* buf, int bufle
 }
 
 
-int testCommand(const char* deviceId, const char* question, char** answer) {
+int comm_testCommand(const char* deviceId, const char* question, char** answer) {
 	int rv, result = 0;
 
 	log_open_stream(stderr, LLVL_VERBOSE);
@@ -89,7 +89,7 @@ int testCommand(const char* deviceId, const char* question, char** answer) {
 
 	char* cmdbuf;
 	if (question) cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, "s", question);
-	else cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, "");
+	else cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, 0);
 
 	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
 
@@ -123,7 +123,7 @@ int testCommand(const char* deviceId, const char* question, char** answer) {
 }
 
 //returns 0 on success, -1 on error (retrieved using getError())
-int getTemperature(const char* deviceId, int16_t* temperature) {
+int comm_getTemperature(const char* deviceId, int16_t* temperature) {
 	int rv, result = 0;
 
 	log_open_stream(stderr, LLVL_VERBOSE);
@@ -162,7 +162,7 @@ int getTemperature(const char* deviceId, int16_t* temperature) {
 	return result;
 }
 
-int sendGcodeFile(const char* deviceId, const char *file) {
+int comm_sendGcodeFile(const char* deviceId, const char *file) {
 	int rv, result = 0;
 	int cmdlen, rbuflen;
 	char* cmdbuf;
@@ -217,7 +217,7 @@ int sendGcodeFile(const char* deviceId, const char *file) {
 
 	fprintf(stderr, "datalen: %i; data: '%s'\n", fsize, text);
 
-	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_APPEND, 0, text);
+	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_APPEND, "s", text);
 	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
 
 	if (!rbuf) {
