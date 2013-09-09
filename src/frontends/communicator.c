@@ -13,13 +13,13 @@
 static const int IPC_WAIT_TIMEOUT = 1500;
 
 static int socketFd = -1;
-static const char* error = NULL;
-const char* getError() { return error; }
+static const char *error = NULL;
+const char *comm_getError() { return error; }
 static void clearError() { error = NULL; }
-const void setError(const char* e) { error = e; }
+const void setError(const char *e) { error = e; }
 
 
-int openSocketForDeviceId(const char* deviceId) {
+int comm_openSocketForDeviceId(const char *deviceId) {
 	struct sockaddr_un remote;
 	int len;
 
@@ -29,7 +29,7 @@ int openSocketForDeviceId(const char* deviceId) {
 
 	if (log_check_error(socketFd, "could not create domain socket")) return -1;
 
-	char* path = ipc_construct_socket_path(deviceId);
+	char *path = ipc_construct_socket_path(deviceId);
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
@@ -51,26 +51,35 @@ int openSocketForDeviceId(const char* deviceId) {
 	return socketFd;
 }
 
-int closeSocket() {
+int comm_closeSocket() {
 	int rv = close(socketFd);
 	socketFd = -1;
 	return rv;
 }
 
-static char* sendAndReceiveData(const char* deviceId, const char* buf, int buflen, int* rbuflen) {
+static char* sendAndReceiveData(const char *deviceId, const char *sbuf, int sbuflen, int *rbuflen) {
 	if (socketFd < 0) return NULL;
 
-	int rv = send(socketFd, buf, buflen, 0); //this should block until all data has been sent
-
-	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(buf, buflen))) {
+	if (!sbuf) {
+		log_message(LLVL_ERROR, "ipc command send buffer empty (construction failed?)");
+		setError("ipc command construction failed");
 		return NULL;
-	} else if (rv < buflen) {
-		log_message(LLVL_WARNING, "could not write complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(buf, buflen), rv);
-	} else {
-		log_message(LLVL_VERBOSE, "ipc command 0x%x sent (%i bytes written)", ipc_cmd_get(buf, buflen), rv);
 	}
 
-	char* rbuf = 0;
+	log_message(LLVL_VERBOSE, "sending command 0x%x (%i bytes)", ipc_cmd_get(sbuf, sbuflen), sbuflen);
+	int rv = send(socketFd, sbuf, sbuflen, 0); //this should block until all data has been sent
+
+	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
+		setError("could not send ipc command");
+		return NULL;
+	} else if (rv < sbuflen) {
+		log_message(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
+		setError("could not send complete ipc command");
+	} else {
+		log_message(LLVL_VERBOSE, "ipc command 0x%x sent", ipc_cmd_get(sbuf, sbuflen));
+	}
+
+	char *rbuf = 0;
 	*rbuflen = 0;
 	//read only once to avoid unneccessary timeout but still allow for the timeout to happen
 	log_check_error(readAndAppendAvailableData(socketFd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "error reading data from domain socket");
@@ -78,208 +87,169 @@ static char* sendAndReceiveData(const char* deviceId, const char* buf, int bufle
 	return rbuf;
 }
 
+static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen) {
+	if (!rcmd) return -1; //NOTE: do not log anything, this is already in sendAndReceiveData()
 
-int comm_testCommand(const char* deviceId, const char* question, char** answer) {
-	int rv, result = 0;
+	int rv = 0;
+	log_message(LLVL_VERBOSE, "received %i bytes", rcmdlen);
 
-	log_open_stream(stderr, LLVL_VERBOSE);
-	clearError();
-
-	int cmdlen, rbuflen;
-
-	char* cmdbuf;
-	if (question) cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, "s", question);
-	else cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_TEST, 0);
-
-	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
-
-	if (!rbuf) {
-		setError("could not send/receive IPC command");
-		free(cmdbuf);
-		return -1;
-	} else {
-		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
-	}
-
-	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	switch(ipc_cmd_get(rcmd, rcmdlen)) {
 	case IPC_CMDR_OK:
-		rv = ipc_cmd_get_string_arg(rbuf, rbuflen, 0, answer);
+		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 		break;
 	case IPC_CMDR_ERROR:
+		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 		setError("server returned error");
-		result = -1;
+		rv = -1;
 		break;
 	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 		setError("server returned unexpected response");
-		result = -1;
+		rv = -1;
 		break;
 	}
 
-	free(rbuf);
-	free(cmdbuf);
+	return rv;
+}
 
-	return result;
+
+int comm_testCommand(const char *deviceId, const char *question, char **answer) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+
+	char *scmd;
+	if (question) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, "s", question);
+	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, 0);
+
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, answer);
+	} else {
+		rv = -1;
+	}
+
+	free(rcmd);
+	free(scmd);
+
+	return rv;
 }
 
 //returns 0 on success, -1 on error (retrieved using getError())
-int comm_getTemperature(const char* deviceId, int16_t* temperature) {
-	int rv, result = 0;
-
-	log_open_stream(stderr, LLVL_VERBOSE);
+int comm_getTemperature(const char *deviceId, int16_t *temperature) {
 	clearError();
 
-	int cmdlen, rbuflen;
-	char* cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
 
-	char* rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
-
-	if (!rbuf) {
-		setError("could not send/receive IPC command");
-		free(cmdbuf);
-		return -1;
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 0, temperature);
 	} else {
-		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+		rv = -1;
 	}
 
-	switch(ipc_cmd_get(rbuf, rbuflen)) {
-	case IPC_CMDR_OK:
-		rv = ipc_cmd_get_short_arg(rbuf, rbuflen, 0, temperature);
-		break;
-	case IPC_CMDR_ERROR:
-		setError("server returned error");
-		result = -1;
-		break;
-	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
-		setError("server returned unexpected response");
-		result = -1;
-		break;
-	}
-
-	free(rbuf);
-	free(cmdbuf);
-	return result;
+	free(rcmd);
+	free(scmd);
+	return rv;
 }
 
-int comm_sendGcodeFile(const char* deviceId, const char *file) {
-	int rv, result = 0;
-	int cmdlen, rbuflen;
-	char* cmdbuf;
-	char* rbuf;
-
-	log_open_stream(stderr, LLVL_VERBOSE);
+int comm_clearGcode(const char *deviceId) {
 	clearError();
 
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_CLEAR, 0);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
 
-
-	/***** clear gcode *****/
-
-	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_CLEAR, 0);
-	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
-
-	if (!rbuf) {
-		setError("could not send/receive IPC command");
-		free(cmdbuf);
-		return -1;
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		log_message(LLVL_INFO, "gcode cleared");
 	} else {
-		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+		rv = -1;
 	}
 
-	switch(ipc_cmd_get(rbuf, rbuflen)) {
-	case IPC_CMDR_OK:
-		log_message(LLVL_VERBOSE, "gcode cleared");
-		break;
-	case IPC_CMDR_ERROR:
-		setError("server returned error");
-		result = -1;
-		break;
-	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
-		setError("server returned unexpected response");
-		result = -1;
-		break;
+	free(rcmd);
+	free(scmd);
+	return rv;
+}
+
+
+int comm_startPrintGcode(const char *deviceId) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STARTPRINT, 0);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		log_message(LLVL_VERBOSE, "gcode print started");
+	} else {
+		rv = -1;
 	}
 
+	free(rcmd);
+	free(scmd);
+	return rv;
+}
 
 
-	/***** send gcode *****/
+int comm_stopPrintGcode(const char *deviceId) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, 0);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		log_message(LLVL_VERBOSE, "gcode print stopped");
+	} else {
+		rv = -1;
+	}
+
+	free(rcmd);
+	free(scmd);
+	return rv;
+}
+
+int comm_sendGcodeData(const char *deviceId, const char *file) {
+	clearError();
 
 //	char* line = 0;
 //	while ((line = readLineFromFile(fd)) != 0) {
-//		//TODO: send command with line (for real gcode files, collect them into blocks of e.g. 2000 lines)
+//	//TODO: send command with line (for real gcode files, collect them into blocks of e.g. 2000 lines)
 //	}
-	int fsize;
-	char *text = readFileContents(file, &fsize);
+	int filesize;
+	char *text = readFileContents(file, &filesize);
 	if (log_check_error(text ? 1 : 0, "could not read contents of file '%s'", file)) {
 		return -1;
 	}
 
-	fprintf(stderr, "datalen: %i; data: '%s'\n", fsize, text);
+//	fprintf(stderr, "datalen: %i; data: '%s'\n", filesize, text);
 
-	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_APPEND, "s", text);
-	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
 
-	if (!rbuf) {
-		setError("could not send/receive IPC command");
-		free(cmdbuf);
-		return -1;
-	} else {
-		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
-	}
+	if (comm_clearGcode(deviceId) < 0) return -1;
 
-	switch(ipc_cmd_get(rbuf, rbuflen)) {
-	case IPC_CMDR_OK:
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "s", text);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
 		log_message(LLVL_VERBOSE, "gcode appended");
-		break;
-	case IPC_CMDR_ERROR:
-		setError("server returned error");
-		result = -1;
-		break;
-	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
-		setError("server returned unexpected response");
-		result = -1;
-		break;
-	}
-
-
-
-	/***** print gcode *****/
-
-	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_PRINT, 0);
-	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
-
-	if (!rbuf) {
-		setError("could not send/receive IPC command");
-		free(cmdbuf);
-		return -1;
 	} else {
-		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
-	}
-
-	switch(ipc_cmd_get(rbuf, rbuflen)) {
-	case IPC_CMDR_OK:
-		log_message(LLVL_VERBOSE, "gcode print started");
-		break;
-	case IPC_CMDR_ERROR:
-		setError("server returned error");
-		result = -1;
-		break;
-	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
-		setError("server returned unexpected response");
-		result = -1;
-		break;
+		rv = -1;
 	}
 
 
+	if (rv >= 0) if (comm_clearGcode(deviceId) < 0) rv = -1;
 
-	/***** finish up *****/
-
-	free(rbuf);
-	free(cmdbuf);
-	return result;
-
-	//read contents of file and send (in chunks?)
+	free(rcmd);
+	free(scmd);
+	return rv;
 }

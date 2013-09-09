@@ -1,17 +1,18 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include "../communicator.h"
+#include "../../logger.h"
 #include "fe_cmdline.h"
 
 static void act_printTemperature() {
 	int16_t temperature;
 
-	openSocketForDeviceId(deviceId);
+	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_getTemperature(deviceId, &temperature);
-	closeSocket();
+	comm_closeSocket();
 
 	if (rv > -1) printf("temperature: %i\n", temperature);
-	else fprintf(stderr, "could not read temperature (%s)\n", getError());
+	else fprintf(stderr, "could not read temperature (%s)\n", comm_getError());
 }
 
 static void act_printTestResponse() {
@@ -19,33 +20,42 @@ static void act_printTestResponse() {
 	char *answer;
 	int rv;
 
-	openSocketForDeviceId(deviceId);
+	comm_openSocketForDeviceId(deviceId);
 
 	rv = comm_testCommand(deviceId, 0, &answer);
 	if (rv > -1) printf("first test command returned: '%s'\n", answer);
-	else fprintf(stderr, "could not complete first test command (%s)\n", getError());
+	else fprintf(stderr, "could not complete first test command (%s)\n", comm_getError());
 
 	//free(answer);
 
 	rv = comm_testCommand(deviceId, question, &answer);
 	if (rv > -1) printf("second test command returned: '%s'\n", answer);
-	else fprintf(stderr, "could not complete second test command (%s)\n", getError());
+	else fprintf(stderr, "could not complete second test command (%s)\n", comm_getError());
 
 	//free(answer);
 
-	closeSocket();
+	comm_closeSocket();
 }
 
 static void action_sendGcodeFile(const char *file) {
-	openSocketForDeviceId(deviceId);
-	int rv = comm_sendGcodeFile(deviceId, file);
-	closeSocket();
+	comm_openSocketForDeviceId(deviceId);
+	int rv = comm_sendGcodeData(deviceId, file);
+	comm_closeSocket();
 
 	if (rv > -1) printf("sent gcode file\n");
-	else fprintf(stderr, "could not send gcode file (%s)\n", getError());
+	else fprintf(stderr, "could not send gcode file (%s)\n", comm_getError());
 }
 
 int handle_action(int argc, char **argv, ACTION_TYPE action) {
+	switch(verbosity) {
+	case -1:
+		log_open_stream(stderr, LLVL_QUIET); break;
+	case 1:
+		log_open_stream(stderr, LLVL_VERBOSE); break;
+	case 0: default:
+		log_open_stream(stderr, LLVL_WARNING); break;
+	}
+
 	switch (action) {
 	case AT_NONE: case AT_SHOW_HELP:
 		printf("Basic usage: '%s [<options>]'.\n", argv[0]);

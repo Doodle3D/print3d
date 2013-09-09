@@ -17,7 +17,9 @@ const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
 		{ IPC_CMDQ_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
 		{ IPC_CMDQ_GCODE_CLEAR, &CommandHandler::hnd_gcodeClear },
 		{ IPC_CMDQ_GCODE_APPEND, &CommandHandler::hnd_gcodeAppend },
-		{ IPC_CMDQ_GCODE_PRINT, &CommandHandler::hnd_gcodePrint },
+		{ IPC_CMDQ_GCODE_APPEND_FILE, &CommandHandler::hnd_gcodeAppendFile },
+		{ IPC_CMDQ_GCODE_STARTPRINT, &CommandHandler::hnd_gcodeStartPrint },
+		{ IPC_CMDQ_GCODE_STOPPRINT, &CommandHandler::hnd_gcodeStopPrint },
 		{ IPC_CMDS_NONE, 0 } /* sentinel */
 };
 
@@ -97,8 +99,23 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 }
 
 //static
-void CommandHandler::hnd_gcodePrint(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received print gcode command");
-	//TODO: call driver->printGcode()
+void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int buflen) {
+	Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command");
+	//char *data = readFileContents(arg0);
+	//TODO: call driver->appendGcode(data)
+	client.sendOk();
+}
+
+//static
+void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int buflen) {
+	Logger::getInstance().log(Logger::VERBOSE, "received start print gcode command");
+	//TODO: call driver->startPrintGcode()
+	client.sendOk();
+}
+
+//static
+void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
+	Logger::getInstance().log(Logger::VERBOSE, "received stop print gcode command");
+	//TODO: call driver->stopPrintGcode()
 	client.sendOk();
 }

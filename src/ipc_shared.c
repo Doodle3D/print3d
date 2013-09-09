@@ -22,7 +22,9 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "", "w" },
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
 		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "s", "" },
-		{ IPC_CMDQ_GCODE_PRINT, "gcodePrint", "", "" },
+		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" },
+		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
+		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "", "" },
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
