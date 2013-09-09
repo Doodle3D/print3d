@@ -22,9 +22,9 @@ typedef enum IPC_COMMAND_CODE {
 	/* request commands sent by clients */
 	IPC_CMDQ_TEST = 2,
 	IPC_CMDQ_GET_TEMPERATURE = 0x10,
-	IPC_CMDQ_CLEAR_GCODE,
-	IPC_CMDQ_APPEND_GCODE,
-	IPC_CMDQ_PRINT_GCODE,
+	IPC_CMDQ_GCODE_CLEAR,
+	IPC_CMDQ_GCODE_APPEND,
+	IPC_CMDQ_GCODE_PRINT,
 
 	/* response commands send by server */
 	IPC_CMDR_OK = 0xE0,
@@ -79,7 +79,7 @@ int ipc_cmd_set(char** buf, int* buflen, IPC_COMMAND_CODE code);
 
 //reallocates buf to make room for arg (4 bytes for length + the argument itself)
 //if arg is NULL, an empty argument is added
-int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen);
+int ipc_cmd_add_arg(char** buf, int* buflen, const void* arg, uint32_t arglen);
 
 /** Returns the total command size if buffer contains a complete command, or 0.
  *

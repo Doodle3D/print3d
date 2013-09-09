@@ -26,9 +26,9 @@ private:
 
 	static void hnd_test(Client& client, const char* buf, int buflen);
 	static void hnd_getTemperature(Client& client, const char* buf, int buflen);
-	static void hnd_clearGcode(Client& client, const char* buf, int buflen);
-	static void hnd_appendGcode(Client& client, const char* buf, int buflen);
-	static void hnd_printGcode(Client& client, const char* buf, int buflen);
+	static void hnd_gcodeClear(Client& client, const char* buf, int buflen);
+	static void hnd_gcodeAppend(Client& client, const char* buf, int buflen);
+	static void hnd_gcodePrint(Client& client, const char* buf, int buflen);
 };
 
 #endif /* ! COMMAND_HANDLER_H_SEEN */

@@ -12,7 +12,7 @@ Client::Client(Server& server, int fd)
 
 //TODO: find a way to use recv wit extra arg in readAndAppendAvailableData()
 int Client::readData() {
-	return readAndAppendAvailableData(fd_, &buffer_, &bufferSize_, 0, 0);
+	return readAndAppendAvailableData(fd_, &buffer_, &bufferSize_, 0, 1);
 }
 
 void Client::runCommands() {
@@ -31,6 +31,22 @@ bool Client::sendData(const char* buf, int buflen) {
 
 	return (rv == buflen);
 }
+
+
+bool Client::sendOk() {
+	int cmdlen;
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "");
+	sendData(cmd, cmdlen);
+	free(cmd);
+}
+
+bool Client::sendError(const std::string& message) {
+	int cmdlen;
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "s", message.c_str());
+	sendData(cmd, cmdlen);
+	free(cmd);
+}
+
 
 int Client::getFileDescriptor() const {
 	return fd_;

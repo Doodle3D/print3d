@@ -20,9 +20,9 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* request commands sent by clients */
 		{ IPC_CMDQ_TEST, "test", "*", "*" },
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "", "w" },
-		{ IPC_CMDQ_CLEAR_GCODE, "clearGcode", "", "" },
-		{ IPC_CMDQ_APPEND_GCODE, "appendGcode", "s", "" },
-		{ IPC_CMDQ_PRINT_GCODE, "printGcode", "", "" },
+		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "s", "" },
+		{ IPC_CMDQ_GCODE_PRINT, "gcodePrint", "", "" },
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
@@ -124,7 +124,7 @@ int ipc_cmd_set(char** buf, int* buflen, IPC_COMMAND_CODE code) {
 	return 0;
 }
 
-int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen) {
+int ipc_cmd_add_arg(char** buf, int* buflen, const void* arg, uint32_t arglen) {
 	if (!arg) arglen = 0; //ensure argument length is 0 for null argument
 	char* t = (char*)realloc(*buf, *buflen + 4 + arglen);
 	if (!t) return -1;

@@ -15,9 +15,9 @@ using std::string;
 const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
 		{ IPC_CMDQ_TEST, &CommandHandler::hnd_test },
 		{ IPC_CMDQ_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
-		{ IPC_CMDQ_CLEAR_GCODE, &CommandHandler::hnd_clearGcode },
-		{ IPC_CMDQ_APPEND_GCODE, &CommandHandler::hnd_appendGcode },
-		{ IPC_CMDQ_PRINT_GCODE, &CommandHandler::hnd_printGcode },
+		{ IPC_CMDQ_GCODE_CLEAR, &CommandHandler::hnd_gcodeClear },
+		{ IPC_CMDQ_GCODE_APPEND, &CommandHandler::hnd_gcodeAppend },
+		{ IPC_CMDQ_GCODE_PRINT, &CommandHandler::hnd_gcodePrint },
 		{ IPC_CMDS_NONE, 0 } /* sentinel */
 };
 
@@ -74,24 +74,31 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 }
 
 //static
-void CommandHandler::hnd_clearGcode(Client& client, const char* buf, int buflen) {
+void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received clear gcode command");
+	//TODO: call driver->clearGcode()
+	client.sendOk();
 }
 
 //static
-void CommandHandler::hnd_appendGcode(Client& client, const char* buf, int buflen) {
+void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen) {
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		char* data = 0;
 		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
 		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
 		Logger::getInstance().log(Logger::VERBOSE, "received gcode was '%s'", data);
+		//TODO: call driver->appendGcode(data)
 		free(data);
+		client.sendOk();
 	} else {
 		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command without argument");
+		client.sendError("missing argument");
 	}
 }
 
 //static
-void CommandHandler::hnd_printGcode(Client& client, const char* buf, int buflen) {
+void CommandHandler::hnd_gcodePrint(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received print gcode command");
+	//TODO: call driver->printGcode()
+	client.sendOk();
 }

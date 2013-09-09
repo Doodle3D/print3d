@@ -137,3 +137,21 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int
 
   return exitValue;
 }
+
+char *readFileContents(const char *file, int* size) {
+	FILE* f = fopen(file, "rb");
+
+	if (!f) return NULL;
+
+	fseek(f, 0, SEEK_END);
+	long fsize = ftell(f);
+	if (size) *size = fsize;
+	fseek(f, 0, SEEK_SET);
+
+	char *text = malloc(fsize + 1);
+	fread(text, fsize, 1, f);
+
+	text[fsize] = '\0';
+	fclose(f);
+	return text;
+}

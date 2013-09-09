@@ -162,6 +162,124 @@ int getTemperature(const char* deviceId, int16_t* temperature) {
 	return result;
 }
 
-int sendGcodeFile(const char* deviceId, int fd) {
+int sendGcodeFile(const char* deviceId, const char *file) {
+	int rv, result = 0;
+	int cmdlen, rbuflen;
+	char* cmdbuf;
+	char* rbuf;
+
+	log_open_stream(stderr, LLVL_VERBOSE);
+	clearError();
+
+
+
+	/***** clear gcode *****/
+
+	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_CLEAR, 0);
+	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
+
+	if (!rbuf) {
+		setError("could not send/receive IPC command");
+		free(cmdbuf);
+		return -1;
+	} else {
+		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+	}
+
+	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	case IPC_CMDR_OK:
+		log_message(LLVL_VERBOSE, "gcode cleared");
+		break;
+	case IPC_CMDR_ERROR:
+		setError("server returned error");
+		result = -1;
+		break;
+	default:
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		setError("server returned unexpected response");
+		result = -1;
+		break;
+	}
+
+
+
+	/***** send gcode *****/
+
+//	char* line = 0;
+//	while ((line = readLineFromFile(fd)) != 0) {
+//		//TODO: send command with line (for real gcode files, collect them into blocks of e.g. 2000 lines)
+//	}
+	int fsize;
+	char *text = readFileContents(file, &fsize);
+	if (log_check_error(text ? 1 : 0, "could not read contents of file '%s'", file)) {
+		return -1;
+	}
+
+	fprintf(stderr, "datalen: %i; data: '%s'\n", fsize, text);
+
+	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_APPEND, 0, text);
+	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
+
+	if (!rbuf) {
+		setError("could not send/receive IPC command");
+		free(cmdbuf);
+		return -1;
+	} else {
+		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+	}
+
+	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	case IPC_CMDR_OK:
+		log_message(LLVL_VERBOSE, "gcode appended");
+		break;
+	case IPC_CMDR_ERROR:
+		setError("server returned error");
+		result = -1;
+		break;
+	default:
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		setError("server returned unexpected response");
+		result = -1;
+		break;
+	}
+
+
+
+	/***** print gcode *****/
+
+	cmdbuf = ipc_construct_cmd(&cmdlen, IPC_CMDQ_GCODE_PRINT, 0);
+	rbuf = sendAndReceiveData(deviceId, cmdbuf, cmdlen, &rbuflen);
+
+	if (!rbuf) {
+		setError("could not send/receive IPC command");
+		free(cmdbuf);
+		return -1;
+	} else {
+		log_message(LLVL_VERBOSE, "received %i bytes", rbuflen);
+	}
+
+	switch(ipc_cmd_get(rbuf, rbuflen)) {
+	case IPC_CMDR_OK:
+		log_message(LLVL_VERBOSE, "gcode print started");
+		break;
+	case IPC_CMDR_ERROR:
+		setError("server returned error");
+		result = -1;
+		break;
+	default:
+		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rbuf, rbuflen), ipc_cmd_get(cmdbuf, cmdlen));
+		setError("server returned unexpected response");
+		result = -1;
+		break;
+	}
+
+
+
+	/***** finish up *****/
+
+	free(rbuf);
+	free(cmdbuf);
+	return result;
+
 	//read contents of file and send (in chunks?)
 }

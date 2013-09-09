@@ -113,14 +113,7 @@ int main(int argc, char **argv) {
 			exit(1);
 		}
 
-		int fileFd = open(print_file, O_RDONLY);
-
-		if (fileFd >= 0) {
-			sendGcodeFileAction(fileFd);
-			close(fileFd);
-		} else {
-			fprintf(stderr, "error opening gcode file for printing '%s' (%s)\n", print_file, strerror(errno));
-		}
+		sendGcodeFileAction(print_file);
 		break;
 	case AT_SEND_CODE:
 		if (!send_gcode) {

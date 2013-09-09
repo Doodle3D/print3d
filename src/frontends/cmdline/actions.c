@@ -36,8 +36,10 @@ void printTestResponseAction() {
 	closeSocket();
 }
 
-void sendGcodeFileAction(int fd) {
-	int rv = sendGcodeFile(deviceId, fd);
+void sendGcodeFileAction(const char *file) {
+	openSocketForDeviceId(deviceId);
+	int rv = sendGcodeFile(deviceId, file);
+	closeSocket();
 
 	if (rv > -1) printf("sent gcode file\n");
 	else fprintf(stderr, "could not send gcode file (%s)\n", getError());
