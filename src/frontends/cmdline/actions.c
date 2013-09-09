@@ -39,7 +39,7 @@ static void act_printTestResponse() {
 
 static void action_sendGcodeFile(const char *file) {
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_sendGcodeData(deviceId, file);
+	int rv = comm_sendGcodeFile(deviceId, file);
 	comm_closeSocket();
 
 	if (rv > -1) printf("sent gcode file\n");

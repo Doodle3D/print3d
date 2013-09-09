@@ -216,27 +216,41 @@ int comm_stopPrintGcode(const char *deviceId) {
 	return rv;
 }
 
-int comm_sendGcodeData(const char *deviceId, const char *file) {
+int comm_sendGcodeFile(const char *deviceId, const char *file) {
 	clearError();
-
-//	char* line = 0;
-//	while ((line = readLineFromFile(fd)) != 0) {
-//	//TODO: send command with line (for real gcode files, collect them into blocks of e.g. 2000 lines)
-//	}
-	int filesize;
-	char *text = readFileContents(file, &filesize);
-	if (log_check_error(text ? 1 : 0, "could not read contents of file '%s'", file)) {
-		return -1;
-	}
-
-//	fprintf(stderr, "datalen: %i; data: '%s'\n", filesize, text);
-
 
 	if (comm_clearGcode(deviceId) < 0) return -1;
 
 
 	int scmdlen, rcmdlen;
-	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "s", text);
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "s", file);
+	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		log_message(LLVL_VERBOSE, "gcode appended from file '%s'", file);
+	} else {
+		rv = -1;
+	}
+
+
+	if (rv >= 0) if (comm_clearGcode(deviceId) < 0) rv = -1;
+
+	free(rcmd);
+	free(scmd);
+	return rv;
+}
+
+int comm_sendGcodeData(const char *deviceId, const char *gcode) {
+	clearError();
+
+//	fprintf(stderr, "datalen: %i; data: '%s'\n", strlen(gcode), gcode); //TEMP
+
+	if (comm_clearGcode(deviceId) < 0) return -1;
+
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "s", gcode);
 	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;

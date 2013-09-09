@@ -14,6 +14,7 @@ int comm_getTemperature(const char *deviceId, int16_t *temperature);
 int comm_clearGcode(const char *deviceId);
 int comm_startPrintGcode(const char *deviceId);
 int comm_stopPrintGcode(const char *deviceId);
-int comm_sendGcodeData(const char *deviceId, const char *file);
+int comm_sendGcodeFile(const char *deviceId, const char *file);
+int comm_sendGcodeData(const char *deviceId, const char *gcode);
 
 #endif /* COMMUNICATOR_H_SEEN */

@@ -2,7 +2,8 @@
 #include "CommandHandler.h"
 #include "Client.h"
 #include "Server.h"
-#include "Logger.h"//TEMP
+#include "Logger.h"
+#include "../utils.h"
 
 using std::string;
 
@@ -100,9 +101,20 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 
 //static
 void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command");
-	//char *data = readFileContents(arg0);
-	//TODO: call driver->appendGcode(data)
+	if (ipc_cmd_num_args(buf, buflen) > 0) {
+		char* filename = 0;
+		ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
+		Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
+
+		int filesize;
+		char *data = readFileContents(filename, &filesize);
+		if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
+			Logger::getInstance().log(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
+			Logger::getInstance().log(Logger::BULK, "read gcode: '%s'", data);
+			//TODO: call driver->appendGcode(data)
+		}
+	}
+
 	client.sendOk();
 }
 
