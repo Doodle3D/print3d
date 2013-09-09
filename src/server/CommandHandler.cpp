@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdio.h>
 #include "CommandHandler.h"
 #include "Client.h"
@@ -110,12 +111,13 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 		char *data = readFileContents(filename, &filesize);
 		if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
 			Logger::getInstance().log(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
-			Logger::getInstance().log(Logger::BULK, "read gcode: '%s'", data);
+			//Logger::getInstance().log(Logger::BULK, "read gcode: '%s'", data);
 			//TODO: call driver->appendGcode(data)
+			client.sendOk();
+		} else {
+			client.sendError(errno > 0 ? strerror(errno) : "error reading file");
 		}
 	}
-
-	client.sendOk();
 }
 
 //static

@@ -17,6 +17,7 @@ int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval 
 int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int onlyOnce);
 char *readFileContents(const char *file, int *size);
 int equal(const char *s1, const char *s2);
+int isAbsolutePath(const char *path);
 
 #ifdef __cplusplus
 	} //extern "C"

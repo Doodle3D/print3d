@@ -10,7 +10,7 @@
 #include "../logger.h"
 #include "../utils.h"
 
-static const int IPC_WAIT_TIMEOUT = 1500;
+static const int IPC_WAIT_TIMEOUT = 60 * 1000; //1 minute
 
 static int socketFd = -1;
 static const char *error = NULL;
@@ -95,13 +95,17 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen)
 
 	switch(ipc_cmd_get(rcmd, rcmdlen)) {
 	case IPC_CMDR_OK:
-		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
 		break;
-	case IPC_CMDR_ERROR:
-		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+	case IPC_CMDR_ERROR: {
+		char *errmsg = 0;
+		ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
+		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
 		setError("server returned error");
+		free(errmsg);
 		rv = -1;
 		break;
+	}
 	default:
 		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 		setError("server returned unexpected response");
@@ -241,6 +245,7 @@ int comm_sendGcodeFile(const char *deviceId, const char *file) {
 	return rv;
 }
 
+//TODO: implement chunking on newlines with max. 1KB of data
 int comm_sendGcodeData(const char *deviceId, const char *gcode) {
 	clearError();
 

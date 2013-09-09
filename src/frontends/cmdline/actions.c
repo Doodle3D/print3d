@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "../communicator.h"
 #include "../../logger.h"
+#include "../../utils.h"
 #include "fe_cmdline.h"
 
 static void act_printTemperature() {
@@ -37,13 +38,23 @@ static void act_printTestResponse() {
 	comm_closeSocket();
 }
 
-static void action_sendGcodeFile(const char *file) {
+static int action_sendGcodeFile(const char *file) {
+	if (!isAbsolutePath(file)) {
+		fprintf(stderr, "please supply an absolute path for the file to print\n");
+		return 1;
+	}
+
 	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_sendGcodeFile(deviceId, file);
 	comm_closeSocket();
 
-	if (rv > -1) printf("sent gcode file\n");
-	else fprintf(stderr, "could not send gcode file (%s)\n", comm_getError());
+	if (rv > -1) {
+		printf("sent gcode file\n");
+		return 0;
+	} else {
+		fprintf(stderr, "could not send gcode file (%s)\n", comm_getError());
+		return 1;
+	}
 }
 
 int handle_action(int argc, char **argv, ACTION_TYPE action) {
@@ -85,8 +96,7 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 			return 1;
 		}
 
-		action_sendGcodeFile(print_file);
-		return 0;
+		return action_sendGcodeFile(print_file);
 	case AT_SEND_CODE:
 		if (!send_gcode) {
 			fprintf(stderr, "error: missing g-code to print\n");
