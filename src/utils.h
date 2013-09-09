@@ -1,6 +1,8 @@
 #ifndef UTILS_H_SEEN
 #define UTILS_H_SEEN
 
+#include <sys/time.h>
+
 #ifdef __cplusplus
 	extern "C" {
 #endif

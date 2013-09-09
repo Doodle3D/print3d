@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "utils.h"
-#include <sys/time.h>
 #include <time.h>
 
 static const int READ_BUF_SIZE = 1024;
