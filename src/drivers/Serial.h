@@ -37,6 +37,7 @@ private:
   char* buffer_;
   int bufferSize_;
 
+  Logger& log_;
 	//static char* dev_name;
 	//static int baud_rate;
 };

@@ -20,7 +20,7 @@ const int Server::SELECT_LOG_FAST_LOOP = -1;
 Server::Server(const string& serialPortPath, const string& socketPath)
 : socketPath_(socketPath),
   log_(Logger::getInstance()), socketFd_(-1),
-  printerDriver_(DriverFactory::createDriver("marlin_ultimaker", serialPortPath))
+  printerDriver_(DriverFactory::createDriver("marlin_ultimaker", serialPortPath, 115200))
 {
   if(printerDriver_ == 0) {
     log_.log(Logger::ERROR, "no printer driver found for marlin_ultimaker");
@@ -69,6 +69,7 @@ int Server::start(bool fork) {
 	struct timeval timeout = (struct timeval){ 0, 0 };
 	struct timeval startTime, endTime, diffTime;
 	while (true) {
+		//log_.log(Logger::BULK, "begin while");
 		readFds = masterFds;
 		::gettimeofday(&startTime, NULL);
 		//log_.log(Logger::BULK, "entering select(), maxfd=%i", maxFd);
@@ -122,6 +123,7 @@ int Server::start(bool fork) {
 				it++;
 			}
 		}
+		//log_.log(Logger::VERBOSE, "printerDriver_: %i", printerDriver_);
 		if (printerDriver_) {
 			int newTimeout = printerDriver_->update();
 
