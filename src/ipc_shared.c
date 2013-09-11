@@ -20,6 +20,11 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* request commands sent by clients */
 		{ IPC_CMDQ_TEST, "test", "*", "*" },
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "", "w" },
+		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "s", "" },
+		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" },
+		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
+		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "", "" },
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
@@ -59,12 +64,18 @@ char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, 
 }
 
 char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, va_list args) {
-	//TODO: use format associated with code, unless it is equal to "*", then use format
 	const ipc_cmd_name_s* description = findCommandDescription(code);
-	const char* fmtp = (strcmp(description->arg_fmt, "*") == 0) ? format : description->arg_fmt;
+	const char* fmtp = format;
 	int rv;
 
-	if (!fmtp) return NULL;
+	if (!fmtp) {
+		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
+		fmtp = "";
+	}
+
+	if (!equal(description->arg_fmt, "*") && !equal(description->arg_fmt, fmtp)) {
+		log_message(LLVL_WARNING, "[IPC] construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
+	}
 
 	char* cmd = 0;
 	*cmdlen = 0;
@@ -92,13 +103,13 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 		}
 		case 's': {
 			char* arg = va_arg(args, char*);
-			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, strlen(arg));
+			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, strlen(arg));
 			break;
 		}
 		case 'x': { //add binary blob, requires a second length argument
 			char* arg = va_arg(args, char*);
-			char* arglen = va_arg(args, uint32_t);
-			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, arglen);
+			uint32_t arglen = va_arg(args, uint32_t);
+			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, arglen);
 			break;
 		}
 		}
@@ -121,7 +132,7 @@ int ipc_cmd_set(char** buf, int* buflen, IPC_COMMAND_CODE code) {
 	return 0;
 }
 
-int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen) {
+int ipc_cmd_add_arg(char** buf, int* buflen, const void* arg, uint32_t arglen) {
 	if (!arg) arglen = 0; //ensure argument length is 0 for null argument
 	char* t = (char*)realloc(*buf, *buflen + 4 + arglen);
 	if (!t) return -1;
@@ -188,11 +199,6 @@ int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, 
 	memcpy(*argbuf, p + 4, currarglen);
 	if (addzero) *(*argbuf + currarglen) = '\0';
 	*argbuflen = currarglen + addzero;
-
-//	//TEMP (further debugging: see what was added in add_arg and possibly in construct_cmd)
-//	printf("offset: %i\n", p + 4 - buf);
-//	printf("arglen in cmdbuf: %i first five bytes: %X %X %X %X %X\n", currarglen, *(p+4), *(p+5), *(p+6), *(p+7), *(p+8));
-//	printf("arglen after copy: %i first five bytes: %X %X %X %X %X\n", *argbuflen, (*argbuf)[0], (*argbuf)[1], (*argbuf)[2], (*argbuf)[3], (*argbuf)[4]);
 
 	return 0;
 }

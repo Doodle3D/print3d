@@ -12,6 +12,9 @@ public:
 	void runCommands();
 
 	bool sendData(const char* buf, int buflen);
+	bool sendOk();
+	bool sendError(const std::string& message);
+
 
 	int getFileDescriptor() const;
 	const char* getBuffer() const;

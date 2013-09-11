@@ -15,6 +15,8 @@ void store_nl(void* p, uint32_t v);
 uint32_t getMillis();
 int timeval_subtract (struct timeval *result, struct timeval *x, struct timeval *y);
 int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int onlyOnce);
+char *readFileContents(const char *file, int *size);
+int equal(const char *s1, const char *s2);
 
 #ifdef __cplusplus
 	} //extern "C"

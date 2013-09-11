@@ -5,35 +5,17 @@
 #include "lua.h"
 #include "lauxlib.h"
 #include "../communicator.h"
+#include "../../logger.h"
 
 static int l_getTemperature(lua_State *L) {
 	size_t devLen;
 	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : "-";
 	int16_t temperature;
-	int rv = getTemperature(dev, &temperature);
+	log_open_stream(stderr, LLVL_VERBOSE);
+	int rv = comm_getTemperature(dev, &temperature);
 
 	if (rv > -1) {
 		lua_pushnumber(L, temperature);
-		return 1;
-	} else {
-		const char* errMsg = "error comunicating with server (TODO: return real C error)"; //TODO: return real C error
-		lua_pushnil(L);
-		lua_pushlstring(L, errMsg, strlen(errMsg));
-		return 2;
-	}
-}
-
-static int l_setTemperatureCheckInterval(lua_State *L) {
-	size_t devLen;
-	//FIXME: so, this does not really handle an optional device ID...could probably be solved by 'instantiating' a device object
-	//(which could change its nature...so that would be a strange assumption as well)
-	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : "-";
-	double ival = luaL_checknumber(L, 2);
-
-	int rv = setTemperatureCheckInterval(dev, ival);
-
-	if (rv > 1) {
-		lua_pushboolean(L, rv);
 		return 1;
 	} else {
 		const char* errMsg = "error comunicating with server (TODO: return real C error)"; //TODO: return real C error
@@ -65,7 +47,6 @@ static int l_setTemperatureCheckInterval(lua_State *L) {
 
 static const struct luaL_Reg print3d[] = {
 		{"getTemperature", l_getTemperature},
-		{"setTemperatureCheckInterval", l_setTemperatureCheckInterval},
 		{NULL, NULL}
 };
 

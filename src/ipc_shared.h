@@ -20,8 +20,13 @@ typedef enum IPC_COMMAND_CODE {
 	IPC_CMDS_NONE = 1,
 
 	/* request commands sent by clients */
-	IPC_CMDQ_TEST = 2,
-	IPC_CMDQ_GET_TEMPERATURE = 0x10,
+	IPC_CMDQ_TEST = 0x10,
+	IPC_CMDQ_GET_TEMPERATURE,
+	IPC_CMDQ_GCODE_CLEAR,
+	IPC_CMDQ_GCODE_APPEND,
+	IPC_CMDQ_GCODE_APPEND_FILE,
+	IPC_CMDQ_GCODE_STARTPRINT,
+	IPC_CMDQ_GCODE_STOPPRINT,
 
 	/* response commands send by server */
 	IPC_CMDR_OK = 0xE0,
@@ -65,7 +70,7 @@ char* ipc_construct_socket_path(const char* deviceId);
 
 //all-in-one function to construct IPC commands in printf style
 //please note the varargs are implemented by evil magic...
-char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, ...);
+char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* fmtp, ...);
 
 //all-in-one function to construct IPC commands in printf style
 //please note the varargs are implemented by evil magic...
@@ -76,7 +81,7 @@ int ipc_cmd_set(char** buf, int* buflen, IPC_COMMAND_CODE code);
 
 //reallocates buf to make room for arg (4 bytes for length + the argument itself)
 //if arg is NULL, an empty argument is added
-int ipc_cmd_add_arg(char** buf, int* buflen, const char* arg, uint32_t arglen);
+int ipc_cmd_add_arg(char** buf, int* buflen, const void* arg, uint32_t arglen);
 
 /** Returns the total command size if buffer contains a complete command, or 0.
  *
