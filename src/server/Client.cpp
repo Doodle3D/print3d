@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/socket.h>
 #include "Client.h"
 #include "Logger.h"

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include "logger.h"
 #include "utils.h"
 #include "ipc_shared.h"
@@ -66,7 +67,6 @@ char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, 
 char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, va_list args) {
 	const ipc_cmd_name_s* description = findCommandDescription(code);
 	const char* fmtp = format;
-	int rv;
 
 	if (!fmtp) {
 		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
@@ -80,7 +80,9 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 	char* cmd = 0;
 	*cmdlen = 0;
 
-	rv = ipc_cmd_set(&cmd, cmdlen, code);
+	if (ipc_cmd_set(&cmd, cmdlen, code) < 0) {
+		return NULL;
+	}
 
 	while(*fmtp) {
 		char argtype = *fmtp;

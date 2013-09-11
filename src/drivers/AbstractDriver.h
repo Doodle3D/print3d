@@ -1,6 +1,7 @@
 #ifndef ABSTRACT_DRIVER_H_SEEN
 #define ABSTRACT_DRIVER_H_SEEN
 
+#include <inttypes.h>
 #include <string>
 #include <vector>
 #include "Serial.h"

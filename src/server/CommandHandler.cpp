@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "CommandHandler.h"
 #include "Client.h"
 #include "Server.h"

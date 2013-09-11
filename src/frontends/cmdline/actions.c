@@ -105,4 +105,6 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		printf("[dummy] send gcode: '%s'\n", send_gcode);
 		return 0;
 	}
+
+	return 2;
 }

@@ -1,19 +1,20 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
 #include "Serial.h"
 #include "../utils.h"
 
-using std::string;
-
-#include <termios.h> /* cfmakeraw */
-#include <sys/ioctl.h> /* ioctl */
-
 #ifdef __APPLE__
+
 # if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_4) /* require at least 10.4 (OSX Tiger) */
-#  include <IOKit/serial/ioss.h>
+# include <termios.h> /* cfmakeraw */
+# include <sys/ioctl.h> /* ioctl */
+
+
+# include <IOKit/serial/ioss.h>
 
 #  define TERMIOS_TYPE termios
 # else
@@ -23,10 +24,25 @@ using std::string;
 # include <linux/serial.h>
 # include <linux/termios.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+/** Declarations we need. Using the proper includes creates conflicts with those
+ * necessary for termios2.
+ */
+void cfmakeraw(struct termios2 *termios_p);
+int ioctl(int fildes, int request, ... /* arg */);
+
+#ifdef __cplusplus
+} //extern "C"
+#endif
+
 # define TERMIOS_TYPE termios2
 #else
 # error "cannot set serial port speed for this OS"
 #endif
+
+using std::string;
 
 
 const int Serial::READ_BUF_SIZE = 1024;

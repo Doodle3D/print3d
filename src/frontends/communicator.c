@@ -19,7 +19,7 @@ static int socketFd = -1;
 static const char *error = NULL;
 const char *comm_getError() { return error; }
 static void clearError() { error = NULL; }
-const void setError(const char *e) { error = e; }
+static void setError(const char *e) { error = e; }
 
 
 int comm_openSocketForDeviceId(const char *deviceId) {

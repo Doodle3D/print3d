@@ -10,12 +10,16 @@ PKG_RELEASE := 1
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
 include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/cmake.mk
+
+CMAKE_OPTIONS = -DLUAPATH=/usr/lib/lua
 
 define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
-	DEPENDS:=+uclibcxx
+	#DEPENDS:=+uclibcxx
+	DEPENDS:=+uclibcxx +libstdcpp #fix to solve 'missing dependencies'
 endef
 define Package/usbconnectiontester/description
 	This package provides an abstracted 3D printing interface supporting many different brands and types of 3D printers.
@@ -28,7 +32,8 @@ endef
 
 define Package/print3d/install
 	$(INSTALL_DIR) $(1)/bin
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/print3d $(1)/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/server/print3d $(1)/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/cmdline/p3d $(1)/bin/
 
 endef
 
