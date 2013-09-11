@@ -1,7 +1,7 @@
-#include "DriverFactory.h"
 #include "MarlinDriver.h"
+#include "DriverFactory.h"
 
-AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const std::string& serialPortPath) {
+AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const std::string& serialPortPath, const uint32_t& baudrate) {
   static vec_DriverInfoP driverInfos;
 
 
@@ -11,7 +11,6 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const
   // list all printer drivers (their driver info)
   if(driverInfos.empty()) {
     driverInfos.push_back( &MarlinDriver::getDriverInfo() );
-
     log.log(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
   }
 
@@ -32,7 +31,7 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const
       // if match create driver instance
       if((*f).name == driverName) {
         log.log(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
-        return di.creator(serialPortPath);
+        return di.creator(serialPortPath,baudrate);
       }
     }
   }

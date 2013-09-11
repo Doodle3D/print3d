@@ -8,6 +8,7 @@ using std::string;
 int main(int argc, char** argv) {
 #ifdef __APPLE__
 	const string serialDevice = "/dev/tty.usbmodemfd131";
+  //const string serialDevice = "/dev/tty.usbserial-A10248X1";
 #elif __linux
 	const string serialDevice = "/dev/ttyACM0";
 #endif

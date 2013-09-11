@@ -32,20 +32,17 @@ using std::string;
 const int Serial::READ_BUF_SIZE = 1024;
 
 Serial::Serial()
-: portFd_(-1), buffer_(0), bufferSize_(0) {
-}
+: portFd_(-1), buffer_(0), bufferSize_(0), log_(Logger::getInstance()) { }
 
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-  Logger& log = Logger::getInstance();
-	log.log(Logger::VERBOSE,"Serial::open: %s",file);
+  log_.log(Logger::VERBOSE,"Serial::open: %s",file);
 
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
-	log.log(Logger::VERBOSE,"  serial opened %i",portFd_);
+	//log_.log(Logger::VERBOSE,"  serial opened %i",portFd_);
 	if (portFd_ < 0) {
-    Logger& log = Logger::getInstance();
-  	log.log(Logger::ERROR,"Could not open port %s\n", file);
+		log_.log(Logger::ERROR,"Could not open port %s\n", file);
 		return portFd_;
 	}
 
@@ -70,8 +67,7 @@ bool Serial::isOpen() {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
-  Logger& log = Logger::getInstance();
-	log.log(Logger::VERBOSE,"Serial::setSpeed: %i",speed);
+	log_.log(Logger::VERBOSE,"Serial::setSpeed: %i",speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -128,9 +124,7 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
-  Logger& log = Logger::getInstance();
-	log.log(Logger::VERBOSE,"Serial::send: %s",code);
-
+  log_.log(Logger::VERBOSE,"Serial::send: %s",code);
 	if (portFd_ >= 0) {
 		::write(portFd_, code, strlen(code));
 		return true;
@@ -140,36 +134,11 @@ bool Serial::send(const char* code) const {
 }
 
 int Serial::readData() {
-  Logger& log = Logger::getInstance();
-	log.log(Logger::VERBOSE,"Serial::readData");
+  //Logger& log = Logger::getInstance();
+	//log.log(Logger::VERBOSE,"Serial::readData");
 
 
   int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, 0, 0);
-
-
-
-  /*int newSize = bufferSize_ + READ_BUF_SIZE;
-  buffer_ = (char*)realloc(buffer_, newSize);
-
-  int rv = read(portFd_, buffer_ + bufferSize_, newSize - bufferSize_);
-  int readLen;
-
-  if (rv < 0) {
-    //EINTR -> restart
-    //EWOULDBLOCK / EAGAIN -> would block in case of non-blocking fd
-    readLen = 0;
-  } else if (rv == 0) {
-    close();
-    readLen = 0;
-  } else {
-    readLen = rv;
-  }
-
-  bufferSize_ += readLen;
-  buffer_ = (char*)realloc(buffer_, bufferSize_);*/
-
-	if (bufferSize_ > 0) log.log(Logger::VERBOSE,"  byte: 0x%x (bufsize: %i)",buffer_[0], bufferSize_);
-
   return rv;
 }
 

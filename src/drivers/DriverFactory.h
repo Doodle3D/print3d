@@ -8,7 +8,7 @@
 
 class DriverFactory {
 public:
-	static AbstractDriver* createDriver(const std::string& driverName, const std::string& serialPortPath);
+	static AbstractDriver* createDriver(const std::string& driverName, const std::string& serialPortPath, const uint32_t& baudrate);
 
 private:
   typedef std::vector<const AbstractDriver::DriverInfo*> vec_DriverInfoP;
