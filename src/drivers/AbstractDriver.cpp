@@ -175,8 +175,8 @@ void AbstractDriver::switchBaudrate() {
 bool AbstractDriver::extractLine(std::string& line) {
 	size_t posN = gcodeBuffer.find("\n");
 	if(posN == string::npos) {
-		line = gcodeBuffer.substr(0); // substract all
-		gcodeBuffer.erase(0);
+		line = gcodeBuffer; //copy all contents
+		gcodeBuffer.clear();
 		if(line.length() > 0) return true;
 		else return false;
 	} else {
