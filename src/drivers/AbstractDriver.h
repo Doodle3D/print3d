@@ -44,10 +44,6 @@ public:
   // should return in how much milliseconds it wants to be called again
   virtual int update() = 0;
 
-
-
-
-
   void setGCode(const std::string& gcode);
   void appendGCode(const std::string& gcode);
   void clearGCode();
@@ -78,7 +74,9 @@ public:
 
 protected:
   int temperature_;
+  int targetTemperature_;
   int bedTemperature_;
+  int targetBedTemperature_;
   int currentLine_;
   int numLines_;
   STATE state_;
@@ -88,16 +86,16 @@ protected:
   void printNextLine();
   void resetPrint();
 
-  void checkTemperature();
-
   virtual void sendCode(const std::string& code) = 0;
   virtual void readCode(std::string& code) = 0;
 
   /*
-   * Convenience function to extract (and remove) line from codeBuffer
+   * Convenience function to get next line from codeBuffer
    */
-  bool extractLine(std::string& line);
+  bool getNextLine(std::string& line);
+  bool erasePrevLine();
 
+  virtual void filterGCode();
   virtual void updateGCodeInfo();
 
   void setState(STATE state);
