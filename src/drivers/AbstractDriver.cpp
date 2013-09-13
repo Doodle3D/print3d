@@ -5,8 +5,10 @@ using std::string;
 using std::size_t;
 
 AbstractDriver::AbstractDriver(const string& serialPortPath, const uint32_t& baudrate)
-: temperature_(-1),
-  bedTemperature_(-1),
+: temperature_(0),
+  targetTemperature_(0),
+  bedTemperature_(0),
+  targetBedTemperature_(0),
   currentLine_(1),
   numLines_(-1),
   state_(DISCONNECTED),
@@ -39,7 +41,6 @@ int AbstractDriver::closeConnection() {
 	setState(DISCONNECTED);
 	return serial_.close();
 }
-
 /*************************************
  ******** Manage GCode buffer ********
  ************************************/
@@ -48,27 +49,49 @@ int AbstractDriver::closeConnection() {
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
 	gcodeBuffer = gcode;
+	filterGCode();
 	updateGCodeInfo();
 }
 /*
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
-	gcodeBuffer += gcode;
-	updateGCodeInfo();
+	setGCode(gcodeBuffer + gcode);
 }
 /*
  * Clear (empty) GCode buffer
  */
 void AbstractDriver::clearGCode() {
-	gcodeBuffer = "";
-	updateGCodeInfo();
+	setGCode("");
+}
+/*
+ * Filter GCode, remove comments for example
+ */
+void AbstractDriver::filterGCode() {
+	// replace \r for \n
+	std::replace( gcodeBuffer.begin(), gcodeBuffer.end(), '\r', '\n');
+
+	// replace \n\n for \n
+	std::size_t posDoubleNewline = 0;
+	while((posDoubleNewline = gcodeBuffer.find("\n\n")) != string::npos) {
+		gcodeBuffer.replace(posDoubleNewline, 2, "\n");
+	}
+
+	// remove all comments (;...)
+	std::size_t posComment = 0;
+	while((posComment = gcodeBuffer.find(';')) != string::npos) {
+		std::size_t posCommentEnd = gcodeBuffer.find('\n',posComment);
+		if(posCommentEnd == string::npos) { // no newline found
+			gcodeBuffer.erase(posComment); // so erase remaining text
+		} else {
+			gcodeBuffer.erase(posComment,posCommentEnd-posComment+1);
+		}
+	}
 }
 /*
  * Update GCode info, like number of lines.
  */
 void AbstractDriver::updateGCodeInfo() {
-	// TODO: update numLines_ see below
 	numLines_ = std::count(gcodeBuffer.begin(), gcodeBuffer.end(), '\n') + 1;
 	currentLine_ = std::min(currentLine_,numLines_-1);
 }
@@ -77,19 +100,19 @@ void AbstractDriver::updateGCodeInfo() {
  * Print control
  */
 void AbstractDriver::startPrint(const std::string& gcode) {
+	log_.log(Logger::BULK, "AbstractDriver::startPrint: %s",gcode.c_str());
 	setGCode(gcode);
 	startPrint();
 }
 
 void AbstractDriver::startPrint() {
-	log_.log(Logger::BULK, "AbstractDriver::startPrint: %s",gcodeBuffer.c_str());
+	log_.log(Logger::BULK, "AbstractDriver::startPrint");
 	resetPrint();
 	setState(PRINTING);
 	printNextLine();
 }
 
 void AbstractDriver::stopPrint() {
-	// TODO: implement state
 	resetPrint();
 }
 void AbstractDriver::resetPrint() {
@@ -101,7 +124,7 @@ void AbstractDriver::printNextLine() {
 	log_.log(Logger::BULK, "AbstractDriver::printNextLine: %i/%i",currentLine_,numLines_);
 	if(currentLine_ <= numLines_) {
 		string line;
-		if(extractLine(line)) {
+		if(getNextLine(line)) {
 			sendCode(line);
 			currentLine_++;
 		}
@@ -130,16 +153,11 @@ int AbstractDriver::getNumLines() const {
 	return numLines_;
 }
 
-void AbstractDriver::checkTemperature() {
-	sendCode("M105");
-	// TODO: implement retry & fallback system
-}
-
 AbstractDriver::STATE AbstractDriver::getState() {
 	return state_;
 }
 void AbstractDriver::setState(STATE state) {
-	log_.log(Logger::BULK, "AbstractDriver::setState: %i:%s",state,getStateString(state).c_str());
+	log_.log(Logger::BULK, "AbstractDriver::setState: %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());
 	state_ = state;
 }
 
@@ -172,15 +190,23 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 void AbstractDriver::switchBaudrate() {
 	setBaudrate((baudrate_ == B250000)? B115200 : B250000);
 }
-bool AbstractDriver::extractLine(std::string& line) {
+bool AbstractDriver::getNextLine(std::string& line) {
 	size_t posN = gcodeBuffer.find("\n");
 	if(posN == string::npos) {
 		line = gcodeBuffer.substr(0); // substract all
-		gcodeBuffer.erase(0);
 		if(line.length() > 0) return true;
 		else return false;
 	} else {
 		line = gcodeBuffer.substr(0,posN);
+		return true;
+	}
+}
+bool AbstractDriver::erasePrevLine() {
+	size_t posN = gcodeBuffer.find("\n");
+	if(posN == string::npos) {
+		gcodeBuffer.erase(0);
+		return false;
+	} else {
 		gcodeBuffer.erase(0,posN+1);
 		return true;
 	}

@@ -18,12 +18,19 @@ public:
 protected:
   void readCode(std::string& code);
   void parseTemperatures(std::string& code);
+  void checkTemperature();
   void sendCode(const std::string& code);
-
+  void updateGCodeInfo();
+  int findValue(std::string& code,std::size_t startPos);
 
 private:
   Timer timer_;
-  Timer tempTimer_;
+	Timer tempTimer_;
+	int checkTempInterval_;
+  int checkTemperatureAttempt_;
+  int maxCheckTemperatureAttempts_;
+
+  int testCounter_; // temp
 };
 
 #endif /* ! MARLIN_DRIVER_H_SEEN */
