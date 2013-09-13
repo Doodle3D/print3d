@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <sys/socket.h>
 #include "Client.h"
 #include "Logger.h"
@@ -36,15 +37,19 @@ bool Client::sendData(const char* buf, int buflen) {
 bool Client::sendOk() {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "");
+	if (!cmd) return false;
 	sendData(cmd, cmdlen);
 	free(cmd);
+	return true;
 }
 
 bool Client::sendError(const std::string& message) {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "s", message.c_str());
+	if (!cmd) return false;
 	sendData(cmd, cmdlen);
 	free(cmd);
+	return true;
 }
 
 

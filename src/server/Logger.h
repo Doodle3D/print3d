@@ -2,6 +2,7 @@
 #define LOGGER_H_SEEN
 
 #include <stdio.h>
+#include <stdarg.h>
 
 
 #ifdef __cplusplus

@@ -1,8 +1,10 @@
+#define _GNU_SOURCE /* for vasprintf */
+
 #include <errno.h>
 #include <stdarg.h>
 #include <string.h>
 #include <time.h>
-#include "Logger.h"
+#include "logger.h"
 
 
 

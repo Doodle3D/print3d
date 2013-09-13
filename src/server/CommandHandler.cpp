@@ -1,17 +1,16 @@
+#include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "CommandHandler.h"
 #include "Client.h"
 #include "Server.h"
-#include "Logger.h"//TEMP
+#include "Logger.h"
+#include "../utils.h"
 
 using std::string;
 
+
 //private static
-//const CommandHandler::cmdHandlerFunc CommandHandler::HANDLERS[] = {
-//		{ IPC_COMMAND_NAMES[CMD_TEST_IDX], &CommandHandler::hnd_test },
-//		{ IPC_COMMAND_NAMES[CMD_GET_TEMPERATURE_IDX], &CommandHandler::hnd_getTemperature },
-//		{ "", 0 } /* sentinel */
-//};
 const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
 		{ IPC_CMDQ_TEST, &CommandHandler::hnd_test },
 		{ IPC_CMDQ_GET_TEMPERATURE, &CommandHandler::hnd_getTemperature },
@@ -78,7 +77,8 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 //static
 void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received clear gcode command");
-	//TODO: call driver->clearGcode()
+	AbstractDriver* driver = client.getServer().getDriver();
+	driver->clearGCode();
 	client.sendOk();
 }
 
@@ -89,8 +89,10 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
 		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
 		Logger::getInstance().log(Logger::VERBOSE, "received gcode was '%s'", data);
-		//TODO: call driver->appendGcode(data)
+		AbstractDriver* driver = client.getServer().getDriver();
+		string s(data);
 		free(data);
+		driver->appendGCode(s);
 		client.sendOk();
 	} else {
 		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command without argument");
@@ -100,22 +102,39 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 
 //static
 void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command");
-	//char *data = readFileContents(arg0);
-	//TODO: call driver->appendGcode(data)
-	client.sendOk();
+	if (ipc_cmd_num_args(buf, buflen) > 0) {
+		char* filename = 0;
+		ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
+		Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
+
+		int filesize;
+		char *data = readFileContents(filename, &filesize);
+		if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
+			Logger::getInstance().log(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
+			//Logger::getInstance().log(Logger::BULK, "read gcode: '%s'", data);
+			AbstractDriver* driver = client.getServer().getDriver();
+			string s(data);
+			free(data);
+			driver->appendGCode(s);
+			client.sendOk();
+		} else {
+			client.sendError(errno > 0 ? strerror(errno) : "error reading file");
+		}
+	}
 }
 
 //static
 void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received start print gcode command");
-	//TODO: call driver->startPrintGcode()
+	AbstractDriver* driver = client.getServer().getDriver();
+	driver->startPrint();
 	client.sendOk();
 }
 
 //static
 void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received stop print gcode command");
-	//TODO: call driver->stopPrintGcode()
+	AbstractDriver* driver = client.getServer().getDriver();
+	driver->stopPrint();
 	client.sendOk();
 }

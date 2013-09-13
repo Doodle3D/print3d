@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arpa/inet.h>
 #include "logger.h"
 #include "utils.h"
 #include "ipc_shared.h"
@@ -21,7 +22,7 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_TEST, "test", "*", "*" },
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "", "w" },
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
-		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "s", "" },
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" }, //NOTE: should accept "s" as well as "x"
 		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" },
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
 		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "", "" },
@@ -66,7 +67,6 @@ char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, 
 char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, va_list args) {
 	const ipc_cmd_name_s* description = findCommandDescription(code);
 	const char* fmtp = format;
-	int rv;
 
 	if (!fmtp) {
 		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
@@ -80,7 +80,9 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 	char* cmd = 0;
 	*cmdlen = 0;
 
-	rv = ipc_cmd_set(&cmd, cmdlen, code);
+	if (ipc_cmd_set(&cmd, cmdlen, code) < 0) {
+		return NULL;
+	}
 
 	while(*fmtp) {
 		char argtype = *fmtp;
@@ -112,6 +114,9 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, arglen);
 			break;
 		}
+		default:
+			//TODO: log and return error here (unknown format specifier)
+			break;
 		}
 
 		fmtp++;

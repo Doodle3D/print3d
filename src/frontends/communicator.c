@@ -10,13 +10,16 @@
 #include "../logger.h"
 #include "../utils.h"
 
-static const int IPC_WAIT_TIMEOUT = 1500;
+#define DEBUG_GCODE_FRAGMENTATION /** Uncomment to enable line counting while sending gcode data. */
+
+static const int IPC_WAIT_TIMEOUT = 60 * 1000; //how long to poll for input when we expect something, 60*1000 = 1 minute
+static const int MAX_PACKET_SIZE = 1024 - 8; //largest packet to make it through the ipc pipe (minus 8 bytes for cmdId+argNum+arg0Len)
 
 static int socketFd = -1;
 static const char *error = NULL;
 const char *comm_getError() { return error; }
 static void clearError() { error = NULL; }
-const void setError(const char *e) { error = e; }
+static void setError(const char *e) { error = e; }
 
 
 int comm_openSocketForDeviceId(const char *deviceId) {
@@ -95,13 +98,17 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen)
 
 	switch(ipc_cmd_get(rcmd, rcmdlen)) {
 	case IPC_CMDR_OK:
-		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
 		break;
-	case IPC_CMDR_ERROR:
-		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+	case IPC_CMDR_ERROR: {
+		char *errmsg = 0;
+		ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
+		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
 		setError("server returned error");
+		free(errmsg);
 		rv = -1;
 		break;
+	}
 	default:
 		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 		setError("server returned unexpected response");
@@ -216,32 +223,19 @@ int comm_stopPrintGcode(const char *deviceId) {
 	return rv;
 }
 
-int comm_sendGcodeData(const char *deviceId, const char *file) {
+int comm_sendGcodeFile(const char *deviceId, const char *file) {
 	clearError();
-
-//	char* line = 0;
-//	while ((line = readLineFromFile(fd)) != 0) {
-//	//TODO: send command with line (for real gcode files, collect them into blocks of e.g. 2000 lines)
-//	}
-	int filesize;
-	char *text = readFileContents(file, &filesize);
-	if (log_check_error(text ? 1 : 0, "could not read contents of file '%s'", file)) {
-		return -1;
-	}
-
-//	fprintf(stderr, "datalen: %i; data: '%s'\n", filesize, text);
-
 
 	if (comm_clearGcode(deviceId) < 0) return -1;
 
 
 	int scmdlen, rcmdlen;
-	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "s", text);
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "s", file);
 	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
-		log_message(LLVL_VERBOSE, "gcode appended");
+		log_message(LLVL_VERBOSE, "gcode appended from file '%s'", file);
 	} else {
 		rv = -1;
 	}
@@ -251,5 +245,74 @@ int comm_sendGcodeData(const char *deviceId, const char *file) {
 
 	free(rcmd);
 	free(scmd);
+	return rv;
+}
+
+int comm_sendGcodeData(const char *deviceId, const char *gcode) {
+	clearError();
+
+	if (comm_clearGcode(deviceId) < 0) return -1;
+
+	int rv = 0;
+	const char *startP = gcode, *endP;
+	const char *lastPos = gcode + strlen(gcode) - 1;
+#ifdef DEBUG_GCODE_FRAGMENTATION
+	int packetNum = 0, lineNum = 1;
+#else
+	int packetNum = 0;
+#endif
+
+	log_message(LLVL_INFO, "starting transmit of %i bytes of gcode data, maximum packet size is %i", strlen(gcode), MAX_PACKET_SIZE);
+	for (;;) {
+		if (startP > lastPos) break;
+
+		endP = startP + MAX_PACKET_SIZE - 1;
+		if (endP > lastPos) {
+			endP = lastPos;
+		} else {
+			while (endP >= startP && *endP != '\n') endP--;
+		}
+
+		if (endP < startP) { //line appears to be longer than MAX_PACKET_SIZE...
+#ifdef DEBUG_GCODE_FRAGMENTATION
+			log_message(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, approx. line num: %i, packet #%i)",
+					MAX_PACKET_SIZE, startP - gcode, lineNum, packetNum);
+#else
+			log_message(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, packet #%i)",
+					MAX_PACKET_SIZE, startP - gcode, packetNum);
+#endif
+			rv = -1;
+			break;
+		}
+
+#ifdef DEBUG_GCODE_FRAGMENTATION
+		for (const char *sp = startP; sp <= endP; ++sp) if (*sp == '\n') lineNum++;
+#endif
+
+		int scmdlen, rcmdlen;
+		char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "x", startP, endP - startP + 1);
+		char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+
+		if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+			log_message(LLVL_BULK, "gcode packet #%i appended (%i bytes)", packetNum, endP - startP + 1);
+		} else {
+			rv = -1;
+		}
+
+		free(rcmd);
+		free(scmd);
+		if (rv == -1) {
+			packetNum++; //to keep a correct count for debugging purposes
+			break;
+		}
+
+		startP = endP + 1;
+		packetNum++;
+	}
+	log_message(LLVL_INFO, "gcode data sent in %i packets", packetNum);
+
+
+	if (rv >= 0) if (comm_startPrintGcode(deviceId) < 0) rv = -1;
+
 	return rv;
 }

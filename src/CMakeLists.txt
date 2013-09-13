@@ -14,10 +14,16 @@ add_subdirectory(drivers)
 add_subdirectory(frontends)
 
 add_library(logger logger.c logger.h)
-add_library(utils utils.c utils.h)
+set_target_properties(logger PROPERTIES COMPILE_FLAGS "-fPIC")
+
 add_library(timer Timer.cpp Timer.h)
 
+add_library(utils utils.c utils.h)
+set_target_properties(utils PROPERTIES COMPILE_FLAGS "-fPIC")
+target_link_libraries(utils m)
+
 add_library(ipc_shared ipc_shared.c ipc_shared.h)
+set_target_properties(ipc_shared PROPERTIES COMPILE_FLAGS "-fPIC")
 target_link_libraries(ipc_shared logger utils)
 
 if(GENERATE_DOCS)

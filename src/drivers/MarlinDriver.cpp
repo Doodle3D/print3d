@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <string.h>
 #include "MarlinDriver.h"
 
 using std::string;

@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include "utils.h"
-#include <sys/time.h>
 #include <time.h>
 
 static const int READ_BUF_SIZE = 1024;
@@ -138,21 +137,26 @@ int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int
   return exitValue;
 }
 
+//NOTE: this function may return NULL without errno being set (it will have been cleared to 0 in this case)
 char *readFileContents(const char *file, int *size) {
+	errno = 0;
 	FILE* f = fopen(file, "rb");
 
 	if (!f) return NULL;
 
-	fseek(f, 0, SEEK_END);
+	if (fseek(f, 0, SEEK_END) < 0) { fclose(f); return NULL; }
 	long fsize = ftell(f);
+	if (fsize < 0) { fclose(f); return NULL; }
 	if (size) *size = fsize;
-	fseek(f, 0, SEEK_SET);
+	if (fseek(f, 0, SEEK_SET) < 0) { fclose(f); return NULL; }
 
 	char *text = malloc(fsize + 1);
-	fread(text, fsize, 1, f);
+	if (!text) { fclose(f); return NULL; }
 
+	if (fread(text, fsize, 1, f) < 1 || ferror(f)) { free(text); fclose(f); return NULL; }
 	text[fsize] = '\0';
-	fclose(f);
+
+	fclose(f); //ignore this fclose error (since we've got the data already)
 	return text;
 }
 
@@ -160,4 +164,9 @@ char *readFileContents(const char *file, int *size) {
 int equal(const char *s1, const char *s2) {
 	if (!s1 || !s2) return 0;
 	return strcmp(s1, s2) == 0 ? 1 : 0;
+}
+
+//NOTE: only supports unix-style paths
+int isAbsolutePath(const char *path) {
+	return path[0] == '/' ? 1 : 0;
 }
