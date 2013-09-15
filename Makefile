@@ -33,10 +33,10 @@ endef
 
 define Package/print3d/install
 	$(INSTALL_DIR) $(1)/bin
-	$(INSTALL_DIR) $(1)/lib
+	$(INSTALL_DIR) $(1)/usr/lib/lua
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/server/print3d $(1)/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/cmdline/p3d $(1)/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/print3d.so $(1)/lib/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/print3d.so $(1)/usr/lib/lua/
 
 endef
 

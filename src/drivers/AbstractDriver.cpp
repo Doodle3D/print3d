@@ -205,7 +205,8 @@ bool AbstractDriver::getNextLine(std::string& line) {
 bool AbstractDriver::erasePrevLine() {
 	size_t posN = gcodeBuffer.find("\n");
 	if(posN == string::npos) {
-		gcodeBuffer.erase(0);
+		//NOTE: use clear() instead of erase(0) to prevent a compiler error in openwrt
+		gcodeBuffer.clear();
 		return false;
 	} else {
 		gcodeBuffer.erase(0,posN+1);

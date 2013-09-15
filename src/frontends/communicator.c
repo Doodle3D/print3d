@@ -12,8 +12,8 @@
 
 #define DEBUG_GCODE_FRAGMENTATION /** Uncomment to enable line counting while sending gcode data. */
 
-static const int IPC_WAIT_TIMEOUT = 60 * 1000; //how long to poll for input when we expect something, 60*1000 = 1 minute
-static const int MAX_PACKET_SIZE = 1024 - 8; //largest packet to make it through the ipc pipe (minus 8 bytes for cmdId+argNum+arg0Len)
+static const int IPC_WAIT_TIMEOUT = 60 * 1000; ///How long to poll for input when we expect data (60*1000 = 1 minute).
+static const int MAX_PACKET_SIZE = 1024 - 8; ///Largest packet which can make it through the ipc pipe (minus 8 bytes for cmdId+argNum+arg0Len).
 
 static int socketFd = -1;
 static const char *error = NULL;
@@ -60,7 +60,7 @@ int comm_closeSocket() {
 	return rv;
 }
 
-static char* sendAndReceiveData(const char *deviceId, const char *sbuf, int sbuflen, int *rbuflen) {
+static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 	if (socketFd < 0) return NULL;
 
 	if (!sbuf) {
@@ -120,7 +120,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen)
 }
 
 
-int comm_testCommand(const char *deviceId, const char *question, char **answer) {
+int comm_testCommand(const char *question, char **answer) {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -129,7 +129,7 @@ int comm_testCommand(const char *deviceId, const char *question, char **answer) 
 	if (question) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, "s", question);
 	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, 0);
 
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -145,12 +145,12 @@ int comm_testCommand(const char *deviceId, const char *question, char **answer) 
 }
 
 //returns 0 on success, -1 on error (retrieved using getError())
-int comm_getTemperature(const char *deviceId, int16_t *temperature) {
+int comm_getTemperature(int16_t *temperature) {
 	clearError();
 
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -164,12 +164,12 @@ int comm_getTemperature(const char *deviceId, int16_t *temperature) {
 	return rv;
 }
 
-int comm_clearGcode(const char *deviceId) {
+int comm_clearGcode() {
 	clearError();
 
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_CLEAR, 0);
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -184,12 +184,12 @@ int comm_clearGcode(const char *deviceId) {
 }
 
 
-int comm_startPrintGcode(const char *deviceId) {
+int comm_startPrintGcode() {
 	clearError();
 
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STARTPRINT, 0);
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -204,12 +204,12 @@ int comm_startPrintGcode(const char *deviceId) {
 }
 
 
-int comm_stopPrintGcode(const char *deviceId) {
+int comm_stopPrintGcode() {
 	clearError();
 
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, 0);
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -223,15 +223,15 @@ int comm_stopPrintGcode(const char *deviceId) {
 	return rv;
 }
 
-int comm_sendGcodeFile(const char *deviceId, const char *file) {
+int comm_sendGcodeFile(const char *file) {
 	clearError();
 
-	if (comm_clearGcode(deviceId) < 0) return -1;
+	if (comm_clearGcode() < 0) return -1;
 
 
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "s", file);
-	char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
@@ -241,17 +241,17 @@ int comm_sendGcodeFile(const char *deviceId, const char *file) {
 	}
 
 
-	if (rv >= 0) if (comm_clearGcode(deviceId) < 0) rv = -1;
+	if (rv >= 0) if (comm_clearGcode() < 0) rv = -1;
 
 	free(rcmd);
 	free(scmd);
 	return rv;
 }
 
-int comm_sendGcodeData(const char *deviceId, const char *gcode) {
+int comm_sendGcodeData(const char *gcode) {
 	clearError();
 
-	if (comm_clearGcode(deviceId) < 0) return -1;
+	if (comm_clearGcode() < 0) return -1;
 
 	int rv = 0;
 	const char *startP = gcode, *endP;
@@ -291,7 +291,7 @@ int comm_sendGcodeData(const char *deviceId, const char *gcode) {
 
 		int scmdlen, rcmdlen;
 		char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "x", startP, endP - startP + 1);
-		char *rcmd = sendAndReceiveData(deviceId, scmd, scmdlen, &rcmdlen);
+		char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 		if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
 			log_message(LLVL_BULK, "gcode packet #%i appended (%i bytes)", packetNum, endP - startP + 1);
@@ -312,7 +312,7 @@ int comm_sendGcodeData(const char *deviceId, const char *gcode) {
 	log_message(LLVL_INFO, "gcode data sent in %i packets", packetNum);
 
 
-	if (rv >= 0) if (comm_startPrintGcode(deviceId) < 0) rv = -1;
+	if (rv >= 0) if (comm_startPrintGcode() < 0) rv = -1;
 
 	return rv;
 }

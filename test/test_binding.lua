@@ -3,18 +3,19 @@ package.cpath = package.cpath .. ';build/Debug/frontends/lua/?.so;../build/Debug
 local p3d = require("print3d")
 local exv = 1
 
-local rv,msg = p3d.getTemperature("xyz")
+local printer = p3d.getPrinter("xyz")
+local rv,msg = printer:getTemperature()
 
 if rv then
-	print("result of p3d.getTemperature(\"xyz\"): " .. rv)
+	print("result of printer:getTemperature(): " .. rv)
 else
-	print("p3d.getTemperature() returned an error (" .. msg .. ")")
+	print("printer:getTemperature() returned an error (" .. msg .. ")")
 end
 
-local rv,msg = p3d.setTemperatureCheckInterval("xyz", 42)
-
-if rv then
-	print("result of p3d.setTemperatureCheckInterval(\"xyz\", 42): " .. rv)
-else
-	print("p3d.setTemperatureCheckInterval(\"xyz\", 42) returned false");
-end
+--local rv,msg = printer:setTemperatureCheckInterval(42)
+--
+--if rv then
+--	print("result of printer:setTemperatureCheckInterval(42): " .. rv)
+--else
+--	print("printer:setTemperatureCheckInterval(42) returned false");
+--end

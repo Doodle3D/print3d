@@ -9,7 +9,7 @@ static void act_printTemperature() {
 	int16_t temperature;
 
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_getTemperature(deviceId, &temperature);
+	int rv = comm_getTemperature(&temperature);
 	comm_closeSocket();
 
 	if (rv > -1) printf("temperature: %i\n", temperature);
@@ -23,13 +23,13 @@ static void act_printTestResponse() {
 
 	comm_openSocketForDeviceId(deviceId);
 
-	rv = comm_testCommand(deviceId, 0, &answer);
+	rv = comm_testCommand(0, &answer);
 	if (rv > -1) printf("first test command returned: '%s'\n", answer);
 	else fprintf(stderr, "could not complete first test command (%s)\n", comm_getError());
 
 	//free(answer);
 
-	rv = comm_testCommand(deviceId, question, &answer);
+	rv = comm_testCommand(question, &answer);
 	if (rv > -1) printf("second test command returned: '%s'\n", answer);
 	else fprintf(stderr, "could not complete second test command (%s)\n", comm_getError());
 
@@ -45,7 +45,7 @@ static int action_sendGcodeFile(const char *file) {
 	}
 
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_sendGcodeFile(deviceId, file);
+	int rv = comm_sendGcodeFile(file);
 	comm_closeSocket();
 
 	if (rv > -1) {
