@@ -4,10 +4,10 @@
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lua.h"
-#include "lauxlib.h"
+#include "lua_compat.h"
 #include "../../logger.h"
 #include "../communicator.h"
+
 
 #define LIB_MOD_NAME "print3d"
 #define LIB_META_NAME LIB_MOD_NAME ".meta"
@@ -89,7 +89,11 @@ static int l_getPrinter(lua_State *L) {
 	size_t devLen;
 	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : 0;
 
-	if (!dev) lua_error(L);
+	if (!dev) {
+		lua_pushnil(L);
+		lua_pushstring(L, "device ID argument required");
+		return 2;
+	}
 
 
 	struct printerData_s **pd = lua_newuserdata(L, sizeof(struct printerData_s*));
@@ -212,6 +216,7 @@ static int l_stopPrint(lua_State *L) {
 
 static const struct luaL_Reg print3d_f[] = {
 		{"getPrinter", l_getPrinter},
+		{NULL, NULL}
 };
 
 static const struct luaL_Reg print3d_m[] = {

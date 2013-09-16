@@ -240,7 +240,8 @@ int ipc_cmd_remove(char** buf, int* buflen) {
 
 	memmove(*buf, *buf + l, *buflen - l);
 	char* t = (char*)realloc(*buf, *buflen - l);
-	if (!t) return -1;
+	//NOTE: t might be NULL if we asked to reallocate to 0 bytes (happens on openwrt but not on osx)
+	if (t == NULL && (*buflen - l) > 0) return -1;
 
 	*buf = t;
 	*buflen -= l;
