@@ -89,17 +89,17 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 
 		switch(argtype) {
 		case 'b': {
-			int8_t arg = va_arg(args, int8_t);
+			int8_t arg = va_arg(args, int);
 			ipc_cmd_add_arg(&cmd, cmdlen, &arg, 1);
 			break;
 		}
 		case 'w': {
-			int16_t arg = htons(va_arg(args, int16_t));
+			int16_t arg = htons(va_arg(args, int));
 			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, 2);
 			break;
 		}
 		case 'W': {
-			int32_t arg = htonl(va_arg(args, int32_t));
+			int32_t arg = htonl(va_arg(args, int));
 			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, 4);
 			break;
 		}
@@ -110,7 +110,7 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 		}
 		case 'x': { //add binary blob, requires a second length argument
 			char* arg = va_arg(args, char*);
-			uint32_t arglen = va_arg(args, uint32_t);
+			uint32_t arglen = va_arg(args, uint);
 			ipc_cmd_add_arg(&cmd, cmdlen, (void*)arg, arglen);
 			break;
 		}
