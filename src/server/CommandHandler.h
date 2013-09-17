@@ -31,6 +31,9 @@ private:
 	static void hnd_gcodeAppendFile(Client& client, const char* buf, int buflen);
 	static void hnd_gcodeStartPrint(Client& client, const char* buf, int buflen);
 	static void hnd_gcodeStopPrint(Client& client, const char* buf, int buflen);
+	static void hnd_heatup(Client& client, const char* buf, int buflen);
+	static void hnd_getProgress(Client& client, const char* buf, int buflen);
+	static void hnd_getState(Client& client, const char* buf, int buflen);
 };
 
 #endif /* ! COMMAND_HANDLER_H_SEEN */

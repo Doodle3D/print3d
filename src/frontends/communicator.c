@@ -133,7 +133,12 @@ int comm_testCommand(const char *question, char **answer) {
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
-		rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, answer);
+		if (ipc_cmd_num_args(rcmd, rcmdlen) < 1) {
+			rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, answer);
+		} else {
+			log_message(LLVL_ERROR, "received response to test ipc command with less than 1 argument");
+			rv = -1;
+		}
 	} else {
 		rv = -1;
 	}
@@ -145,16 +150,21 @@ int comm_testCommand(const char *question, char **answer) {
 }
 
 //returns 0 on success, -1 on error (retrieved using getError())
-int comm_getTemperature(int16_t *temperature) {
+int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which) {
 	clearError();
 
 	int scmdlen, rcmdlen;
-	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_TEMPERATURE, 0);
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_TEMPERATURE, "w", which);
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
-		rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 0, temperature);
+		if (ipc_cmd_num_args(rcmd, rcmdlen) < 1) {
+			rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 0, temperature);
+		} else {
+			log_message(LLVL_ERROR, "received response to get temperature ipc command with less than 1 argument");
+			rv = -1;
+		}
 	} else {
 		rv = -1;
 	}
@@ -314,5 +324,44 @@ int comm_sendGcodeData(const char *gcode) {
 
 	if (rv >= 0) if (comm_startPrintGcode() < 0) rv = -1;
 
+	return rv;
+}
+
+int comm_heatup(int temperature) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_HEATUP, "w", temperature);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
+
+	int rv = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen);
+
+	free(rcmd);
+	free(scmd);
+	return rv;
+}
+
+int comm_getProgress(int16_t *currentLine, int16_t *numLines) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_PROGRESS, 0);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen) >= 0) {
+		if (ipc_cmd_num_args(rcmd, rcmdlen) < 2) {
+			rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 0, currentLine);
+			if (rv > -1) rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 1, numLines);
+		} else {
+			log_message(LLVL_ERROR, "received response to get progress ipc command with less than 2 arguments");
+			rv = -1;
+		}
+	} else {
+		rv = -1;
+	}
+
+	free(rcmd);
+	free(scmd);
 	return rv;
 }
