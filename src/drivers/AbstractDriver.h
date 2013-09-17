@@ -52,18 +52,33 @@ public:
   void startPrint();
   void stopPrint();
 
+  void heatup(int temperature);
+
   /*
 	 * Get cached extruder temperature
 	 */
 	int getTemperature() const;
+
+  /*
+	 * Get cached extruder target temperature
+	 */
+	int getTargetTemperature() const;
+
 	/*
 	 * Get cached bed temperature
 	 */
 	int getBedTemperature() const;
+
+  /*
+	 * Get cached bed target temperature
+	 */
+	int getTargetBedTemperature() const;
+
 	/*
 	 * Get line number of codeBuffer that the printer should be printing
 	 */
   int getCurrentLine() const;
+
   /*
 	 * Get line number of codeBuffer that the printer should be printing
 	 */

@@ -1,5 +1,6 @@
 #include "AbstractDriver.h"
 #include <algorithm>
+#include <sstream>
 
 using std::string;
 using std::size_t;
@@ -97,6 +98,13 @@ void AbstractDriver::updateGCodeInfo() {
 	currentLine_ = std::min(currentLine_,numLines_-1);
 }
 
+//TODO: review this function
+void AbstractDriver::heatup(int temperature) {
+	std::ostringstream oss;
+	oss << "M104 S" << temperature;
+	sendCode(oss.str());
+}
+
 /*
  * Print control
  */
@@ -142,8 +150,16 @@ int AbstractDriver::getTemperature() const {
 	return temperature_;
 }
 
+int AbstractDriver::getTargetTemperature() const {
+	return targetTemperature_;
+}
+
 int AbstractDriver::getBedTemperature() const {
 	return bedTemperature_;
+}
+
+int AbstractDriver::getTargetBedTemperature() const {
+	return targetBedTemperature_;
 }
 
 int AbstractDriver::getCurrentLine() const {
