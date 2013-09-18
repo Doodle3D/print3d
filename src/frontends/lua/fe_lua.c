@@ -1,5 +1,11 @@
 #define LUA_LIB
 
+//TODO:
+//write code such that printer IDs never have to be passed (always default to first (and probably only) printer found)
+//number getNumPrinters()
+//table getPrinterList()
+//table getPrinterDetails(id?)
+
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
@@ -11,7 +17,6 @@
 
 #define LIB_MOD_NAME "print3d"
 #define LIB_META_NAME LIB_MOD_NAME ".meta"
-//#define PRINTER_META_KEY "Print3d.print3d"
 #define PRINTER_META_KEY LIB_META_NAME
 
 
@@ -62,14 +67,6 @@ int initContext(lua_State* L) {
 }
 
 
-//make all printer-specific calls also usable with the printer:call() syntax (see libuci-lua)
-//write code such that printer IDs never have to be passed (always default to first (and probably only) printer found)
-
-//TODO: implement:
-//number getNumPrinters()
-//table getPrinterList()
-//table getPrinterDetails(id?)
-
 static int l_lua_gc(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	if (ctx) {
@@ -79,11 +76,13 @@ static int l_lua_gc(lua_State *L) {
 	return 0;
 }
 
+
 int l_lua_tostring(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	lua_pushfstring(L, "3D-printer[%s]", ctx->deviceId);
 	return 1;
 }
+
 
 static int l_getPrinter(lua_State *L) {
 	size_t devLen;
@@ -108,12 +107,20 @@ static int l_getPrinter(lua_State *L) {
 
 static int l_getTemperature(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int16_t temperature;
-	int rv = comm_getTemperature(&temperature);
+
+	int16_t tH, tHt, tB, tBt;
+	int rv = comm_getTemperature(&tH, IPC_TEMP_HOTEND);
+	if (rv >= 0) rv = comm_getTemperature(&tHt, IPC_TEMP_HOTEND_TGT);
+	if (rv >= 0) rv = comm_getTemperature(&tB, IPC_TEMP_BED);
+	if (rv >= 0) rv = comm_getTemperature(&tBt, IPC_TEMP_BED_TGT);
 	comm_closeSocket();
 
 	if (rv > -1) {
-		lua_pushnumber(L, temperature);
+		lua_newtable(L);
+		lua_pushnumber(L, tH); lua_setfield(L, -2, "hotend");
+		lua_pushnumber(L, tHt); lua_setfield(L, -2, "hotend_target");
+		lua_pushnumber(L, tB); lua_setfield(L, -2, "bed");
+		lua_pushnumber(L, tBt); lua_setfield(L, -2, "bed_target");
 		return 1;
 	} else {
 		lua_pushnil(L);
@@ -134,18 +141,14 @@ static int l_clearGcode(lua_State *L) {
 		return 2;
 	}
 
-	return 0;
+	lua_pushboolean(L, 1);
+	return 1;
 }
+
 
 static int l_appendGcode(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	if (lua_gettop(L) == 0) {
-		lua_pushnil(L);
-		lua_pushstring(L, "expected argument containing gcode");
-	}
-
-	const char *data = luaL_checkstring(L, 1);
-	int rv = comm_sendGcodeData(data);
+	int rv = comm_sendGcodeData(luaL_checkstring(L, 2));
 	comm_closeSocket();
 
 	if (rv < -1) {
@@ -154,18 +157,14 @@ static int l_appendGcode(lua_State *L) {
 		return 2;
 	}
 
-	return 0;
+	lua_pushboolean(L, 1);
+	return 1;
 }
+
 
 static int l_appendFileContents(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	if (lua_gettop(L) == 0) {
-		lua_pushnil(L);
-		lua_pushstring(L, "expected argument containing filename");
-	}
-
-	const char *file = luaL_checkstring(L, 1);
-	int rv = comm_sendGcodeFile(file);
+	int rv = comm_sendGcodeFile(luaL_checkstring(L, 2));
 	comm_closeSocket();
 
 	if (rv < -1) {
@@ -174,8 +173,10 @@ static int l_appendFileContents(lua_State *L) {
 		return 2;
 	}
 
-	return 0;
+	lua_pushboolean(L, 1);
+	return 1;
 }
+
 
 static int l_startPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
@@ -188,8 +189,10 @@ static int l_startPrint(lua_State *L) {
 		return 2;
 	}
 
-	return 0;
+	lua_pushboolean(L, 1);
+	return 1;
 }
+
 
 static int l_stopPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
@@ -202,13 +205,49 @@ static int l_stopPrint(lua_State *L) {
 		return 2;
 	}
 
-	return 0;
+	lua_pushboolean(L, 1);
+	return 1;
 }
 
-//static int l_isPrinting(lua_State *L) {
-//	return 0;
-//}
-//static int l_getProgress(lua_State *L) {
+
+static int l_heatup(lua_State *L) {
+	if (initContext(L) != 0) return 2; //nil+msg already on stack
+
+	int rv = comm_heatup(luaL_checkinteger(L, 2));
+	comm_closeSocket();
+
+	if (rv < -1) {
+		lua_pushnil(L);
+		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		return 2;
+	}
+
+	lua_pushboolean(L, 1);
+	return 1;
+}
+
+
+//returns currentLine+numLines or nil+errmsg
+static int l_getProgress(lua_State *L) {
+	if (initContext(L) != 0) return 2; //nil+msg already on stack
+
+	int16_t currentLine, numLines;
+	int rv = comm_getProgress(&currentLine, &numLines);
+	comm_closeSocket();
+
+	if (rv > -1) {
+		lua_pushnumber(L, currentLine);
+		lua_pushnumber(L, numLines);
+		return 2;
+	} else {
+		lua_pushnil(L);
+		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		return 2;
+	}
+}
+
+
+//static int l_getState(lua_State *L) {
 //	return 0;
 //}
 
@@ -228,8 +267,9 @@ static const struct luaL_Reg print3d_m[] = {
 		{"appendFileContents", l_appendFileContents},
 		{"startPrint", l_startPrint},
 		{"stopPrint", l_stopPrint},
-		//{"isPrinting", l_isPrinting},
-		//{"getProgress", l_getProgress},
+		{"heatup", l_heatup},
+		{"getProgress", l_getProgress},
+		//{"getState", l_getState},
 		{NULL, NULL}
 };
 
