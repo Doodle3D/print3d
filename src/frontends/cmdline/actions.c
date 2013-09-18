@@ -6,14 +6,27 @@
 #include "fe_cmdline.h"
 
 static void act_printTemperature() {
-	int16_t temperature;
+	int16_t hotendTemperature = INT16_MIN, hotendTargetTemperature = INT16_MIN;
+	int16_t bedTemperature = INT16_MIN, bedTargetTemperature = INT16_MIN;
 
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_getTemperature(&temperature);
+
+	if (comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND) < 0)
+		fprintf(stderr, "could not read hotend temperature (%s)\n", comm_getError());
+
+	if (comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT) < 0)
+		fprintf(stderr, "could not read hotend target temperature (%s)\n", comm_getError());
+
+	if (comm_getTemperature(&bedTemperature, IPC_TEMP_BED) < 0)
+		fprintf(stderr, "could not read bed temperature (%s)\n", comm_getError());
+
+	if (comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT) < 0)
+		fprintf(stderr, "could not read bed target temperature (%s)\n", comm_getError());
+
 	comm_closeSocket();
 
-	if (rv > -1) printf("temperature: %i\n", temperature);
-	else fprintf(stderr, "could not read temperature (%s)\n", comm_getError());
+	printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i\n",
+			hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
 }
 
 static void act_printTestResponse() {
@@ -38,7 +51,7 @@ static void act_printTestResponse() {
 	comm_closeSocket();
 }
 
-static int action_sendGcodeFile(const char *file) {
+static int act_sendGcodeFile(const char *file) {
 	if (!isAbsolutePath(file)) {
 		fprintf(stderr, "please supply an absolute path for the file to print\n");
 		return 1;
@@ -57,6 +70,39 @@ static int action_sendGcodeFile(const char *file) {
 	}
 }
 
+static int act_printProgress() {
+	int16_t currentLine = INT16_MIN, numLines = INT16_MIN;
+
+	comm_openSocketForDeviceId(deviceId);
+
+	if (comm_getProgress(&currentLine, &numLines) < 0) {
+		fprintf(stderr, "could not get printing progress (%s)\n", comm_getError());
+		return 1;
+	}
+
+	comm_closeSocket();
+
+	printf("printing progress %i of %i lines", currentLine, numLines);
+	if (numLines != 0) printf(" (%f%%)\n", (float)currentLine / numLines * 100);
+
+	return 0;
+}
+
+static int act_doHeatup(int temperature) {
+	comm_openSocketForDeviceId(deviceId);
+	int rv = comm_heatup(temperature);
+	comm_closeSocket();
+
+	if (rv > -1) {
+		printf("requested printer heatup to %i degrees celcius\n", temperature);
+		return 0;
+	} else {
+		fprintf(stderr, "could not request printer heatup (%s)\n", comm_getError());
+		return 1;
+	}
+}
+
+
 int handle_action(int argc, char **argv, ACTION_TYPE action) {
 	switch(verbosity) {
 	case -1:
@@ -74,10 +120,12 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
 		printf("\t-v,--verbose\t\tPrint verbose output\t\n");
-		printf("\t-g,--get <parameter>\tRetrieve the given parameter (currently 'temperature' or 'test')\n");
-		printf("\t-t,--get-temperature\tRetrieve the printer temperature\n");
+		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|progress)\n");
+		printf("\t-t,--temperature\tRetrieve the printer temperature\n");
+		printf("\t-p,--progress\t\tRetrieve printing progress\n");
 		printf("\t-s,--supported\t\tRetrieve a list of supported printers\n");
-		printf("\t-d,--device <device-id>\tPrint to the given device-id\n");
+		printf("\t-d,--device <dev-id>\tPrint to the given device-id\n");
+		printf("\t-w,--heatup <temp>\tAsk the printer to heatup to the given temperature (degrees celcius)\n");
 		printf("\t-f,--gcode-file <file>\tPrint the given g-code file\n");
 		printf("\t-c,--gcode <gcode>\tPrint the specified line of g-code\n");
 		return 0;
@@ -87,16 +135,20 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 	case AT_GET_TEST:
 		act_printTestResponse();
 		return 0;
+	case AT_GET_PROGRESS:
+		return act_printProgress();
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");
 		return 0;
+	case AT_HEATUP:
+		return act_doHeatup(heatup_temperature);
 	case AT_PRINT_FILE:
 		if (!print_file) {
 			fprintf(stderr, "error: missing filename to print\n");
 			return 1;
 		}
 
-		return action_sendGcodeFile(print_file);
+		return act_sendGcodeFile(print_file);
 	case AT_SEND_CODE:
 		if (!send_gcode) {
 			fprintf(stderr, "error: missing g-code to print\n");

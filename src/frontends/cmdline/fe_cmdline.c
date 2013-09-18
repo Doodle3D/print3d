@@ -13,10 +13,12 @@ static struct option long_options[] = {
 		{"verbose", no_argument, NULL, 'v'},
 
 		{"get", required_argument, NULL, 'g'},
-		{"get-temperature", no_argument, NULL, 't'},
+		{"temperature", no_argument, NULL, 't'},
+		{"progress", no_argument, NULL, 'p'},
 		{"supported", no_argument, NULL, 's'},
 
 		{"device", required_argument, NULL, 'd'},
+		{"heatup", required_argument, NULL, 'w'},
 		{"gcode-file", required_argument, NULL, 'f'},
 		{"gcode", required_argument, NULL, 'c'},
 
@@ -26,6 +28,7 @@ static struct option long_options[] = {
 int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
 char *deviceId = NULL;
 char *print_file = NULL, *send_gcode = NULL;
+int heatup_temperature = -1;
 
 static int deviceIdRequired = 0;
 static ACTION_TYPE action = AT_NONE;
@@ -33,7 +36,7 @@ static ACTION_TYPE action = AT_NONE;
 
 void parse_options(int argc, char **argv) {
 	char ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tsd:f:c:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:w:f:c:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
@@ -44,15 +47,28 @@ void parse_options(int argc, char **argv) {
 				deviceIdRequired = 1;
 			} else if (strcmp(optarg, "test") == 0) {
 				action = AT_GET_TEST;
+			} else if (strcmp(optarg, "progress") == 0) {
+				action = AT_GET_PROGRESS;
 			}
 			break;
 		case 't':
 			action = AT_GET_TEMPERATURE;
 			deviceIdRequired = 1;
 			break;
-		case 's': action = AT_GET_SUPPORTED; break;
+		case 'p':
+			action = AT_GET_PROGRESS;
+			deviceIdRequired = 1;
+			break;
+		case 's':
+			action = AT_GET_SUPPORTED;
+			break;
 		case 'd':
 			deviceId = optarg;
+			break;
+		case 'w':
+			action = AT_HEATUP;
+			heatup_temperature = atoi(optarg);
+			deviceIdRequired = 1;
 			break;
 		case 'f':
 			print_file = optarg;
