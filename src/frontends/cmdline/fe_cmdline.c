@@ -80,6 +80,9 @@ void parse_options(int argc, char **argv) {
 			action = AT_SEND_CODE;
 			deviceIdRequired = 1;
 			break;
+		case '?': /* signifies an error (like option with missing argument) */
+			action = AT_ERROR;
+			break;
 		}
 	}
 }
@@ -87,6 +90,10 @@ void parse_options(int argc, char **argv) {
 
 int main(int argc, char **argv) {
 	parse_options(argc, argv);
+
+	if (action == AT_ERROR) {
+		exit(2);
+	}
 
 	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 0) ? " (verbose mode)" : "");
 

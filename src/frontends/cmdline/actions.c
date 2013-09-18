@@ -70,6 +70,20 @@ static int act_sendGcodeFile(const char *file) {
 	}
 }
 
+static int act_sendGcode(const char *gcode) {
+	comm_openSocketForDeviceId(deviceId);
+	int rv = comm_sendGcodeData(gcode);
+	comm_closeSocket();
+
+	if (rv > -1) {
+		printf("sent gcode\n");
+		return 0;
+	} else {
+		fprintf(stderr, "could not send gcode (%s)\n", comm_getError());
+		return 1;
+	}
+}
+
 static int act_printProgress() {
 	int16_t currentLine = INT16_MIN, numLines = INT16_MIN;
 
@@ -82,8 +96,8 @@ static int act_printProgress() {
 
 	comm_closeSocket();
 
-	printf("printing progress %i of %i lines", currentLine, numLines);
-	if (numLines != 0) printf(" (%f%%)\n", (float)currentLine / numLines * 100);
+	printf("print progress: %i of %i lines", currentLine, numLines);
+	if (numLines != 0) printf(" (%.1f%%)\n", (float)currentLine / numLines * 100);
 
 	return 0;
 }
@@ -114,6 +128,10 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 	}
 
 	switch (action) {
+	case AT_ERROR:
+		fprintf(stderr, "Action handler called with 'error' action, this should not happen.\n");
+		return 2;
+		break;
 	case AT_NONE: case AT_SHOW_HELP:
 		printf("Basic usage: '%s [<options>]'.\n", argv[0]);
 		printf("The following options are available:\n");
@@ -154,7 +172,7 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 			fprintf(stderr, "error: missing g-code to print\n");
 			return 1;
 		}
-		printf("[dummy] send gcode: '%s'\n", send_gcode);
+		act_sendGcode(send_gcode);
 		return 0;
 	}
 
