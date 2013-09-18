@@ -14,7 +14,7 @@ int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which);
 
 int comm_clearGcode();
 int comm_startPrintGcode();
-int comm_stopPrintGcode();
+int comm_stopPrintGcode(const char *endCode);
 int comm_sendGcodeFile(const char *file);
 int comm_sendGcodeData(const char *gcode);
 

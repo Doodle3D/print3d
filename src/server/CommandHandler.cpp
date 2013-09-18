@@ -146,6 +146,7 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 		} else {
 			client.sendError(errno > 0 ? strerror(errno) : "error reading file");
 		}
+		free(filename);
 	} else {
 		Logger::getInstance().log(Logger::ERROR, "received append gcode file command without argument");
 		client.sendError("missing argument");
@@ -164,7 +165,16 @@ void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int bu
 void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
 	Logger::getInstance().log(Logger::VERBOSE, "received stop print gcode command");
 	AbstractDriver* driver = client.getServer().getDriver();
-	driver->stopPrint();
+
+	if (ipc_cmd_num_args(buf, buflen) > 0) {
+		char *argText = 0;
+		ipc_cmd_get_string_arg(buf, buflen, 0, &argText);
+		string endCode(argText);
+		free(argText);
+		driver->stopPrint(endCode);
+	} else {
+		driver->stopPrint();
+	}
 	client.sendOk();
 }
 

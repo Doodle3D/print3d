@@ -124,6 +124,12 @@ void AbstractDriver::startPrint() {
 void AbstractDriver::stopPrint() {
 	resetPrint();
 }
+void AbstractDriver::stopPrint(const std::string& endcode) {
+	resetPrint();
+	//TODO: implement
+	log_.log(Logger::WARNING, "AbstractDriver::stopPrint: ignoring %i bytes of ending g-code", endcode.length());
+	if (endcode.length() < 100) log_.log(Logger::WARNING, "ignored code was: '%s'", endcode.c_str());
+}
 void AbstractDriver::resetPrint() {
 	log_.log(Logger::BULK, "AbstractDriver::resetPrint");
 	setState(IDLE);

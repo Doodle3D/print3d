@@ -51,6 +51,7 @@ public:
   void startPrint(const std::string& gcode);
   void startPrint();
   void stopPrint();
+  void stopPrint(const std::string& endcode);
 
   void heatup(int temperature);
 

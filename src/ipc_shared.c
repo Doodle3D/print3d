@@ -19,15 +19,15 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDS_NONE, "none", "-", "" },
 
 		/* request commands sent by clients */
-		{ IPC_CMDQ_TEST, "test", "*", "*" },
-		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" },
+		{ IPC_CMDQ_TEST, "test", "*", "*" }, //NOTE: echoes anything it receives?
+		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" }, //NOTE: accepts 'which' selector
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
 		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" }, //NOTE: should accept "s" as well as "x"
-		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" },
+		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" }, //NOTE: accepts absolute path to file
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
-		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "", "" },
-		{ IPC_CMDQ_HEATUP, "heatup", "w", "" },
-		{ IPC_CMDQ_GET_PROGRESS, "getProgress", "", "ww" },
+		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "*", "" }, //NOTE: accepts optional "s" or "x" with end g-code
+		{ IPC_CMDQ_HEATUP, "heatup", "w", "" }, //NOTE: accepts heatup target temperature
+		{ IPC_CMDQ_GET_PROGRESS, "getProgress", "", "ww" }, //NOTE: returns currentLine and numLines
 //		TODO: implement this somehow... { IPC_CMDQ_GCODE_STATE, "getState", "", "s" },
 
 		/* response commands send by server */

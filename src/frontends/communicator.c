@@ -209,11 +209,16 @@ int comm_startPrintGcode() {
 }
 
 
-int comm_stopPrintGcode() {
+int comm_stopPrintGcode(const char *endCode) {
 	clearError();
 
 	int scmdlen, rcmdlen;
-	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, 0);
+
+	char *scmd = 0;
+
+	if (!endCode) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, 0);
+	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, "s", endCode);
+
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;

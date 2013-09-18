@@ -105,7 +105,7 @@ static int l_getPrinter(lua_State *L) {
 }
 
 
-static int l_getTemperature(lua_State *L) {
+static int l_getTemperatures(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 
 	int16_t tH, tHt, tB, tBt;
@@ -196,7 +196,13 @@ static int l_startPrint(lua_State *L) {
 
 static int l_stopPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int rv = comm_stopPrintGcode();
+
+	const char *endCode = 0;
+	if (lua_gettop(L) > 1) {
+		endCode = luaL_checkstring(L, 2);
+	}
+
+	int rv = comm_stopPrintGcode(endCode);
 	comm_closeSocket();
 
 	if (rv < -1) {
@@ -261,7 +267,7 @@ static const struct luaL_Reg print3d_f[] = {
 static const struct luaL_Reg print3d_m[] = {
 		{"__gc", l_lua_gc},
 		{"__tostring", l_lua_tostring},
-		{"getTemperature", l_getTemperature},
+		{"getTemperatures", l_getTemperatures},
 		{"clearGcode", l_clearGcode},
 		{"appendGcode", l_appendGcode},
 		{"appendFileContents", l_appendFileContents},
