@@ -11,7 +11,7 @@ Client::Client(Server& server, int fd)
 : server_(server), fd_(fd), buffer_(0), bufferSize_(0)
 { /* empty */ }
 
-//TODO: find a way to use recv wit extra arg in readAndAppendAvailableData()
+//TODO: find a way to use recv with extra arg in readAndAppendAvailableData()
 int Client::readData() {
 	return readAndAppendAvailableData(fd_, &buffer_, &bufferSize_, 0, 1);
 }

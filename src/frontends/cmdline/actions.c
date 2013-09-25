@@ -102,6 +102,24 @@ static int act_printProgress() {
 	return 0;
 }
 
+static int act_printState() {
+	char *state;
+
+	comm_openSocketForDeviceId(deviceId);
+
+	if (comm_getState(&state) < 0) {
+		fprintf(stderr, "could not get printer state (%s)\n", comm_getError());
+		return 1;
+	}
+
+	//free(state);
+	comm_closeSocket();
+
+	printf("printer state: '%s'\n", state);
+
+	return 0;
+}
+
 static int act_doHeatup(int temperature) {
 	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_heatup(temperature);
@@ -141,7 +159,8 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|progress)\n");
 		printf("\t-t,--temperature\tRetrieve the printer temperature\n");
 		printf("\t-p,--progress\t\tRetrieve printing progress\n");
-		printf("\t-s,--supported\t\tRetrieve a list of supported printers\n");
+		printf("\t-s,--state\t\tQuery the printer state\n");
+		printf("\t-S,--supported\t\tRetrieve a list of supported printers\n");
 		printf("\t-d,--device <dev-id>\tPrint to the given device-id\n");
 		printf("\t-w,--heatup <temp>\tAsk the printer to heatup to the given temperature (degrees celcius)\n");
 		printf("\t-f,--gcode-file <file>\tPrint the given g-code file\n");
@@ -155,6 +174,8 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		return 0;
 	case AT_GET_PROGRESS:
 		return act_printProgress();
+	case AT_GET_STATE:
+		return act_printState();
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");
 		return 0;

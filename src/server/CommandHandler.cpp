@@ -208,5 +208,12 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 
 //static
 void CommandHandler::hnd_getState(Client& client, const char* buf, int buflen) {
-	//TODO: implement
+	AbstractDriver* driver = client.getServer().getDriver();
+
+	const string& state = driver->getStateString(driver->getState());
+
+	int cmdlen;
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", state.c_str());
+	client.sendData(cmd, cmdlen);
+	free(cmd);
 }

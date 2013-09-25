@@ -7,6 +7,14 @@ local printer = p3d.getPrinter("xyz")
 local rv,msg
 
 
+rv,msg = printer:getState()
+if rv then
+	print("printer:getState returned '" .. rv .. "'")
+else
+	print("printer:getState returned false/nil");
+end
+
+
 rv,msg = printer:getTemperatures()
 if rv then
 	if type(rv) == 'table' then

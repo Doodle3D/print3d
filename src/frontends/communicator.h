@@ -20,6 +20,6 @@ int comm_sendGcodeData(const char *gcode);
 
 int comm_heatup(int temperature);
 int comm_getProgress(int16_t *currentLine, int16_t *numLines);
-//TODO: int comm_getState(string? enum?);
+int comm_getState(char **state);
 
 #endif /* COMMUNICATOR_H_SEEN */

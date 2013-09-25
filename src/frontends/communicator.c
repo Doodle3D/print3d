@@ -360,3 +360,24 @@ int comm_getProgress(int16_t *currentLine, int16_t *numLines) {
 	free(scmd);
 	return rv;
 }
+
+int comm_getState(char **state) {
+	clearError();
+
+	int scmdlen, rcmdlen;
+
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GET_STATE, 0);
+	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
+
+	int rv = 0;
+	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1) >= 0) {
+		rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, state);
+	} else {
+		rv = -1;
+	}
+
+	free(rcmd);
+	free(scmd);
+
+	return rv;
+}

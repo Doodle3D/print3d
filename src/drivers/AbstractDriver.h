@@ -30,13 +30,17 @@ public:
   //   static const AbstractDriver::DriverInfo& getDriverInfo();
 
   typedef enum STATE{
-  	DISCONNECTED,
+  	UNKNOWN = 0,
+  	DISCONNECTED = 1,
   	IDLE,
   	PRINTING /* executing commands */
   } STATE;
 
   explicit AbstractDriver(const std::string& serialPortPath, const uint32_t& baudrate);
   virtual ~AbstractDriver();
+
+  //apparently gcc is quite good at avoiding unncessary copies (see NRVO)
+  const std::vector<std::string> findDeviceIds();
 
   int openConnection();
   int closeConnection();

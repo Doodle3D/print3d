@@ -15,7 +15,8 @@ static struct option long_options[] = {
 		{"get", required_argument, NULL, 'g'},
 		{"temperature", no_argument, NULL, 't'},
 		{"progress", no_argument, NULL, 'p'},
-		{"supported", no_argument, NULL, 's'},
+		{"state", no_argument, NULL, 's'},
+		{"supported", no_argument, NULL, 'S'},
 
 		{"device", required_argument, NULL, 'd'},
 		{"heatup", required_argument, NULL, 'w'},
@@ -60,6 +61,9 @@ void parse_options(int argc, char **argv) {
 			deviceIdRequired = 1;
 			break;
 		case 's':
+			action = AT_GET_STATE;
+			break;
+		case 'S':
 			action = AT_GET_SUPPORTED;
 			break;
 		case 'd':

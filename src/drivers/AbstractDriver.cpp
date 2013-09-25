@@ -1,6 +1,7 @@
 #include "AbstractDriver.h"
 #include <algorithm>
 #include <sstream>
+#include <dirent.h>
 
 using std::string;
 using std::size_t;
@@ -20,6 +21,25 @@ AbstractDriver::AbstractDriver(const string& serialPortPath, const uint32_t& bau
 AbstractDriver::~AbstractDriver() {
 	serial_.close();
 }
+
+
+//http://stackoverflow.com/questions/612097/how-can-i-get-a-list-of-files-in-a-directory-using-c-or-c
+//const std::vector<std::string> AbstractDriver::findDeviceIds() {
+//	//static const char **names = {"/dev/ttyACM", "/dev/ttyUSB", NULL}; //for linux
+//	static const char **names = {"/dev/tty.usbmodem", NULL}; //for OSX
+//
+//	std::vector<std::string> result;
+//	DIR *dir = opendir("/dev");
+//	struct dirent *ent = 0;
+//	while ((ent = readdir(dir)) != 0) {
+//		//loop through candidates:
+//		if (ent->d_type == ... && strncmp(ent->d_name, ) == 0) {
+//			result.push_back(ent->d_name);
+//		}
+//	}
+//	closedir(dir);
+//	return result;
+//}
 
 int AbstractDriver::openConnection() {
 	log_.log(Logger::VERBOSE,"AbstractDriver::openConnection");

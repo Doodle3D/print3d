@@ -253,9 +253,22 @@ static int l_getProgress(lua_State *L) {
 }
 
 
-//static int l_getState(lua_State *L) {
-//	return 0;
-//}
+static int l_getState(lua_State *L) {
+	if (initContext(L) != 0) return 2; //nil+msg already on stack
+
+	char *state;
+	int rv = comm_getState(&state);
+	comm_closeSocket();
+
+	if (rv > -1) {
+		lua_pushstring(L, state);
+		return 1;
+	} else {
+		lua_pushnil(L);
+		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		return 2;
+	}
+}
 
 
 
@@ -275,7 +288,7 @@ static const struct luaL_Reg print3d_m[] = {
 		{"stopPrint", l_stopPrint},
 		{"heatup", l_heatup},
 		{"getProgress", l_getProgress},
-		//{"getState", l_getState},
+		{"getState", l_getState},
 		{NULL, NULL}
 };
 
