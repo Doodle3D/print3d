@@ -31,6 +31,8 @@ int log_check_error(int rv, const char* format, ...);
 void log_va_message(ELOG_LEVEL level, const char* format, va_list args);
 int log_va_check_error(int rv, const char* format, va_list args);
 
+void log_ipc_cmd(ELOG_LEVEL level, const char *buf, int buflen, const char *fmt);
+
 #ifdef __cplusplus
 	} //extern "C"
 #endif

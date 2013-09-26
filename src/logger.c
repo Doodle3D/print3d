@@ -2,8 +2,10 @@
 
 #include <errno.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "ipc_shared.h"
 #include "logger.h"
 
 
@@ -98,4 +100,15 @@ int log_va_check_error(int rv, const char* format, va_list args) {
 	log_message(LLVL_ERROR, "%s (%s)", buf, strerror(savedErrno));
 
 	return 1;
+}
+
+void log_ipc_cmd(ELOG_LEVEL level, const char *buf, int buflen, const char *fmt) {
+	if (!stream_ || level > level_) return; //check this before calling command stringifier
+
+	char *cmd_text = 0;
+	ipc_stringify_cmd(buf, buflen, fmt, &cmd_text);
+
+	log_message(level, "[IPC] command: %s", cmd_text);
+
+	free(cmd_text);
 }

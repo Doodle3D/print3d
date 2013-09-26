@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 	//TODO: handle cmdline args
 
 	Logger& log = Logger::getInstance();
-	log.open(stderr, Logger::BULK);
+	log.open(stderr, Logger::VERBOSE);
 
   log.log(Logger::INFO,"serialDevice: %s",serialDevice.c_str());
 

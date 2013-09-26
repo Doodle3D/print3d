@@ -52,8 +52,9 @@ typedef enum IPC_TEMPERATURE_PARAMETER {
  * case #IPC_CMDR_OK is returned).
  *
  * Argument descriptions consist of a single character for each argument (either
- * on of {b,w,W,s,b}), '*' or '-'. '*' means argument count and types are
+ * on of {b,w,W,s,x}), '*' or '-'. '*' means argument count and types are
  * unspecified, '-' means the command is not valid to send/receive at all.
+ * NOTE: 'b' has been removed.
  *
  * If #IPC_COMMAND_CODE.reply_fmt is NULL, no response is expected (typically
  * for commands which are responses themselves).
@@ -131,15 +132,27 @@ IPC_COMMAND_CODE ipc_cmd_get(const char* buf, int buflen);
  * @param addzero Appends a nul-byte to create ASCIIZ string if !0
  * @retval 0 on success
  * @retval -1 on system error (see errno)
- * @retval -2 if the command buffer is invalid
+ * @retval -2 if the command buffer or argidx are invalid
  */
 int ipc_cmd_get_arg(const char* buf, int buflen, char** argbuf, int* argbuflen, int argidx, int addzero);
+
+/** Returns the length of the given argument.
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @param argidx The index of the argument to extract
+ * @retval >=0 the requested length
+ * @retval -2 on invalid argument index
+ */
+int ipc_cmd_get_arg_len(const char *buf, int buflen, int argidx);
 
 //get arg and convert to asciiz string. out is newly allocated
 int ipc_cmd_get_string_arg(const char* buf, int buflen, int argidx, char** out);
 
 //get arg and convert to int16_t
 int ipc_cmd_get_short_arg(const char* buf, int buflen, int argidx, int16_t* out);
+
+//get arg and convert to int32_t
+int ipc_cmd_get_long_arg(const char* buf, int buflen, int argidx, int32_t* out);
 
 /** Removes the first complete command from the start of the buffer.
  *
@@ -150,6 +163,17 @@ int ipc_cmd_get_short_arg(const char* buf, int buflen, int argidx, int16_t* out)
  * @retval -1 on system error (see errno)
  */
 int ipc_cmd_remove(char** buf, int* buflen);
+
+/** Creates a string describing the given command.
+ * @param buf Command buffer
+ * @param buflen Command buffer length
+ * @param fmt Format string to use for the command
+ * @param outbuf Output buffer, this will be allocated and nul-terminated
+ * @retval 1 if stringification was successful
+ * @retval 0 if stringification was not successful (no allocation has been done)
+ * @retval -1 on system error (see errno)
+ */
+int ipc_stringify_cmd(const char *buf, int buflen, const char *fmt, char **outbuf);
 
 #ifdef __cplusplus
 } //extern "C"

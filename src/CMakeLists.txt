@@ -20,6 +20,7 @@ add_subdirectory(frontends)
 
 add_library(logger logger.c logger.h)
 set_target_properties(logger PROPERTIES COMPILE_FLAGS "-fPIC")
+target_link_libraries(logger ipc_shared)
 
 add_library(timer Timer.cpp Timer.h)
 
@@ -28,7 +29,7 @@ set_target_properties(utils PROPERTIES COMPILE_FLAGS "-fPIC")
 target_link_libraries(utils m)
 
 add_library(ipc_shared ipc_shared.c ipc_shared.h)
-set_target_properties(ipc_shared PROPERTIES COMPILE_FLAGS "-fPIC")
+set_target_properties(ipc_shared PROPERTIES COMPILE_FLAGS "-fPIC -std=c99")
 target_link_libraries(ipc_shared logger utils)
 
 if(GENERATE_DOCS)

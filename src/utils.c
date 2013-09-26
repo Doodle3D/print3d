@@ -12,19 +12,23 @@
 static const int READ_BUF_SIZE = 1024;
 
 
-//returns a newly allocated ASCIIZ string, or NULL if an error occured
-char* number_to_string(int n) {
-	int asclen = (int)((ceil(log10(fabs(n))) + 2) * sizeof(char));
-	char *argbuf = (char*)malloc(asclen);
+char *number_to_string(int n, char *buf) {
+	int buflen = number_length(n) + 1;
+	char *argbuf = buf ? buf : (char*)malloc(buflen);
 
 	if (!argbuf) return NULL;
 
-	if (snprintf(argbuf, asclen, "%i", n) < asclen) {
+	if (snprintf(argbuf, buflen, "%i", n) < buflen) {
 		return argbuf;
 	} else {
-		free(argbuf);
+		if (!buf) free(argbuf);
 		return NULL;
 	}
+}
+
+int number_length(int n) {
+	int sign = (n < 0) ? 1 : 0;
+	return sign + (int)( (ceil( log10( fabs(n) ) )) * sizeof(char) );
 }
 
 uint16_t read_ns(const void *p) {
