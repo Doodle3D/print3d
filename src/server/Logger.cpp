@@ -1,8 +1,10 @@
 #include <errno.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include "Logger.h"
+#include "../ipc_shared.h"
 
 
 /* STATIC */
@@ -99,6 +101,16 @@ bool Logger::vaCheckError(int rv, const char* format, va_list args) const {
 	return true;
 }
 
+void Logger::logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isReply) {
+	if (!stream_ || level > level_) return; //check this before calling command stringifier
+
+	char *cmd_text = 0;
+	ipc_stringify_cmd(buf, buflen, isReply ? 1 : 0, &cmd_text);
+
+	log(level, "[IPC] command: %s", cmd_text);
+
+	free(cmd_text);
+}
 
 /*********************
  * PRIVATE FUNCTIONS *

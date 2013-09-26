@@ -31,6 +31,7 @@ public:
 	void vaLog(ELOG_LEVEL level, const char* format, va_list args) const;
 	bool checkError(int rv, const char* format, ...) const;
 	bool vaCheckError(int rv, const char* format, va_list args) const;
+	void logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isReply = false);
 
 private:
 	ELOG_LEVEL level_;

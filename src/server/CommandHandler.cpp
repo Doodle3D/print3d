@@ -32,6 +32,8 @@ void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
 	const handlerFunctions* hfunc = HANDLERS;
 	IPC_COMMAND_CODE code = ipc_cmd_get(buf, buflen);
 
+	Logger::getInstance().logIpcCmd(Logger::VERBOSE, buf, buflen);
+
 	while(hfunc->hndFunc) {
 		if (hfunc->code == code) hfunc->hndFunc(client, buf, buflen);
 		hfunc++;
@@ -59,7 +61,7 @@ void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 	printf("argtext='%s'\n", argtext);
 
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", argtext);
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "x", argtext, strlen(argtext));
 	free(argtext);
 
 	client.sendData(cmd, cmdlen);
@@ -213,7 +215,7 @@ void CommandHandler::hnd_getState(Client& client, const char* buf, int buflen) {
 	const string& state = driver->getStateString(driver->getState());
 
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "s", state.c_str());
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "x", state.c_str(), state.length());
 	client.sendData(cmd, cmdlen);
 	free(cmd);
 }

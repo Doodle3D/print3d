@@ -45,7 +45,7 @@ bool Client::sendOk() {
 
 bool Client::sendError(const std::string& message) {
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "s", message.c_str());
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "x", message.c_str(), message.length());
 	if (!cmd) return false;
 	sendData(cmd, cmdlen);
 	free(cmd);

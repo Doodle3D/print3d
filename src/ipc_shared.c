@@ -22,13 +22,13 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_TEST, "test", "*", "*" }, //NOTE: echoes anything it receives?
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" }, //NOTE: accepts 'which' selector
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
-		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" }, //NOTE: should accept "s" as well as "x"
-		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "s", "" }, //NOTE: accepts absolute path to file
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "x", "" },
+		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "x", "" }, //NOTE: accepts absolute path to file
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
-		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "*", "" }, //NOTE: accepts optional "s" or "x" with end g-code
+		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "x", "" }, //NOTE: accepts end g-code (ignored if 0 length)
 		{ IPC_CMDQ_HEATUP, "heatup", "w", "" }, //NOTE: accepts heatup target temperature
 		{ IPC_CMDQ_GET_PROGRESS, "getProgress", "", "ww" }, //NOTE: returns currentLine and numLines
-		{ IPC_CMDQ_GET_STATE, "getState", "", "s" },
+		{ IPC_CMDQ_GET_STATE, "getState", "", "x" },
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
@@ -281,13 +281,14 @@ int ipc_cmd_remove(char** buf, int* buflen) {
 	return 1;
 }
 
-int ipc_stringify_cmd(const char *buf, int buflen, const char *fmt, char **outbuf) {
-	const ipc_cmd_name_s *cmd = &IPC_COMMANDS[ipc_cmd_get(buf, buflen)];
+int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf) {
+	const ipc_cmd_name_s *cmd = findCommandDescription(ipc_cmd_get(buf, buflen));
 	int outlen = strlen(cmd->name) + 3; //"[" + name + "]" + nul
+	const char *fmt = (is_reply == 0) ? cmd->arg_fmt : cmd->reply_fmt;
 
 	*outbuf = (char*)realloc(*outbuf, outlen);
 	if (*outbuf == NULL) return -1;
-	*outbuf = "[";
+	strcpy(*outbuf, "[");
 	strcat(*outbuf, cmd->name);
 
 	int num_args = ipc_cmd_num_args(buf, buflen);
@@ -334,7 +335,6 @@ int ipc_stringify_cmd(const char *buf, int buflen, const char *fmt, char **outbu
 				break;
 			}
 
-			case 's': /* fall-through */
 			case 'x': {
 				char *s = 0;
 				ipc_cmd_get_string_arg(buf, buflen, i, &s);

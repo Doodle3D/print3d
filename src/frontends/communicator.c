@@ -69,7 +69,8 @@ static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 		return NULL;
 	}
 
-	log_message(LLVL_VERBOSE, "sending command 0x%x (%i bytes)", ipc_cmd_get(sbuf, sbuflen), sbuflen);
+	log_message(LLVL_VERBOSE, "sending command");
+	log_ipc_cmd(LLVL_VERBOSE, sbuf, sbuflen, 0);
 	int rv = send(socketFd, sbuf, sbuflen, 0); //this should block until all data has been sent
 
 	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
@@ -131,7 +132,7 @@ int comm_testCommand(const char *question, char **answer) {
 	int scmdlen, rcmdlen;
 
 	char *scmd;
-	if (question) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, "s", question);
+	if (question) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, "x", question, strlen(question));
 	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_TEST, 0);
 
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
@@ -216,8 +217,8 @@ int comm_stopPrintGcode(const char *endCode) {
 
 	char *scmd = 0;
 
-	if (!endCode) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, 0);
-	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, "s", endCode);
+	if (!endCode) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, "x", "", 0);
+	else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_STOPPRINT, "x", endCode, strlen(endCode));
 
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
@@ -240,7 +241,7 @@ int comm_sendGcodeFile(const char *file) {
 
 
 	int scmdlen, rcmdlen;
-	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "s", file);
+	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "x", file, strlen(file));
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;

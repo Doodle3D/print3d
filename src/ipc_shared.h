@@ -167,13 +167,13 @@ int ipc_cmd_remove(char** buf, int* buflen);
 /** Creates a string describing the given command.
  * @param buf Command buffer
  * @param buflen Command buffer length
- * @param fmt Format string to use for the command
+ * @param is_reply 0 if the command is a request, 1 if it is a reply
  * @param outbuf Output buffer, this will be allocated and nul-terminated
  * @retval 1 if stringification was successful
  * @retval 0 if stringification was not successful (no allocation has been done)
  * @retval -1 on system error (see errno)
  */
-int ipc_stringify_cmd(const char *buf, int buflen, const char *fmt, char **outbuf);
+int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf);
 
 #ifdef __cplusplus
 } //extern "C"

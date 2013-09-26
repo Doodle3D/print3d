@@ -27,8 +27,10 @@ char *number_to_string(int n, char *buf) {
 }
 
 int number_length(int n) {
+	//NOTE: log10(0)==infinity *and* ceil(log10(...)) fails for 1,10,100,etc
+	if (n == 0) return 1;
 	int sign = (n < 0) ? 1 : 0;
-	return sign + (int)( (ceil( log10( fabs(n) ) )) * sizeof(char) );
+	return sign + (int)( (floor( log10( fabs(n) ) ) + 1) * sizeof(char) );
 }
 
 uint16_t read_ns(const void *p) {
