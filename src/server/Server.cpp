@@ -72,7 +72,11 @@ int Server::start(bool fork) {
 	while (true) {
 		//log_.log(Logger::BULK, "begin while");
 		readFds = masterFds;
+		for (set_int::const_iterator it = registeredFds_.begin(); it != registeredFds_.end(); it++) {
+			FD_SET(*it, &readFds);
+		}
 		::gettimeofday(&startTime, NULL);
+
 		//log_.log(Logger::BULK, "entering select(), maxfd=%i", maxFd);
 		if (log_.checkError(
 				::select(maxFd + 1, &readFds, NULL, NULL, timeoutEnabled ? &timeout : NULL), /* use FD_SETSIZE instead of keeping maxfd? */
@@ -137,6 +141,15 @@ int Server::start(bool fork) {
 	}
 
 	return 0;
+}
+
+bool Server::registerFileDescriptor(int fd) {
+	std::pair<set_int::iterator, bool> rv = registeredFds_.insert(fd);
+	return rv.second;
+}
+
+bool Server::unregisterFileDescriptor(int fd) {
+	return (registeredFds_.erase(fd) == 1);
 }
 
 AbstractDriver* Server::getDriver() {

@@ -3,6 +3,7 @@
 
 #include <sys/un.h>
 #include <string>
+#include <set>
 #include <vector>
 #include "Logger.h"
 #include "../drivers/AbstractDriver.h"
@@ -14,11 +15,14 @@ public:
 	static const bool FORK_BY_DEFAULT;
 
 	typedef std::vector<Client*> vec_ClientP;
+	typedef std::set<int> set_int;
 
 	Server(const std::string& serialPortName, const std::string& socketPath);
 	~Server();
 
 	int start(bool fork = FORK_BY_DEFAULT);
+	bool registerFileDescriptor(int fd);
+	bool unregisterFileDescriptor(int fd);
 
 	AbstractDriver* getDriver();
 	const AbstractDriver* getDriver() const;
@@ -34,6 +38,7 @@ private:
 
 	const Logger& log_;
 	int socketFd_;
+	set_int registeredFds_;
 	AbstractDriver* printerDriver_;
 
 	vec_ClientP clients_;
