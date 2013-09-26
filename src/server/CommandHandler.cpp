@@ -73,8 +73,9 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		AbstractDriver* driver = client.getServer().getDriver();
 
-		IPC_TEMPERATURE_PARAMETER which = IPC_TEMP_NONE;
-		ipc_cmd_get_short_arg(buf, buflen, 0, (short int*)&which);
+		int16_t arg;
+		ipc_cmd_get_short_arg(buf, buflen, 0, &arg);
+		IPC_TEMPERATURE_PARAMETER which = (IPC_TEMPERATURE_PARAMETER)arg;
 		int temp = 0;
 		switch(which) {
 		case IPC_TEMP_HOTEND: temp = driver->getTemperature(); break;
