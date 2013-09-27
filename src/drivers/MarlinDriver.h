@@ -8,12 +8,12 @@
 
 class MarlinDriver : public AbstractDriver {
 public:
-	explicit MarlinDriver(const std::string& serialPortPath, const uint32_t& baudrate);
+	explicit MarlinDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
   static const AbstractDriver::DriverInfo& getDriverInfo();
 	virtual int update();
 
-  static AbstractDriver* create(const std::string& serialPortPath, const uint32_t& baudrate);
+  static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
 protected:
   void readCode(std::string& code);

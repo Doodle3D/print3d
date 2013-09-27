@@ -78,7 +78,7 @@ int Serial::close() {
 	return rv;
 }
 
-bool Serial::isOpen() {
+bool Serial::isOpen() const {
   return portFd_ > -1;
 }
 
@@ -162,8 +162,12 @@ char* Serial::getBuffer() {
   return buffer_;
 }
 
-int Serial::getBufferSize() {
+int Serial::getBufferSize() const {
   return bufferSize_;
+}
+
+int Serial::getFileDescriptor() const {
+	return portFd_;
 }
 
 string* Serial::extractLine() {

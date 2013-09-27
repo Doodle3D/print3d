@@ -6,6 +6,8 @@
 #include <vector>
 #include "Serial.h"
 
+class Server;
+
 class AbstractDriver {
 public:
 
@@ -19,7 +21,7 @@ public:
   // typedef (shorthand) for list of firmware descriptions
   typedef std::vector<FirmwareDescription> vec_FirmwareDescription;
   // typedef (shorthand) for create instance function of driver
-  typedef AbstractDriver* (*creatorFunc)(const std::string& serialPortPath, const uint32_t& baudrate);
+  typedef AbstractDriver* (*creatorFunc)(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
   // driver info per driver (used in DriverFactory)
   struct DriverInfo {
 	  vec_FirmwareDescription supportedFirmware;
@@ -36,7 +38,7 @@ public:
   	PRINTING /* executing commands */
   } STATE;
 
-  explicit AbstractDriver(const std::string& serialPortPath, const uint32_t& baudrate);
+  explicit AbstractDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
   virtual ~AbstractDriver();
 
   //apparently gcc is quite good at avoiding unncessary copies (see NRVO)
@@ -125,6 +127,7 @@ protected:
   void switchBaudrate();
   Serial serial_;
   Logger& log_;
+  Server& server_;
 
 private:
 	const std::string serialPortPath_;

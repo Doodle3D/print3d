@@ -1,7 +1,7 @@
 #include "MarlinDriver.h"
 #include "DriverFactory.h"
 
-AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const std::string& serialPortPath, const uint32_t& baudrate) {
+AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
   static vec_DriverInfoP driverInfos;
 
 
@@ -31,7 +31,7 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, const
       // if match create driver instance
       if((*f).name == driverName) {
         log.log(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
-        return di.creator(serialPortPath,baudrate);
+        return di.creator(server, serialPortPath,baudrate);
       }
     }
   }

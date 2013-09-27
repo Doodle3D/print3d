@@ -4,8 +4,8 @@
 
 using std::string;
 
-MarlinDriver::MarlinDriver(const std::string& serialPortPath, const uint32_t& baudrate)
-: AbstractDriver(serialPortPath, baudrate),
+MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
+: AbstractDriver(server, serialPortPath, baudrate),
   checkTempInterval_(2000),
   checkTemperatureAttempt_(0),
   maxCheckTemperatureAttempts_(2),
@@ -219,8 +219,8 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 
   return info;
 }
-AbstractDriver* MarlinDriver::create(const std::string& serialPortPath, const uint32_t& baudrate) {
-  return new MarlinDriver(serialPortPath, baudrate);
+AbstractDriver* MarlinDriver::create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
+  return new MarlinDriver(server, serialPortPath, baudrate);
 }
 
 

@@ -1,12 +1,13 @@
-#include "AbstractDriver.h"
 #include <algorithm>
 #include <sstream>
 #include <dirent.h>
+#include "AbstractDriver.h"
+#include "../server/Server.h"
 
 using std::string;
 using std::size_t;
 
-AbstractDriver::AbstractDriver(const string& serialPortPath, const uint32_t& baudrate)
+AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : temperature_(0),
   targetTemperature_(0),
   bedTemperature_(0),
@@ -15,6 +16,7 @@ AbstractDriver::AbstractDriver(const string& serialPortPath, const uint32_t& bau
   numLines_(-1),
   state_(DISCONNECTED),
   log_(Logger::getInstance()),
+  server_(server),
   serialPortPath_(serialPortPath),
   baudrate_(baudrate) { }
 
@@ -53,6 +55,7 @@ int AbstractDriver::openConnection() {
 	// TODO: when this baudrate is incorrect another should be tried
 	//  and it should be reported so that the one that does works gets
 	//  saved as preference.
+	server_.registerFileDescriptor(serial_.getFileDescriptor());
 	setBaudrate(baudrate_);
 
 	return 0;
@@ -60,6 +63,7 @@ int AbstractDriver::openConnection() {
 
 int AbstractDriver::closeConnection() {
 	setState(DISCONNECTED);
+	server_.unregisterFileDescriptor(serial_.getFileDescriptor());
 	return serial_.close();
 }
 

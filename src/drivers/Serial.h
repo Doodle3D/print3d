@@ -14,14 +14,15 @@ public:
 
 	int open(const char* file);
 	int close();
-  bool isOpen();
+  bool isOpen()  const;
 	SET_SPEED_RESULT setSpeed(int speed);
 	bool send(const char* code) const;
 
   int readData();
 
   char* getBuffer();
-  int getBufferSize();
+  int getBufferSize()  const;
+  int getFileDescriptor() const;
 
   //convenience function for plain text data
   std::string* extractLine();
