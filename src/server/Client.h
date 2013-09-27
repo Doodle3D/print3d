@@ -3,6 +3,7 @@
 
 #include <string>
 
+class Logger;
 class Server;
 
 class Client {
@@ -26,6 +27,7 @@ private:
 	Client(const Client& o);
 	void operator=(const Client& o);
 
+	Logger& logger_;
 	Server& server_;
 
 	int fd_;

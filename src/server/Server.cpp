@@ -70,7 +70,6 @@ int Server::start(bool fork) {
 	struct timeval timeout = (struct timeval){ 0, 0 };
 	struct timeval startTime, endTime, diffTime;
 	while (true) {
-		//log_.log(Logger::BULK, "begin while");
 		readFds = masterFds;
 		for (set_int::const_iterator it = registeredFds_.begin(); it != registeredFds_.end(); it++) {
 			FD_SET(*it, &readFds);
@@ -101,7 +100,7 @@ int Server::start(bool fork) {
 			log_.checkError(::fcntl(connFd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on socket with fd ", connFd);
 
 			clients_.push_back(new Client(*this, connFd));
-			log_.log(Logger::VERBOSE, "new client with fd %i", connFd);
+			log_.log(Logger::BULK, "new client with fd %i", connFd);
 
 			maxFd = (connFd > maxFd ? connFd : maxFd);
 			FD_SET(connFd, &masterFds);
@@ -120,7 +119,7 @@ int Server::start(bool fork) {
 			}
 
 			if (rv == -2) {
-				log_.log(Logger::VERBOSE, "connection closed from client with fd %i", client->getFileDescriptor());
+				log_.log(Logger::BULK, "connection closed from client with fd %i", client->getFileDescriptor());
 				FD_CLR(client->getFileDescriptor(), &masterFds);
 				delete(client);
 				it = clients_.erase(it);

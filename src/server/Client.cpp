@@ -8,7 +8,7 @@
 #include "../utils.h"
 
 Client::Client(Server& server, int fd)
-: server_(server), fd_(fd), buffer_(0), bufferSize_(0)
+: logger_(Logger::getInstance()), server_(server), fd_(fd), buffer_(0), bufferSize_(0)
 { /* empty */ }
 
 //TODO: find a way to use recv with extra arg in readAndAppendAvailableData()
@@ -26,9 +26,11 @@ void Client::runCommands() {
 bool Client::sendData(const char* buf, int buflen) {
 	if (fd_ == -1) return false;
 
+	logger_.logIpcCmd(Logger::VERBOSE, buf, buflen, true); //NOTE: we assume the buffer contains an ipc command
+
 	int rv = ::send(fd_, buf, buflen, 0);
 
-	Logger::getInstance().checkError(rv, "could not send data in client with fd %i", getFileDescriptor());
+	logger_.checkError(rv, "could not send data in client with fd %i", getFileDescriptor());
 
 	return (rv == buflen);
 }
@@ -38,6 +40,7 @@ bool Client::sendOk() {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "");
 	if (!cmd) return false;
+	logger_.logIpcCmd(Logger::VERBOSE, cmd, cmdlen, true);
 	sendData(cmd, cmdlen);
 	free(cmd);
 	return true;
@@ -47,6 +50,7 @@ bool Client::sendError(const std::string& message) {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "x", message.c_str(), message.length());
 	if (!cmd) return false;
+	logger_.logIpcCmd(Logger::VERBOSE, cmd, cmdlen, true);
 	sendData(cmd, cmdlen);
 	free(cmd);
 	return true;

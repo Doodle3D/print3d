@@ -283,17 +283,19 @@ int ipc_cmd_remove(char** buf, int* buflen) {
 
 int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf) {
 	const ipc_cmd_name_s *cmd = findCommandDescription(ipc_cmd_get(buf, buflen));
-	int outlen = strlen(cmd->name) + 3; //"[" + name + "]" + nul
-	const char *fmt = (is_reply == 0) ? cmd->arg_fmt : cmd->reply_fmt;
+	int outlen = strlen(cmd->name) + 5; //"[" ['<<'|'>>'] + name + "]" + nul
+	//const char *fmt = (is_reply == 0) ? cmd->arg_fmt : cmd->reply_fmt; //NOTE: reply_fmt is quite useless
+	const char *fmt = cmd->arg_fmt;
 
 	*outbuf = (char*)realloc(*outbuf, outlen);
 	if (*outbuf == NULL) return -1;
-	strcpy(*outbuf, "[");
+	strcpy(*outbuf, is_reply ? "[<<" : "[>>");
 	strcat(*outbuf, cmd->name);
 
 	int num_args = ipc_cmd_num_args(buf, buflen);
+	int fmt_idx = 0;
 	for (int i = 0; i < num_args; i++) {
-		char type = fmt[i];
+		char type = fmt[fmt_idx];
 		if (type == '\0') {
 			const char *text = ":!...";
 			int args_left = num_args - 1 - i;
@@ -356,6 +358,8 @@ int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf) 
 				free(s);
 				break;
 			}
+
+			if (type != '\0' && type != '*') fmt_idx++;
 		}
 	}
 	strcat(*outbuf, "]");

@@ -69,7 +69,6 @@ static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 		return NULL;
 	}
 
-	log_message(LLVL_VERBOSE, "sending command");
 	log_ipc_cmd(LLVL_VERBOSE, sbuf, sbuflen, 0);
 	int rv = send(socketFd, sbuf, sbuflen, 0); //this should block until all data has been sent
 
@@ -80,7 +79,7 @@ static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 		log_message(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
 		setError("could not send complete ipc command");
 	} else {
-		log_message(LLVL_VERBOSE, "ipc command 0x%x sent", ipc_cmd_get(sbuf, sbuflen));
+		log_message(LLVL_BULK, "ipc command 0x%x sent", ipc_cmd_get(sbuf, sbuflen));
 	}
 
 	char *rbuf = 0;
@@ -95,31 +94,32 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 	if (!rcmd) return -1; //NOTE: do not log anything, this is already in sendAndReceiveData()
 
 	int rv = 0;
-	log_message(LLVL_VERBOSE, "received %i bytes", rcmdlen);
+	log_ipc_cmd(LLVL_VERBOSE, rcmd, rcmdlen, 1);
 
 	switch(ipc_cmd_get(rcmd, rcmdlen)) {
-	case IPC_CMDR_OK:
-		log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
-		int numArgs = ipc_cmd_num_args(rcmd, rcmdlen);
-		if (numArgs != expectedArgCount) {
-			log_message(LLVL_ERROR, "received ipc response with %i arguments (expected %i)", numArgs, expectedArgCount);
-			rv = -1;
+		case IPC_CMDR_OK: {
+			//log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
+			int numArgs = ipc_cmd_num_args(rcmd, rcmdlen);
+			if (numArgs != expectedArgCount) {
+				log_message(LLVL_ERROR, "received ipc response with %i arguments (expected %i)", numArgs, expectedArgCount);
+				rv = -1;
+			}
+			break;
 		}
-		break;
-	case IPC_CMDR_ERROR: {
-		char *errmsg = 0;
-		ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
-		log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
-		setError("server returned error");
-		free(errmsg);
-		rv = -1;
-		break;
-	}
-	default:
-		log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
-		setError("server returned unexpected response");
-		rv = -1;
-		break;
+		case IPC_CMDR_ERROR: {
+			char *errmsg = 0;
+			ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
+			//log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
+			setError("server returned error");
+			free(errmsg);
+			rv = -1;
+			break;
+		}
+		default:
+			log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+			setError("server returned unexpected response");
+			rv = -1;
+			break;
 	}
 
 	return rv;

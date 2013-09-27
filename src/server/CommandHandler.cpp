@@ -58,7 +58,6 @@ void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 	} else {
 		asprintf(&argtext, "printserver test answer without question");
 	}
-	printf("argtext='%s'\n", argtext);
 
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "x", argtext, strlen(argtext));
