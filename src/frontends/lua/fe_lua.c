@@ -83,6 +83,12 @@ int l_lua_tostring(lua_State *L) {
 	return 1;
 }
 
+int l_lua_getId(lua_State *L) {
+	struct printerData_s *ctx = getContext(L);
+	lua_pushstring(L, ctx->deviceId);
+	return 1;
+}
+
 
 static int l_getPrinter(lua_State *L) {
 	size_t devLen;
@@ -280,6 +286,7 @@ static const struct luaL_Reg print3d_f[] = {
 static const struct luaL_Reg print3d_m[] = {
 		{"__gc", l_lua_gc},
 		{"__tostring", l_lua_tostring},
+		{"getId", l_lua_getId},
 		{"getTemperatures", l_getTemperatures},
 		{"clearGcode", l_clearGcode},
 		{"appendGcode", l_appendGcode},

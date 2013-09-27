@@ -7,11 +7,11 @@ local printer = p3d.getPrinter("xyz")
 local rv,msg
 
 
-rv,msg = printer:getState()
+rv,msg = printer:getId()
 if rv then
-	print("printer:getState returned '" .. rv .. "'")
+	print("printer:getId returned '" .. rv .. "'")
 else
-	print("printer:getState returned false/nil");
+	print("printer:getId returned false/nil");
 end
 
 

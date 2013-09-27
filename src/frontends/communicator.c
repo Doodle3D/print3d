@@ -252,7 +252,7 @@ int comm_sendGcodeFile(const char *file) {
 	}
 
 
-	if (rv >= 0) if (comm_clearGcode() < 0) rv = -1;
+	if (rv >= 0) if (comm_startPrintGcode() < 0) rv = -1;
 
 	free(rcmd);
 	free(scmd);
