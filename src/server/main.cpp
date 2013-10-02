@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 
   log.log(Logger::INFO,"serialDevice: %s",serialDevice.c_str());
 
-	Server s(serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
+	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
 
 	int rv;
 

@@ -67,6 +67,7 @@ void parseOptions(int argc, char **argv) {
 			break;
 		case 's':
 			action = AT_GET_STATE;
+			deviceIdRequired = 1;
 			break;
 		case 'S':
 			action = AT_GET_SUPPORTED;
@@ -132,6 +133,7 @@ int main(int argc, char **argv) {
 			exit(1);
 		} else if (devlist[0] == NULL) { //no devices, but force-run requested
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
+			printf("no device specified and none found, using default (%s)\n", deviceId);
 		} else if (devlist[1] != NULL) { //multiple devices found
 			fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
 			for (int i = 0; devlist[i] != 0; i++) {
@@ -150,6 +152,7 @@ int main(int argc, char **argv) {
 		if (slashPtr) memmove(deviceId, slashPtr + 1, strlen(deviceId) - (slashPtr - deviceId));
 	}
 
+	//NOTE: this may print (null) as device, which is okay for commands not requiring a server connection
 	printf("Using device ID '%s'\n", deviceId);
 	int rv = handleAction(argc, argv, action);
 	ipc_free_device_list(devlist);

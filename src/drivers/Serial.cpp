@@ -58,7 +58,7 @@ int Serial::open(const char* file) {
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
 	//log_.log(Logger::VERBOSE,"  serial opened %i",portFd_);
 	if (portFd_ < 0) {
-		log_.log(Logger::ERROR,"Could not open port %s\n", file);
+		log_.log(Logger::ERROR,"Could not open port %s (%s)\n", file, strerror(errno));
 		return portFd_;
 	}
 

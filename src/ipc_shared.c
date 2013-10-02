@@ -112,8 +112,7 @@ char **ipc_find_devices() {
 
 void ipc_free_device_list(char **list) {
 	if (!list) return;
-	char *item = *list;
-	while (item) free(item);
+	for (int i = 0; list[i] != NULL; i++) free(list[i]);
 	free(list);
 }
 
