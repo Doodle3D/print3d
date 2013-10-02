@@ -7,6 +7,9 @@
 using std::string;
 using std::size_t;
 
+//STATIC
+const string AbstractDriver::STATE_NAMES[] = {"unknown", "disconnected","idle","printing"};
+
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : temperature_(0),
   targetTemperature_(0),
@@ -66,6 +69,7 @@ void AbstractDriver::setGCode(const std::string& gcode) {
 void AbstractDriver::appendGCode(const std::string& gcode) {
 	setGCode(gcodeBuffer + gcode);
 }
+
 /*
  * Clear (empty) GCode buffer
  */
@@ -92,7 +96,7 @@ void AbstractDriver::filterGCode() {
 		if(posCommentEnd == string::npos) { // no newline found
 			gcodeBuffer.erase(posComment); // so erase remaining text
 		} else {
-			gcodeBuffer.erase(posComment,posCommentEnd-posComment+1);
+			gcodeBuffer.erase(posComment,posCommentEnd-posComment);
 		}
 	}
 }
@@ -104,7 +108,6 @@ void AbstractDriver::updateGCodeInfo() {
 	currentLine_ = std::min(currentLine_,numLines_-1);
 }
 
-//TODO: review this function
 void AbstractDriver::heatup(int temperature) {
 	std::ostringstream oss;
 	oss << "M104 S" << temperature;
@@ -133,7 +136,7 @@ void AbstractDriver::stopPrint() {
 void AbstractDriver::stopPrint(const std::string& endcode) {
 	resetPrint();
 	//TODO: implement
-	log_.log(Logger::WARNING, "AbstractDriver::stopPrint: ignoring %i bytes of ending g-code", endcode.length());
+	log_.log(Logger::WARNING, "AbstractDriver::stopPrint: ignoring %i bytes of end g-code", endcode.length());
 	if (endcode.length() < 100) log_.log(Logger::WARNING, "ignored code was: '%s'", endcode.c_str());
 }
 void AbstractDriver::resetPrint() {
@@ -191,8 +194,7 @@ void AbstractDriver::setState(STATE state) {
 }
 
 const std::string &AbstractDriver::getStateString(STATE state) {
-	static const std::string stateString[] = {"disconnected","idle","printing"};
-	return stateString[state];
+	return STATE_NAMES[state];
 }
 int AbstractDriver::readData() {
 
@@ -201,7 +203,8 @@ int AbstractDriver::readData() {
 	int rv = serial_.readData();
 	log_.checkError(rv, "cannot read from device");
 	if (rv == -2) {
-		log_.log(Logger::INFO, "nothing to read anymore (remote end closed?)");
+		log_.log(Logger::INFO, "nothing to read anymore (remote end closed?), closing port");
+		serial_.close();
 	} else if (rv == -1 && errno == ENXIO) {
 		log_.log(Logger::ERROR, "port was disconnected, closing port");
 		serial_.close();

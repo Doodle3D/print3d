@@ -1,13 +1,21 @@
-#include <dirent.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <arpa/inet.h>
 #include "logger.h"
 #include "utils.h"
 #include "ipc_shared.h"
+
+#include <string.h>
+#ifndef strdup
+extern char *strdup (__const char *__s);
+#endif
+
+#define __USE_BSD /* NOTE: to get DT_CHR in openwrt */
+//#include <sys/dir.h>
+//#include <sys/types.h>
+#include <dirent.h>
 
 //NOTE: this construct is here to provide plain C access to command names for frontends/communicator.c
 #ifdef __cplusplus

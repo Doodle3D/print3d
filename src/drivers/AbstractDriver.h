@@ -130,6 +130,8 @@ protected:
   Server& server_;
 
 private:
+  static const std::string STATE_NAMES[];
+
 	const std::string serialPortPath_;
 	uint32_t baudrate_;
 

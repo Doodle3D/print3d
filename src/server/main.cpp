@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 
 		ipc_free_device_list(devlist);
 	} else {
-		int lastSlash = serialDevice.rfind('/');
+		size_t lastSlash = serialDevice.rfind('/');
 		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
 	}
 
