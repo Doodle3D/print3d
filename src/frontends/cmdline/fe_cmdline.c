@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "fe_cmdline.h"
+#include "../../ipc_shared.h"
 
 
 static struct option long_options[] = {
@@ -19,6 +20,7 @@ static struct option long_options[] = {
 		{"supported", no_argument, NULL, 'S'},
 
 		{"device", required_argument, NULL, 'd'},
+		{"force-run", no_argument, NULL, 'F'},
 		{"heatup", required_argument, NULL, 'w'},
 		{"gcode-file", required_argument, NULL, 'f'},
 		{"gcode", required_argument, NULL, 'c'},
@@ -30,16 +32,17 @@ static struct option long_options[] = {
 
 int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
 char *deviceId = NULL;
-char *print_file = NULL, *send_gcode = NULL, *end_gcode = NULL;
-int heatup_temperature = -1;
+char *printFile = NULL, *sendGcode = NULL, *endGcode = NULL;
+int heatupTemperature = -1;
+int forceStart = 0;
 
 static int deviceIdRequired = 0;
 static ACTION_TYPE action = AT_NONE;
 
 
-void parse_options(int argc, char **argv) {
+void parseOptions(int argc, char **argv) {
 	char ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:w:f:c:kK:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:kK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
@@ -71,27 +74,32 @@ void parse_options(int argc, char **argv) {
 		case 'd':
 			deviceId = optarg;
 			break;
+		case 'F':
+			forceStart = 1;
+			break;
 		case 'w':
 			action = AT_HEATUP;
-			heatup_temperature = atoi(optarg);
+			heatupTemperature = atoi(optarg);
 			deviceIdRequired = 1;
 			break;
 		case 'f':
-			print_file = optarg;
+			printFile = optarg;
 			action = AT_PRINT_FILE;
 			deviceIdRequired = 1;
 			break;
 		case 'c':
-			send_gcode = optarg;
+			sendGcode = optarg;
 			action = AT_SEND_CODE;
 			deviceIdRequired = 1;
 			break;
 		case 'k':
 			action = AT_STOP_PRINT;
+			deviceIdRequired = 1;
 			break;
 		case 'K':
-			end_gcode = optarg;
+			endGcode = optarg;
 			action = AT_STOP_PRINT;
+			deviceIdRequired = 1;
 			break;
 		case '?': /* signifies an error (like option with missing argument) */
 			action = AT_ERROR;
@@ -102,7 +110,7 @@ void parse_options(int argc, char **argv) {
 
 
 int main(int argc, char **argv) {
-	parse_options(argc, argv);
+	parseOptions(argc, argv);
 
 	if (action == AT_ERROR) {
 		exit(2);
@@ -110,13 +118,41 @@ int main(int argc, char **argv) {
 
 	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 0) ? " (verbose mode)" : "");
 
+	char **devlist = NULL;
 	if (deviceIdRequired && !deviceId) {
-		deviceId = "xyz"; //default tho this for now
-		fprintf(stderr, "error: missing device-id\n");
-		exit(1);
+		devlist = ipc_find_devices();
+
+		if (!devlist) { //no device list
+			fprintf(stderr, "error: could not obtain device list\n");
+			exit(1);
+		}
+
+		if (devlist[0] == NULL && forceStart == 0) { //no devices found, and no force-run
+			fprintf(stderr, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'\n");
+			exit(1);
+		} else if (devlist[0] == NULL) { //no devices, but force-run requested
+			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
+		} else if (devlist[1] != NULL) { //multiple devices found
+			fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
+			for (int i = 0; devlist[i] != 0; i++) {
+				const char *item = devlist[i];
+				fprintf(stderr, " '%s'", item);
+			}
+			fprintf(stderr, "\n");
+			exit(1);
+		} else { //one device found
+			deviceId = devlist[0];
+		}
 	}
 
-	int rv = handle_action(argc, argv, action);
+	if (deviceId) {
+		char *slashPtr = strrchr(deviceId, '/');
+		if (slashPtr) memmove(deviceId, slashPtr + 1, strlen(deviceId) - (slashPtr - deviceId));
+	}
+
+	printf("Using device ID '%s'\n", deviceId);
+	int rv = handleAction(argc, argv, action);
+	ipc_free_device_list(devlist);
 
 	exit(rv);
 }

@@ -11,14 +11,6 @@ using std::string;
 using std::cerr;
 using std::endl;
 
-#ifdef __APPLE__
-	const string defaultDevice = "tty.usbmodem1a21";
-	//const string defaultDevice = "tty.usbmodemfd131";
-	//const string defaultDevice = "tty.usbserial-A10248X1";
-#elif __linux
-	const string defaultDevice = "ttyACM0";
-#endif
-
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
 //		{"quiet", no_argument, NULL, 'q'},
@@ -71,10 +63,9 @@ int main(int argc, char** argv) {
 			cerr << "no devices found, please connect a printer or re-run with '-S'" << endl;
 			::exit(1);
 		} else if (!devlist[0]) { //no devices but force-start requested
-			serialDevice = defaultDevice;
+			serialDevice = IPC_DEFAULT_DEVICE_ID;
 		} else if (devlist[1] != 0) { //more than one device
-			cerr << "more than one device found (listed below), please specify one the following" << endl;
-			cerr << "found devices:";
+			cerr << "more than one device found (listed below), please specify one of the following:" << endl;
 			for (int i = 0; devlist[i] != 0; i++) {
 				const char *item = devlist[i];
 				cerr << " '" << item << "'";

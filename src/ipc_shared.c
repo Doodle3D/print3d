@@ -39,7 +39,15 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ 0, NULL, NULL, NULL } /* sentinel */
 };
 
-const char* IPC_SOCKET_PATH_PREFIX = "/tmp/print3d-";
+const char *IPC_SOCKET_PATH_PREFIX = "/tmp/print3d-";
+
+#ifdef __APPLE__
+const char *IPC_DEFAULT_DEVICE_ID = "tty.usbmodem1a21";
+	//const char *IPC_DEFAULT_DEVICE_ID = "tty.usbmodemfd131";
+	//const char *IPC_DEFAULT_DEVICE_ID = "tty.usbserial-A10248X1";
+#elif __linux
+	const char *IPC_DEFAULT_DEVICE_ID = "ttyACM0";
+#endif
 
 
 static const int STRINGIFY_MAX_TEXT_DISPLAY_CHARS = 15;

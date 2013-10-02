@@ -173,7 +173,7 @@ static int act_stopPrint(const char *endCode) {
 }
 
 
-int handle_action(int argc, char **argv, ACTION_TYPE action) {
+int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	switch(verbosity) {
 	case -1:
 		log_open_stream(stderr, LLVL_QUIET); break;
@@ -200,6 +200,7 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-s,--state\t\tQuery the printer state\n");
 		printf("\t-S,--supported\t\tRetrieve a list of supported printers\n");
 		printf("\t-d,--device <dev-id>\tPrint to the given device-id\n");
+		printf("\t-F,--force-run\t\tForce running with a default device if none could be found\n");
 		printf("\t-w,--heatup <temp>\tAsk the printer to heatup to the given temperature (degrees celcius)\n");
 		printf("\t-f,--gcode-file <file>\tPrint the given g-code file\n");
 		printf("\t-c,--gcode <gcode>\tPrint the specified line of g-code\n");
@@ -218,22 +219,22 @@ int handle_action(int argc, char **argv, ACTION_TYPE action) {
 		printf("[dummy] get supported\n");
 		return 5;
 	case AT_HEATUP:
-		return act_doHeatup(heatup_temperature);
+		return act_doHeatup(heatupTemperature);
 	case AT_PRINT_FILE:
-		if (!print_file) {
+		if (!printFile) {
 			fprintf(stderr, "error: missing filename to print\n");
 			return 1;
 		}
 
-		return act_sendGcodeFile(print_file);
+		return act_sendGcodeFile(printFile);
 	case AT_SEND_CODE:
-		if (!send_gcode) {
+		if (!sendGcode) {
 			fprintf(stderr, "error: missing g-code to print\n");
 			return 1;
 		}
-		return act_sendGcode(send_gcode);
+		return act_sendGcode(sendGcode);
 	case AT_STOP_PRINT:
-		return act_stopPrint(end_gcode);
+		return act_stopPrint(endGcode);
 	}
 
 	return 2;

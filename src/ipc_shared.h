@@ -70,7 +70,8 @@ typedef struct ipc_cmd_name_s {
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];
 
-extern const char* IPC_SOCKET_PATH_PREFIX;
+extern const char *IPC_SOCKET_PATH_PREFIX;
+extern const char *IPC_DEFAULT_DEVICE_ID;
 
 /** Constructs an IPC socket path for the given deviceId on which a
  * corresponding server should listen and clients should connect to.

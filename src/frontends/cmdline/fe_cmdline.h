@@ -12,12 +12,13 @@ typedef enum ACTION_TYPE {
 
 extern int verbosity;
 extern char *deviceId;
-extern char *print_file;
-extern char *send_gcode;
-extern char *end_gcode;
-extern int heatup_temperature;
+extern char *printFile;
+extern char *sendGcode;
+extern char *endGcode;
+extern int heatupTemperature;
+extern int forceStart;
 
 /* from actions.c */
-int handle_action(int argc, char **argv, ACTION_TYPE action);
+int handleAction(int argc, char **argv, ACTION_TYPE action);
 
 #endif /* ! FE_CMDLINE_H_SEEN */
