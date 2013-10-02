@@ -40,7 +40,6 @@ bool Client::sendOk() {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "");
 	if (!cmd) return false;
-	logger_.logIpcCmd(Logger::VERBOSE, cmd, cmdlen, true);
 	sendData(cmd, cmdlen);
 	free(cmd);
 	return true;
@@ -50,7 +49,6 @@ bool Client::sendError(const std::string& message) {
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "x", message.c_str(), message.length());
 	if (!cmd) return false;
-	logger_.logIpcCmd(Logger::VERBOSE, cmd, cmdlen, true);
 	sendData(cmd, cmdlen);
 	free(cmd);
 	return true;

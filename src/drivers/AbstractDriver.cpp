@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <algorithm>
 #include <sstream>
 #include "AbstractDriver.h"
@@ -189,8 +190,8 @@ void AbstractDriver::setState(STATE state) {
 	state_ = state;
 }
 
-std::string AbstractDriver::getStateString(STATE state) {
-	static const char *stateString[] = {"disconnected","idle","printing"};
+const std::string &AbstractDriver::getStateString(STATE state) {
+	static const std::string stateString[] = {"disconnected","idle","printing"};
 	return stateString[state];
 }
 int AbstractDriver::readData() {
@@ -201,6 +202,9 @@ int AbstractDriver::readData() {
 	log_.checkError(rv, "cannot read from device");
 	if (rv == -2) {
 		log_.log(Logger::INFO, "nothing to read anymore (remote end closed?)");
+	} else if (rv == -1 && errno == ENXIO) {
+		log_.log(Logger::ERROR, "port was disconnected, closing port");
+		serial_.close();
 	} else if (rv >= 0) {
 		//log_.log(Logger::BULK, "read %i bytes from device", rv);
 	}

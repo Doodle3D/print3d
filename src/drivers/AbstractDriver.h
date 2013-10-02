@@ -92,7 +92,7 @@ public:
   int getNumLines() const;
 
   STATE getState();
-  std::string getStateString(STATE state);
+  const std::string &getStateString(STATE state);
 
 protected:
   int temperature_;
