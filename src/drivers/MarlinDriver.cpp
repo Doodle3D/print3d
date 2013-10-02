@@ -53,6 +53,8 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 }
 
 int MarlinDriver::update() {
+	if (!isConnected()) return 1000; //TEMP|TODO: if port is closed, we could return 'infinity', reconnection, if any, will be handled in AbstractDriver
+
 	if(checkTemperatureInterval_ != -1 && tempTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
 		log_.log(Logger::BULK, "MarlinDriver::update temp");
 		tempTimer_.start(); // restart timer
@@ -81,7 +83,7 @@ int MarlinDriver::update() {
     timer_.start(); // restart timer
   }
 
-  return 0;
+  return 1000 / 50;//TEMP|TODO: return a proper timeout value (based on timer?)
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {
@@ -196,7 +198,10 @@ void MarlinDriver::checkTemperature() {
 
 void MarlinDriver::sendCode(const std::string& code) {
 	//log_.log(Logger::BULK, "MarlinDriver::sendCode: %s",code.c_str());
-  serial_.send((code+"\n").c_str());
+	//TODO: check isConnected logic
+	if (isConnected()) {
+		serial_.send((code+"\n").c_str());
+	}
 }
 
 
