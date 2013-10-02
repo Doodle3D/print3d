@@ -80,6 +80,21 @@ extern const char* IPC_SOCKET_PATH_PREFIX;
  */
 char* ipc_construct_socket_path(const char* deviceId);
 
+/** Returns a list with all device paths likely to point to a printer.
+ * (Actually, common usb-serial device names are collected.)
+ * The list can be freed using @{free_device_list}.
+ *
+ * @return A NULL-terminated list containing the full path to each device found.
+ * @retval NULL on system error
+ */
+char **ipc_find_devices();
+
+/** Frees a device list created by @{find_devices}.
+ * Note that the given list pointer will be invalid after calling this.
+ * @param list The list to be freed.
+ */
+void ipc_free_device_list(char **list);
+
 //all-in-one function to construct IPC commands in printf style
 //please note the varargs are implemented by evil magic...
 char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* fmtp, ...);

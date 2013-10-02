@@ -15,6 +15,14 @@ else
 end
 
 
+rv,msg = printer:getState()
+if rv then
+	print("printer:getState returned '" .. rv .. "'")
+else
+	print("printer:getState returned false/nil");
+end
+
+
 rv,msg = printer:getTemperatures()
 if rv then
 	if type(rv) == 'table' then
@@ -35,6 +43,20 @@ if rv then
 	print("requested printer:heatup(42) successfully")
 else
 	print("printer:heatup(42) returned false/nil");
+end
+
+
+rv,msg = printer:appendGcode("M104 S11")
+if rv then
+	print("requested printer:appendGcode successfully")
+else
+	print("printer:appendGcode returned false/nil");
+end
+rv,msg = printer:startPrint()
+if rv then
+	print("requested printer:startPrint successfully")
+else
+	print("printer:startPrint returned false/nil");
 end
 
 

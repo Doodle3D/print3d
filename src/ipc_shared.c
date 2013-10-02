@@ -1,3 +1,4 @@
+#include <dirent.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
@@ -60,6 +61,54 @@ char* ipc_construct_socket_path(const char* deviceId) {
 	strcat(buf, deviceId);
 	return buf;
 }
+
+//http://stackoverflow.com/questions/612097/how-can-i-get-a-list-of-files-in-a-directory-using-c-or-c
+char **ipc_find_devices() {
+	static const char *DEV_DIR = "/dev";
+
+#ifdef __APPLE__
+	static const char *names[] = {"tty.usbmodem", "tty.usbserial-", NULL};
+#elif __linux
+	static const char *names[] = {"ttyACM", "ttyUSB", NULL};
+#endif
+
+	int result_len = 3; //make room for 1 device path plus sentinel (common case)
+	char **result = (char**)malloc(result_len * sizeof(char*));
+	if (!result) return NULL;
+
+	DIR *dir = opendir(DEV_DIR);
+	if (!dir) { free(result); return NULL; }
+
+	result[0] = result[1] = result[2] = NULL;
+	int result_pos = 0;
+	struct dirent *ent = 0;
+	while ((ent = readdir(dir)) != 0) {
+		for (int nidx = 0; names[nidx] != 0; nidx++) {
+			const char *name = names[nidx];
+			if (ent->d_type == DT_CHR && strncmp(ent->d_name, name, strlen(name)) == 0) {
+				if (result_pos + 1 >= result_len) {
+					result_len++;
+					result = (char**)realloc(result, result_len * sizeof(char*));
+					if (!result) { closedir(dir); return NULL; }
+				}
+
+				result[result_pos] = strdup(ent->d_name);
+				result_pos++;
+			}
+		}
+	}
+
+	closedir(dir);
+	return result;
+}
+
+void ipc_free_device_list(char **list) {
+	if (!list) return;
+	char *item = *list;
+	while (item) free(item);
+	free(list);
+}
+
 
 char* ipc_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* format, ...) {
 	va_list args;
