@@ -67,7 +67,7 @@ int MarlinDriver::update() {
 			checkTemperatureAttempt_ = 0;
 		}
 	}
-  if(state_ == PRINTING || timer_.getElapsedTimeInMilliSec() > 200) {
+  if(state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > 200) {
     //log_.log(Logger::BULK, "MarlinDriver::update");
     int rv = readData();
 			//log_.log(Logger::BULK, "  rv: %i: '%s'",rv,serial_.getBuffer());//TEMP
@@ -103,7 +103,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 	} else if(code.find("ok") == 0) { // confirmation that code is received okay
 
 		//sendCode("M105"); // temp
-		if(state_ == PRINTING) {
+		if(state_ == PRINTING || state_ == STOPPING) {
 			erasePrevLine();
 			printNextLine();
 		}

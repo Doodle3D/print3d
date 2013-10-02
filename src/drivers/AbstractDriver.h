@@ -35,7 +35,8 @@ public:
   	UNKNOWN = 0,
   	DISCONNECTED = 1,
   	IDLE,
-  	PRINTING /* executing commands */
+  	PRINTING, /* executing commands */
+  	STOPPING
   } STATE;
 
   explicit AbstractDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
@@ -46,6 +47,7 @@ public:
 
   int openConnection();
   int closeConnection();
+  bool isConnected();
 
   // should return in how much milliseconds it wants to be called again
   virtual int update() = 0;
@@ -54,8 +56,8 @@ public:
   void appendGCode(const std::string& gcode);
   void clearGCode();
 
-  void startPrint(const std::string& gcode);
-  void startPrint();
+  void startPrint(const std::string& gcode, STATE state = PRINTING);
+  void startPrint(STATE state = PRINTING);
   void stopPrint();
   void stopPrint(const std::string& endcode);
 

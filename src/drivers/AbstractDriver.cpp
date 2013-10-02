@@ -8,7 +8,7 @@ using std::string;
 using std::size_t;
 
 //STATIC
-const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing" };
+const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing", "stopping" };
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : temperature_(0),
@@ -50,6 +50,11 @@ int AbstractDriver::closeConnection() {
 	server_.unregisterFileDescriptor(serial_.getFileDescriptor());
 	return serial_.close();
 }
+
+bool AbstractDriver::isConnected() {
+	return serial_.isOpen();
+}
+
 
 /*************************************
  ******** Manage GCode buffer ********
@@ -105,7 +110,7 @@ void AbstractDriver::filterGCode() {
  * Update GCode info, like number of lines.
  */
 void AbstractDriver::updateGCodeInfo() {
-	numLines_ = std::count(gcodeBuffer+.begin(), gcodeBuffer_.end(), '\n') + 1;
+	numLines_ = std::count(gcodeBuffer_.begin(), gcodeBuffer_.end(), '\n') + 1;
 	currentLine_ = std::min(currentLine_,numLines_-1);
 }
 
@@ -118,28 +123,30 @@ void AbstractDriver::heatup(int temperature) {
 /*
  * Print control
  */
-void AbstractDriver::startPrint(const std::string& gcode) {
+void AbstractDriver::startPrint(const std::string& gcode, STATE state) {
 	log_.log(Logger::BULK, "AbstractDriver::startPrint: %s",gcode.c_str());
 	setGCode(gcode);
-	startPrint();
+	startPrint(state);
 }
 
-void AbstractDriver::startPrint() {
+void AbstractDriver::startPrint(STATE state) {
 	log_.log(Logger::BULK, "AbstractDriver::startPrint");
 	resetPrint();
-	setState(PRINTING);
+	setState(state);
 	printNextLine();
 }
 
 void AbstractDriver::stopPrint() {
 	resetPrint();
 }
+
 void AbstractDriver::stopPrint(const std::string& endcode) {
+	log_.log(Logger::BULK, "AbstractDriver::stopPrint: with %i bytes of end g-code", endcode.length());
 	resetPrint();
-	//TODO: implement
-	log_.log(Logger::WARNING, "AbstractDriver::stopPrint: ignoring %i bytes of end g-code", endcode.length());
-	if (endcode.length() < 100) log_.log(Logger::WARNING, "ignored code was: '%s'", endcode.c_str());
+	setGCode(endcode);
+	startPrint(STOPPING);
 }
+
 void AbstractDriver::resetPrint() {
 	log_.log(Logger::BULK, "AbstractDriver::resetPrint");
 	setState(IDLE);
