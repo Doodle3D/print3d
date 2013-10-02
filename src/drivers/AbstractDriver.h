@@ -103,13 +103,17 @@ protected:
   int numLines_;
   STATE state_;
 
-  std::string gcodeBuffer;
+  std::string gcodeBuffer_;
+
+  Serial serial_;
+  Logger& log_;
+  Server& server_;
 
   void printNextLine();
   void resetPrint();
 
   virtual void sendCode(const std::string& code) = 0;
-  virtual void readCode(std::string& code) = 0;
+  virtual void readResponseCode(std::string& code) = 0;
 
   /*
    * Convenience function to get next line from codeBuffer
@@ -125,20 +129,17 @@ protected:
   int readData();
   void setBaudrate(uint32_t baudrate);
   void switchBaudrate();
-  Serial serial_;
-  Logger& log_;
-  Server& server_;
 
 private:
   static const std::string STATE_NAMES[];
-
-	const std::string serialPortPath_;
-	uint32_t baudrate_;
 
 	typedef enum BAUDRATE{
 		B115200 = 115200,
 		B250000 = 250000
 	} BAUDRATE;
+
+	const std::string serialPortPath_;
+	uint32_t baudrate_;
 };
 
 #endif /* ! ABSTRACT_DRIVER_H_SEEN */

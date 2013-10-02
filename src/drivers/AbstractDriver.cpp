@@ -8,7 +8,7 @@ using std::string;
 using std::size_t;
 
 //STATIC
-const string AbstractDriver::STATE_NAMES[] = {"unknown", "disconnected","idle","printing"};
+const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing" };
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : temperature_(0),
@@ -30,8 +30,7 @@ AbstractDriver::~AbstractDriver() {
 
 int AbstractDriver::openConnection() {
 	log_.log(Logger::VERBOSE,"AbstractDriver::openConnection");
-	log_.log(Logger::VERBOSE,"  serialPortPath_: %s",serialPortPath_.c_str());
-	log_.log(Logger::VERBOSE,"  baudrate_: %i",baudrate_);
+	log_.log(Logger::VERBOSE,"  serial port path: '%s', baudrate: %i",serialPortPath_.c_str(), baudrate_);
 	int rv = serial_.open(serialPortPath_.c_str());
 	//log_.log(Logger::VERBOSE,"  serial opened (%i)",rv);
 	if (rv < 0) {
@@ -59,7 +58,7 @@ int AbstractDriver::closeConnection() {
  * Set (replace) the GCode buffer
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
-	gcodeBuffer = gcode;
+	gcodeBuffer_ = gcode;
 	filterGCode();
 	updateGCodeInfo();
 }
@@ -67,7 +66,7 @@ void AbstractDriver::setGCode(const std::string& gcode) {
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
-	setGCode(gcodeBuffer + gcode);
+	setGCode(gcodeBuffer_ + gcode);
 }
 
 /*
@@ -76,35 +75,37 @@ void AbstractDriver::appendGCode(const std::string& gcode) {
 void AbstractDriver::clearGCode() {
 	setGCode("");
 }
+
 /*
  * Filter GCode, remove comments for example
  */
 void AbstractDriver::filterGCode() {
-	// replace \r for \n
-	std::replace( gcodeBuffer.begin(), gcodeBuffer.end(), '\r', '\n');
+	// replace \r with \n
+	std::replace( gcodeBuffer_.begin(), gcodeBuffer_.end(), '\r', '\n');
 
-	// replace \n\n for \n
+	// replace \n\n with \n
 	std::size_t posDoubleNewline = 0;
-	while((posDoubleNewline = gcodeBuffer.find("\n\n")) != string::npos) {
-		gcodeBuffer.replace(posDoubleNewline, 2, "\n");
+	while((posDoubleNewline = gcodeBuffer_.find("\n\n")) != string::npos) {
+		gcodeBuffer_.replace(posDoubleNewline, 2, "\n");
 	}
 
 	// remove all comments (;...)
 	std::size_t posComment = 0;
-	while((posComment = gcodeBuffer.find(';')) != string::npos) {
-		std::size_t posCommentEnd = gcodeBuffer.find('\n',posComment);
+	while((posComment = gcodeBuffer_.find(';')) != string::npos) {
+		std::size_t posCommentEnd = gcodeBuffer_.find('\n', posComment);
 		if(posCommentEnd == string::npos) { // no newline found
-			gcodeBuffer.erase(posComment); // so erase remaining text
+			gcodeBuffer_.erase(posComment); // so erase remaining text
 		} else {
-			gcodeBuffer.erase(posComment,posCommentEnd-posComment);
+			gcodeBuffer_.erase(posComment,posCommentEnd - posComment);
 		}
 	}
 }
+
 /*
  * Update GCode info, like number of lines.
  */
 void AbstractDriver::updateGCodeInfo() {
-	numLines_ = std::count(gcodeBuffer.begin(), gcodeBuffer.end(), '\n') + 1;
+	numLines_ = std::count(gcodeBuffer+.begin(), gcodeBuffer_.end(), '\n') + 1;
 	currentLine_ = std::min(currentLine_,numLines_-1);
 }
 
@@ -144,6 +145,7 @@ void AbstractDriver::resetPrint() {
 	setState(IDLE);
 	currentLine_ = 1;
 }
+
 void AbstractDriver::printNextLine() {
 	log_.log(Logger::BULK, "AbstractDriver::printNextLine: %i/%i",currentLine_,numLines_);
 	if(currentLine_ <= numLines_) {
@@ -196,6 +198,7 @@ void AbstractDriver::setState(STATE state) {
 const std::string &AbstractDriver::getStateString(STATE state) {
 	return STATE_NAMES[state];
 }
+
 int AbstractDriver::readData() {
 
 	//log_.log(Logger::BULK, "AbstractDriver::readData");
@@ -203,7 +206,7 @@ int AbstractDriver::readData() {
 	int rv = serial_.readData();
 	log_.checkError(rv, "cannot read from device");
 	if (rv == -2) {
-		log_.log(Logger::INFO, "nothing to read anymore (remote end closed?), closing port");
+		log_.log(Logger::ERROR, "remote end closed connection, closing port");
 		serial_.close();
 	} else if (rv == -1 && errno == ENXIO) {
 		log_.log(Logger::ERROR, "port was disconnected, closing port");
@@ -213,6 +216,7 @@ int AbstractDriver::readData() {
 	}
 	return rv;
 }
+
 void AbstractDriver::setBaudrate(uint32_t baudrate) {
 	baudrate_ = baudrate;
 	Serial::ESERIAL_SET_SPEED_RESULT ssr = serial_.setSpeed(baudrate_);
@@ -222,28 +226,32 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 		log_.log(Logger::ERROR,"  setting speed error");
 	}
 }
+
+//TODO: add 57600?
 void AbstractDriver::switchBaudrate() {
 	setBaudrate((baudrate_ == B250000)? B115200 : B250000);
 }
+
 bool AbstractDriver::getNextLine(std::string& line) {
-	size_t posN = gcodeBuffer.find("\n");
+	size_t posN = gcodeBuffer_.find("\n");
 	if(posN == string::npos) {
-		line = gcodeBuffer.substr(0); // substract all
+		line = gcodeBuffer_.substr(0); // extract all
 		if(line.length() > 0) return true;
 		else return false;
 	} else {
-		line = gcodeBuffer.substr(0,posN);
+		line = gcodeBuffer_.substr(0,posN);
 		return true;
 	}
 }
+
 bool AbstractDriver::erasePrevLine() {
-	size_t posN = gcodeBuffer.find("\n");
+	size_t posN = gcodeBuffer_.find("\n");
 	if(posN == string::npos) {
 		//NOTE: use clear() instead of erase(0) to prevent a compiler error in openwrt
-		gcodeBuffer.clear();
+		gcodeBuffer_.clear();
 		return false;
 	} else {
-		gcodeBuffer.erase(0,posN+1);
+		gcodeBuffer_.erase(0,posN+1);
 		return true;
 	}
 }

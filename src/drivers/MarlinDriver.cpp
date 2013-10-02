@@ -6,10 +6,9 @@ using std::string;
 
 MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate),
-  checkTempInterval_(2000),
+  checkTemperatureInterval_(2000),
   checkTemperatureAttempt_(0),
-  maxCheckTemperatureAttempts_(2),
-  testCounter_(0) {
+  maxCheckTemperatureAttempts_(2) {
 
 	/*//temperature parsing tests
 	readCode(*new string("T:19.1 /0.0 B:0.0 /0.0 @:0 B@:0"));
@@ -54,7 +53,7 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 }
 
 int MarlinDriver::update() {
-	if(checkTempInterval_ != -1 && tempTimer_.getElapsedTimeInMilliSec() > checkTempInterval_) {
+	if(checkTemperatureInterval_ != -1 && tempTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
 		log_.log(Logger::BULK, "MarlinDriver::update temp");
 		tempTimer_.start(); // restart timer
 
@@ -75,7 +74,7 @@ int MarlinDriver::update() {
     if (rv > 0) {
       string* line;
       while((line = serial_.extractLine()) != NULL) {
-        readCode(*line);
+					readResponseCode(*line);
         delete line;
       }
     }
@@ -85,30 +84,31 @@ int MarlinDriver::update() {
   return 0;
 }
 
-void MarlinDriver::readCode(std::string& code) {
+void MarlinDriver::readResponseCode(std::string& code) {
 	log_.log(Logger::BULK, "MarlinDriver::readCode: '%s'",code.c_str());
 
 	bool tempMessage = code.find("ok T:")==0;
 	bool heatingMessage = code.find("T:")==0;
-  if(tempMessage || heatingMessage) { // temperature or heating
+	if(tempMessage || heatingMessage) { // temperature or heating
 
-	  parseTemperatures(code);
-	  checkTemperatureAttempt_ = 0;
-	  // determine checkTempInterval
-	  if(heatingMessage) checkTempInterval_ = -1; // if it's heating we don't really need to ask
-	  else if(state_ == PRINTING) checkTempInterval_ = 5000; // if it's printing we ask it less frequently
-	  else checkTempInterval_ = 1500; // normal
-	  maxCheckTemperatureAttempts_ = 1;
+		parseTemperatures(code);
+		checkTemperatureAttempt_ = 0;
+		maxCheckTemperatureAttempts_ = 1;
 
-  } else if(code.find("ok")==0) { // confirmation that code is received okay
+		// determine checkTempInterval
+		if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
+		else if(state_ == PRINTING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
+		else checkTemperatureInterval_ = 1500; // normal
 
-    //sendCode("M105"); // temp
-  	if(state_ == PRINTING) {
-  		erasePrevLine();
-  		printNextLine();
-  	}
+	} else if(code.find("ok") == 0) { // confirmation that code is received okay
 
-  } else if(code.find("start") != string::npos) {
+		//sendCode("M105"); // temp
+		if(state_ == PRINTING) {
+			erasePrevLine();
+			printNextLine();
+		}
+
+	} else if(code.find("start") != string::npos) {
 
   	//sendCode("M105"); // temp
   	//startPrint("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000"); // temp
@@ -122,6 +122,7 @@ void MarlinDriver::readCode(std::string& code) {
 
   }
 }
+
 void MarlinDriver::parseTemperatures(string& code) {
   // Examples:
 	//   ok T:19.1 /0.0 B:0.0 /0.0 @:0 B@:0
@@ -155,40 +156,44 @@ void MarlinDriver::parseTemperatures(string& code) {
 	  }
   }
 }
+
 void MarlinDriver::updateGCodeInfo() {
 	log_.log(Logger::BULK, "MarlinDriver::updateGCodeInfo");
 	AbstractDriver::updateGCodeInfo();
 	//log_.log(Logger::BULK, "  gcodeBuffer: %s",gcodeBuffer.c_str());
 
 	// check for a heat command (M109 S... / M109 R...)
-	std::size_t posHeat = gcodeBuffer.find("M109");
+	std::size_t posHeat = gcodeBuffer_.find("M109");
 	if(posHeat != std::string::npos) {
-		targetTemperature_ = findValue(gcodeBuffer,posHeat+6);
+		targetTemperature_ = findValue(gcodeBuffer_,posHeat+6);
 		log_.log(Logger::BULK, "  targetTemperature_: %i",targetTemperature_);
 	}
 
 	// check for a bed heat command (M190 S... / M190 R...)
-	std::size_t posBedHeat = gcodeBuffer.find("M190");
+	std::size_t posBedHeat = gcodeBuffer_.find("M190");
 	if(posHeat != std::string::npos) {
-		targetBedTemperature_ = findValue(gcodeBuffer,posBedHeat+6);
+		targetBedTemperature_ = findValue(gcodeBuffer_,posBedHeat+6);
 		log_.log(Logger::BULK, "  targetBedTemperature_: %i",targetBedTemperature_);
 	}
 }
+
 int MarlinDriver::findValue(string& code,size_t startPos) {
 	//log_.log(Logger::BULK, "  MarlinDriver::findValue");
-	std::size_t posEnd = code.find("\n",startPos);
+	std::size_t posEnd = code.find('\n',startPos);
 	//log_.log(Logger::BULK, "    posEnd: %i",posEnd);
 	if(posEnd == string::npos) {
-		posEnd = code.find(" ",startPos);
+		posEnd = code.find(' ',startPos);
 		//log_.log(Logger::BULK, "    posEnd>: %i",posEnd);
 	}
 	string valueStr = code.substr(startPos, posEnd-startPos);
 	//log_.log(Logger::BULK, "    valueStr: %s",valueStr.c_str());
 	return ::atof(valueStr.c_str());
 }
+
 void MarlinDriver::checkTemperature() {
 	sendCode("M105");
 }
+
 void MarlinDriver::sendCode(const std::string& code) {
 	//log_.log(Logger::BULK, "MarlinDriver::sendCode: %s",code.c_str());
   serial_.send((code+"\n").c_str());
@@ -211,8 +216,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 
   return info;
 }
+
 AbstractDriver* MarlinDriver::create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
   return new MarlinDriver(server, serialPortPath, baudrate);
 }
-
-
