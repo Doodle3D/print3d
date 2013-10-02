@@ -23,7 +23,7 @@
 static const ELOG_LEVEL logLevel = LLVL_VERBOSE;
 
 struct printerData_s {
-		const char *deviceId;
+		char *deviceId;
 };
 
 
@@ -70,6 +70,7 @@ int initContext(lua_State* L) {
 static int l_lua_gc(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	if (ctx) {
+		free(ctx->deviceId);
 		free(ctx);
 		ctx = NULL; //FIXME: this is useless, but how do we indicate the structure has been freed? (or is this only called after the very last use?)
 	}
@@ -93,19 +94,39 @@ int l_lua_getId(lua_State *L) {
 static int l_getPrinter(lua_State *L) {
 	size_t devLen;
 	const char* dev = (lua_gettop(L) > 0) ? luaL_checklstring(L, 1, &devLen) : 0;
+	char **devlist = NULL;
 
 	if (!dev) {
-		lua_pushnil(L);
-		lua_pushstring(L, "device ID argument required");
-		return 2;
+		devlist = ipc_find_devices();
+
+		if (!devlist) { //no list
+			lua_pushnil(L);
+			lua_pushstring(L, "device auto-detect: could not obtain device list");
+			return 2;
+		}
+
+		if (devlist[0] == NULL) { //no devices
+			lua_pushnil(L);
+			lua_pushstring(L, "device auto-detect: no devices found");
+			return 2;
+		}
+
+		if (devlist[1] != NULL) { //multiple devices
+			lua_pushnil(L);
+			lua_pushstring(L, "device auto-detect: multiple devices found");
+			return 2;
+		}
+
+		dev = devlist[0];
 	}
 
 
 	struct printerData_s **pd = lua_newuserdata(L, sizeof(struct printerData_s*));
 	*pd = (struct printerData_s*)malloc(sizeof(struct printerData_s));
 
-	(*pd)->deviceId = dev;
+	(*pd)->deviceId = strdup(dev);
 
+	ipc_free_device_list(devlist);
 	luaL_setmetatable(L, LIB_META_NAME);
 	return 1;
 }
