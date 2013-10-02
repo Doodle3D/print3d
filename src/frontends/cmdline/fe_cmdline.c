@@ -22,13 +22,15 @@ static struct option long_options[] = {
 		{"heatup", required_argument, NULL, 'w'},
 		{"gcode-file", required_argument, NULL, 'f'},
 		{"gcode", required_argument, NULL, 'c'},
+		{"stop", no_argument, NULL, 'k'},
+		{"stop-with-code", required_argument, NULL, 'K'},
 
 		{NULL, 0, NULL, 0}
 };
 
 int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
 char *deviceId = NULL;
-char *print_file = NULL, *send_gcode = NULL;
+char *print_file = NULL, *send_gcode = NULL, *end_gcode = NULL;
 int heatup_temperature = -1;
 
 static int deviceIdRequired = 0;
@@ -37,7 +39,7 @@ static ACTION_TYPE action = AT_NONE;
 
 void parse_options(int argc, char **argv) {
 	char ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:w:f:c:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:w:f:c:kK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
@@ -83,6 +85,13 @@ void parse_options(int argc, char **argv) {
 			send_gcode = optarg;
 			action = AT_SEND_CODE;
 			deviceIdRequired = 1;
+			break;
+		case 'k':
+			action = AT_STOP_PRINT;
+			break;
+		case 'K':
+			end_gcode = optarg;
+			action = AT_STOP_PRINT;
 			break;
 		case '?': /* signifies an error (like option with missing argument) */
 			action = AT_ERROR;
