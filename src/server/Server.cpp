@@ -133,11 +133,11 @@ int Server::start(bool fork) {
 				it++;
 			}
 		}
-		//LOG(Logger::VERBOSE, "printerDriver_: %i", printerDriver_);
+
 		if (printerDriver_) {
 			int newTimeout = printerDriver_->update();
+			timeoutEnabled = (newTimeout >= 0) ? true : false;
 
-			//timeoutEnabled = true;
 			timeout.tv_sec = newTimeout / 1000;
 			timeout.tv_usec = (newTimeout % 1000) * 1000;
 		} else {

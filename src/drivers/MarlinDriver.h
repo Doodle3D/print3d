@@ -24,8 +24,10 @@ protected:
   int findValue(std::string& code,std::size_t startPos);
 
 private:
+  static const int UPDATE_INTERVAL;
+
   Timer timer_;
-	Timer tempTimer_;
+	Timer temperatureTimer_;
 	int checkTemperatureInterval_;
   int checkTemperatureAttempt_;
   int maxCheckTemperatureAttempts_;

@@ -7,6 +7,7 @@ using std::string;
 //NOTE: see Server.cpp for comments on this macro
 #define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
 
+const int MarlinDriver::UPDATE_INTERVAL = 200;
 
 MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate),
@@ -57,11 +58,11 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 }
 
 int MarlinDriver::update() {
-	if (!isConnected()) return 1000; //TEMP|TODO: if port is closed, we could return 'infinity', reconnection, if any, will be handled in AbstractDriver
+	if (!isConnected()) return -1;
 
-	if(checkTemperatureInterval_ != -1 && tempTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
+	if(checkTemperatureInterval_ != -1 && temperatureTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
 		LOG(Logger::BULK, "update temp()");
-		tempTimer_.start(); // restart timer
+		temperatureTimer_.start(); // restart timer
 
 		// We try receiving the temperature, until it's tried enough
 		if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
@@ -73,7 +74,8 @@ int MarlinDriver::update() {
 			checkTemperatureAttempt_ = 0;
 		}
 	}
-	if(state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > 200) {
+
+	if (state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > UPDATE_INTERVAL) {
 		//LOG(Logger::BULK, "update()");
 		int rv = readData();
 		//LOG(Logger::BULK, "  rv: %i: '%s'",rv,serial_.getBuffer());//TEMP
@@ -87,7 +89,8 @@ int MarlinDriver::update() {
 		timer_.start(); // restart timer
 	}
 
-  return 1000 / 50;//TEMP|TODO: return a proper timeout value (based on timer?)
+	//request to be called again after the time that's left of the update interval
+	return UPDATE_INTERVAL - timer_.getElapsedTimeInMilliSec();
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {
@@ -103,7 +106,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 
 		// determine checkTempInterval
 		if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
-		else if(state_ == PRINTING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
+		else if(state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
 		else checkTemperatureInterval_ = 1500; // normal
 
 	} else if(code.find("ok") == 0) { // confirmation that code is received okay
@@ -202,7 +205,6 @@ void MarlinDriver::checkTemperature() {
 
 void MarlinDriver::sendCode(const std::string& code) {
 	//LOG(Logger::BULK, "sendCode(): %s",code.c_str());
-	//TODO: check isConnected logic
 	if (isConnected()) {
 		serial_.send((code+"\n").c_str());
 	}

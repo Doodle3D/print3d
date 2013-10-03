@@ -118,7 +118,7 @@ void AbstractDriver::filterGCode() {
  */
 void AbstractDriver::updateGCodeInfo() {
 	numLines_ = std::count(gcodeBuffer_.begin(), gcodeBuffer_.end(), '\n') + 1;
-	currentLine_ = std::min(currentLine_,numLines_-1);
+	currentLine_ = std::min(currentLine_,numLines_);
 }
 
 void AbstractDriver::heatup(int temperature) {
