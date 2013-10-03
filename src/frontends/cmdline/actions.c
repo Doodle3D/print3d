@@ -164,7 +164,7 @@ static int act_stopPrint(const char *endCode) {
 
 	if (rv > -1) {
 		if (!endCode) printf("requested printing stop\n");
-		else printf("requested printing stop with %u bytes of end code\n", strlen(endCode));
+		else printf("requested printing stop with %zu bytes of end code\n", strlen(endCode));
 		return 0;
 	} else {
 		fprintf(stderr, "could not request printing stop (%s)\n", comm_getError());

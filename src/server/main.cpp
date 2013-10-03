@@ -102,7 +102,6 @@ int main(int argc, char** argv) {
 
 	int rv;
 
-	//TODO: test
 	if (doFork == 0) rv = s.start();
 	else rv = s.start((doFork == 1) ? true : false);
 

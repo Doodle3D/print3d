@@ -73,19 +73,19 @@ int MarlinDriver::update() {
 			checkTemperatureAttempt_ = 0;
 		}
 	}
-  if(state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > 200) {
-    //LOG(Logger::BULK, "update()");
-    int rv = readData();
-			//LOG(Logger::BULK, "  rv: %i: '%s'",rv,serial_.getBuffer());//TEMP
-    if (rv > 0) {
-      string* line;
-      while((line = serial_.extractLine()) != NULL) {
-					readResponseCode(*line);
-        delete line;
-      }
-    }
-    timer_.start(); // restart timer
-  }
+	if(state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > 200) {
+		//LOG(Logger::BULK, "update()");
+		int rv = readData();
+		//LOG(Logger::BULK, "  rv: %i: '%s'",rv,serial_.getBuffer());//TEMP
+		if (rv > 0) {
+			string* line;
+			while((line = serial_.extractLine()) != NULL) {
+				readResponseCode(*line);
+				delete line;
+			}
+		}
+		timer_.start(); // restart timer
+	}
 
   return 1000 / 50;//TEMP|TODO: return a proper timeout value (based on timer?)
 }

@@ -75,7 +75,10 @@ void AbstractDriver::setGCode(const std::string& gcode) {
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
-	setGCode(gcodeBuffer_ + gcode);
+	//setGCode(gcodeBuffer_ + gcode); //old approach
+	gcodeBuffer_ += gcode;
+	filterGCode();
+	updateGCodeInfo();
 }
 
 /*
@@ -141,7 +144,7 @@ void AbstractDriver::startPrint(STATE state) {
 }
 
 void AbstractDriver::stopPrint() {
-	resetPrint();
+	stopPrint("");
 }
 
 void AbstractDriver::stopPrint(const std::string& endcode) {
