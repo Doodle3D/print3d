@@ -13,8 +13,10 @@ using std::endl;
 
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
-//		{"quiet", no_argument, NULL, 'q'},
-//		{"verbose", no_argument, NULL, 'v'},
+		{"quieter", no_argument, NULL, 'Q'},
+		{"quiet", no_argument, NULL, 'q'},
+		{"verbose", no_argument, NULL, 'v'},
+		{"verboser", no_argument, NULL, 'V'},
 		{"fork", no_argument, NULL, 'f'},
 		{"no-fork", no_argument, NULL, 'F'},
 		{"force", no_argument, NULL, 'S'},
@@ -27,11 +29,16 @@ int main(int argc, char** argv) {
 	string serialDevice = "";
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
+	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
 	char ch;
 
-	while ((ch = getopt_long(argc, argv, "hfFSd:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hQqvVfFSd:", long_options, NULL)) != -1) {
 		switch (ch) {
 			case 'h': showHelp = true; break;
+			case 'Q': logLevel = Logger::QUIET; break;
+			case 'q': logLevel = Logger::ERROR; break;
+			case 'v': logLevel = Logger::VERBOSE; break;
+			case 'V': logLevel = Logger::BULK; break;
 			case 'f': doFork = 1; break;
 			case 'F': doFork = -1; break;
 			case 'S': forceStart = true; break;
@@ -44,6 +51,10 @@ int main(int argc, char** argv) {
 	if (showHelp) {
 		printf("The following options are accepted (forking is %s by default):\n", Server::FORK_BY_DEFAULT ? "on" : "off");
 		printf("\t-h,--help\t\tDisplay this help message\n");
+		printf("\t-Q,--quieter\t\tLog nothing\n");
+		printf("\t-q,--quiet\t\tLog only errors\n");
+		printf("\t-v,--verbose\t\tLog verbose\n");
+		printf("\t-V,--verboser\t\tLog as much as possible\n");
 		printf("\t-f,--fork\t\tFork the server process\n");
 		printf("\t-F,--no-fork\t\tDo not fork the server process\n");
 		printf("\t-S,--force\t\tForce starting the server with a default device if none could be found\n");
@@ -85,9 +96,7 @@ int main(int argc, char** argv) {
 	std::cout << "Using printer device: '" << serialDevice << "'" << endl;
 
 	Logger& log = Logger::getInstance();
-	log.open(stderr, Logger::VERBOSE);
-
-  log.log(Logger::INFO,"serialDevice: %s",serialDevice.c_str());
+	log.open(stderr, logLevel);
 
 	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
 

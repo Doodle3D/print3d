@@ -7,6 +7,10 @@
 using std::string;
 using std::size_t;
 
+//NOTE: see Server.cpp for comments on this macro
+#define LOG(lvl, fmt, ...) log_.log(lvl, "[ABD] " fmt, ##__VA_ARGS__)
+
+
 //STATIC
 const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing", "stopping" };
 
@@ -29,10 +33,10 @@ AbstractDriver::~AbstractDriver() {
 
 
 int AbstractDriver::openConnection() {
-	log_.log(Logger::VERBOSE,"AbstractDriver::openConnection");
-	log_.log(Logger::VERBOSE,"  serial port path: '%s', baudrate: %i",serialPortPath_.c_str(), baudrate_);
+	LOG(Logger::VERBOSE,"openConnection()");
+	LOG(Logger::VERBOSE,"  serial port path: '%s', baudrate: %i",serialPortPath_.c_str(), baudrate_);
 	int rv = serial_.open(serialPortPath_.c_str());
-	//log_.log(Logger::VERBOSE,"  serial opened (%i)",rv);
+	//LOG(Logger::BULK,"  serial opened (%i)",rv);
 	if (rv < 0) {
 		return rv;
 	}
@@ -124,13 +128,13 @@ void AbstractDriver::heatup(int temperature) {
  * Print control
  */
 void AbstractDriver::startPrint(const std::string& gcode, STATE state) {
-	log_.log(Logger::BULK, "AbstractDriver::startPrint: %s",gcode.c_str());
+	LOG(Logger::BULK, "startPrint(): %s",gcode.c_str());
 	setGCode(gcode);
 	startPrint(state);
 }
 
 void AbstractDriver::startPrint(STATE state) {
-	log_.log(Logger::BULK, "AbstractDriver::startPrint");
+	LOG(Logger::BULK, "startPrint");
 	resetPrint();
 	setState(state);
 	printNextLine();
@@ -141,20 +145,20 @@ void AbstractDriver::stopPrint() {
 }
 
 void AbstractDriver::stopPrint(const std::string& endcode) {
-	log_.log(Logger::BULK, "AbstractDriver::stopPrint: with %i bytes of end g-code", endcode.length());
+	LOG(Logger::BULK, "stopPrint(): with %i bytes of end g-code", endcode.length());
 	resetPrint();
 	setGCode(endcode);
 	startPrint(STOPPING);
 }
 
 void AbstractDriver::resetPrint() {
-	log_.log(Logger::BULK, "AbstractDriver::resetPrint");
+	LOG(Logger::BULK, "resetPrint()");
 	setState(IDLE);
 	currentLine_ = 1;
 }
 
 void AbstractDriver::printNextLine() {
-	log_.log(Logger::BULK, "AbstractDriver::printNextLine: %i/%i",currentLine_,numLines_);
+	LOG(Logger::BULK, "printNextLine(): %i/%i",currentLine_,numLines_);
 	if(currentLine_ <= numLines_) {
 		string line;
 		if(getNextLine(line)) {
@@ -198,7 +202,7 @@ AbstractDriver::STATE AbstractDriver::getState() {
 	return state_;
 }
 void AbstractDriver::setState(STATE state) {
-	log_.log(Logger::BULK, "AbstractDriver::setState: %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());
+	LOG(Logger::BULK, "setState(): %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());
 	state_ = state;
 }
 
@@ -208,18 +212,18 @@ const std::string &AbstractDriver::getStateString(STATE state) {
 
 int AbstractDriver::readData() {
 
-	//log_.log(Logger::BULK, "AbstractDriver::readData");
+	//LOG(Logger::BULK, "readData()");
 
 	int rv = serial_.readData();
 	log_.checkError(rv, "cannot read from device");
 	if (rv == -2) {
-		log_.log(Logger::ERROR, "remote end closed connection, closing port");
+		LOG(Logger::ERROR, "remote end closed connection, closing port");
 		serial_.close();
 	} else if (rv == -1 && errno == ENXIO) {
-		log_.log(Logger::ERROR, "port was disconnected, closing port");
+		LOG(Logger::ERROR, "port was disconnected, closing port");
 		serial_.close();
 	} else if (rv >= 0) {
-		//log_.log(Logger::BULK, "read %i bytes from device", rv);
+		//LOG(Logger::BULK, "read %i bytes from device", rv);
 	}
 	return rv;
 }
@@ -230,7 +234,7 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 	if(ssr == Serial::SSR_OK) {
 		setState(IDLE);
 	} else {
-		log_.log(Logger::ERROR,"  setting speed error");
+		LOG(Logger::ERROR,"  setting speed error");
 	}
 }
 

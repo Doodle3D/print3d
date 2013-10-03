@@ -1,17 +1,19 @@
 #include "MarlinDriver.h"
 #include "DriverFactory.h"
 
+//NOTE: see Server.cpp for comments on this macro
+#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[DFC] " fmt, ##__VA_ARGS__)
+
+
 AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
   static vec_DriverInfoP driverInfos;
 
-
-  Logger& log = Logger::getInstance();
-  //log.log(Logger::VERBOSE, "DriverFactory::createDriver");
+  //LOG(Logger::VERBOSE, "createDriver()");
 
   // list all printer drivers (their driver info)
   if(driverInfos.empty()) {
     driverInfos.push_back( &MarlinDriver::getDriverInfo() );
-    log.log(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
+    LOG(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
   }
 
   // loop trough driver info's
@@ -27,10 +29,10 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Serve
          f != di.supportedFirmware.end();
          ++f) {
 
-      //log.log(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
+      //LOG(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
       // if match create driver instance
       if((*f).name == driverName) {
-        log.log(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
+        LOG(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
         return di.creator(server, serialPortPath,baudrate);
       }
     }

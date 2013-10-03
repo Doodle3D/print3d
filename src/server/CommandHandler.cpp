@@ -9,6 +9,9 @@
 
 using std::string;
 
+//NOTE: see Server.cpp for comments on these macros
+#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[CDH] " fmt, ##__VA_ARGS__)
+
 
 //private static
 const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
@@ -93,18 +96,18 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 			client.sendData(cmd, cmdlen);
 			free(cmd);
 		} else {
-			Logger::getInstance().log(Logger::ERROR, "received get temperature command with invalid parameter value");
+			LOG(Logger::ERROR, "received get temperature command with invalid parameter value");
 			client.sendError("unknown temperature parameter value");
 		}
 	} else {
-		Logger::getInstance().log(Logger::ERROR, "received get temperature command without argument");
+		LOG(Logger::ERROR, "received get temperature command without argument");
 		client.sendError("missing argument");
 	}
 }
 
 //static
 void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received clear gcode command");
+	LOG(Logger::VERBOSE, "received clear gcode command");
 	AbstractDriver* driver = client.getServer().getDriver();
 	driver->clearGCode();
 	client.sendOk();
@@ -115,15 +118,15 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		char* data = 0;
 		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-		Logger::getInstance().log(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
-		//Logger::getInstance().log(Logger::BULK, "received gcode was '%s'", data);
+		LOG(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
+		//LOG(Logger::BULK, "received gcode was '%s'", data);
 		AbstractDriver* driver = client.getServer().getDriver();
 		string s(data);
 		free(data);
 		driver->appendGCode(s);
 		client.sendOk();
 	} else {
-		Logger::getInstance().log(Logger::ERROR, "received append gcode command without argument");
+		LOG(Logger::ERROR, "received append gcode command without argument");
 		client.sendError("missing argument");
 	}
 }
@@ -133,13 +136,13 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		char* filename = 0;
 		ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
-		Logger::getInstance().log(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
+		LOG(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
 
 		int filesize;
 		char *data = readFileContents(filename, &filesize);
 		if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
-			Logger::getInstance().log(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
-			//Logger::getInstance().log(Logger::BULK, "read gcode: '%s'", data);
+			LOG(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
+			//LOG(Logger::BULK, "read gcode: '%s'", data);
 			AbstractDriver* driver = client.getServer().getDriver();
 			string s(data);
 			free(data);
@@ -150,14 +153,14 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 		}
 		free(filename);
 	} else {
-		Logger::getInstance().log(Logger::ERROR, "received append gcode file command without argument");
+		LOG(Logger::ERROR, "received append gcode file command without argument");
 		client.sendError("missing argument");
 	}
 }
 
 //static
 void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received start print gcode command");
+	LOG(Logger::VERBOSE, "received start print gcode command");
 	AbstractDriver* driver = client.getServer().getDriver();
 	driver->startPrint();
 	client.sendOk();
@@ -165,7 +168,7 @@ void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int bu
 
 //static
 void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
-	Logger::getInstance().log(Logger::VERBOSE, "received stop print gcode command");
+	LOG(Logger::VERBOSE, "received stop print gcode command");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
@@ -185,12 +188,12 @@ void CommandHandler::hnd_heatup(Client& client, const char* buf, int buflen) {
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		int16_t temperature = 0;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &temperature);
-		Logger::getInstance().log(Logger::VERBOSE, "received heatup command with temperature %i", temperature);
+		LOG(Logger::VERBOSE, "received heatup command with temperature %i", temperature);
 		AbstractDriver* driver = client.getServer().getDriver();
 		driver->heatup(temperature);
 		client.sendOk();
 	} else {
-		Logger::getInstance().log(Logger::ERROR, "received heatup command without argument");
+		LOG(Logger::ERROR, "received heatup command without argument");
 		client.sendError("missing argument");
 	}
 }

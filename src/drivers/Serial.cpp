@@ -44,6 +44,9 @@ int ioctl(int fildes, int request, ... /* arg */);
 
 using std::string;
 
+//NOTE: see Server.cpp for comments on this macro
+#define LOG(lvl, fmt, ...) log_.log(lvl, "[SER] " fmt, ##__VA_ARGS__)
+
 
 const int Serial::READ_BUF_SIZE = 1024;
 
@@ -53,12 +56,12 @@ Serial::Serial()
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-  log_.log(Logger::VERBOSE,"Serial::open: %s",file);
+  LOG(Logger::VERBOSE,"open(): %s",file);
 
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
-	//log_.log(Logger::VERBOSE,"  serial opened %i",portFd_);
+	//LOG(Logger::VERBOSE,"  serial opened %i",portFd_);
 	if (portFd_ < 0) {
-		log_.log(Logger::ERROR,"Could not open port %s (%s)\n", file, strerror(errno));
+		LOG(Logger::ERROR,"Could not open port %s (%s)\n", file, strerror(errno));
 		return portFd_;
 	}
 
@@ -83,7 +86,7 @@ bool Serial::isOpen() const {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
-	log_.log(Logger::VERBOSE,"Serial::setSpeed: %i",speed);
+	LOG(Logger::VERBOSE,"setSpeed(): %i",speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -140,7 +143,7 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
-  //log_.log(Logger::VERBOSE,"Serial::send: %s",code);
+  //LOG(Logger::VERBOSE,"send(): %s",code);
 	if (portFd_ >= 0) {
 		::write(portFd_, code, strlen(code));
 		return true;
