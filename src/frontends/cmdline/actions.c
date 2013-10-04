@@ -81,30 +81,50 @@ static int act_sendGcodeFile(const char *file) {
 	}
 
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_sendGcodeFile(file);
-	comm_closeSocket();
 
-	if (rv > -1) {
-		printf("sent gcode file\n");
-		return 0;
-	} else {
+	if (comm_clearGcode() < 0) {
+		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
+		return 1;
+	}
+
+	if (comm_sendGcodeFile(file) < 0) {
 		fprintf(stderr, "could not send gcode file (%s)\n", comm_getError());
 		return 1;
 	}
+
+	if (comm_startPrintGcode() < 0) {
+		fprintf(stderr, "sent gcode file, but could not start print (%s)\n", comm_getError());
+		return 1;
+	}
+
+	comm_closeSocket();
+
+	printf("sent gcode file and started print\n");
+	return 0;
 }
 
 static int act_sendGcode(const char *gcode) {
 	comm_openSocketForDeviceId(deviceId);
-	int rv = comm_sendGcodeData(gcode);
-	comm_closeSocket();
 
-	if (rv > -1) {
-		printf("sent gcode\n");
-		return 0;
-	} else {
+	if (comm_clearGcode() < 0) {
+		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
+		return 1;
+	}
+
+	if (comm_sendGcodeData(gcode) < 0) {
 		fprintf(stderr, "could not send gcode (%s)\n", comm_getError());
 		return 1;
 	}
+
+	if (comm_startPrintGcode() < 0) {
+		fprintf(stderr, "sent gcode, but could not start print (%s)\n", comm_getError());
+		return 1;
+	}
+
+	comm_closeSocket();
+
+	printf("sent gcode and started print\n");
+	return 0;
 }
 
 static int act_printProgress() {

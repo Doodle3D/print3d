@@ -237,9 +237,6 @@ int comm_stopPrintGcode(const char *endCode) {
 int comm_sendGcodeFile(const char *file) {
 	clearError();
 
-	if (comm_clearGcode() < 0) return -1;
-
-
 	int scmdlen, rcmdlen;
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "x", file, strlen(file));
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
@@ -251,9 +248,6 @@ int comm_sendGcodeFile(const char *file) {
 		rv = -1;
 	}
 
-
-	if (rv >= 0) if (comm_startPrintGcode() < 0) rv = -1;
-
 	free(rcmd);
 	free(scmd);
 	return rv;
@@ -261,8 +255,6 @@ int comm_sendGcodeFile(const char *file) {
 
 int comm_sendGcodeData(const char *gcode) {
 	clearError();
-
-	if (comm_clearGcode() < 0) return -1;
 
 	int rv = 0;
 	const char *startP = gcode, *endP;
@@ -321,9 +313,6 @@ int comm_sendGcodeData(const char *gcode) {
 		packetNum++;
 	}
 	log_message(LLVL_INFO, "gcode data sent in %i packets", packetNum);
-
-
-	if (rv >= 0) if (comm_startPrintGcode() < 0) rv = -1;
 
 	return rv;
 }
