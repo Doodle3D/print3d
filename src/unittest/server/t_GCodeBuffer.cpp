@@ -46,8 +46,10 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		bool rv;
 
 		rv = buffer.getNextLine(lineBuf);
+		fructose_assert_eq(rv, true);
 		fructose_assert_eq(lineBuf, line1);
 		rv = buffer.getNextLine(lineBuf);
+		fructose_assert_eq(rv, true);
 		fructose_assert_eq(lineBuf, line1);
 
 		buffer.eraseLine();

@@ -77,7 +77,7 @@ int Server::start(bool fork) {
 	struct timeval startTime, endTime, diffTime;
 	while (true) {
 		readFds = masterFds;
-		for (set_int::const_iterator it = registeredFds_.begin(); it != registeredFds_.end(); it++) {
+		for (set_int::const_iterator it = registeredFds_.begin(); it != registeredFds_.end(); ++it) {
 			FD_SET(*it, &readFds);
 		}
 		::gettimeofday(&startTime, NULL);
@@ -130,7 +130,7 @@ int Server::start(bool fork) {
 				delete(client);
 				it = clients_.erase(it);
 			} else {
-				it++;
+				++it;
 			}
 		}
 

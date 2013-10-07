@@ -87,6 +87,7 @@ void log_va_message(ELOG_LEVEL level, const char* format, va_list args) {
 	now = localtime(&ltime);
 	fprintf(stream_, "%02i-%02i %02i:%02i:%02i  %s\n",
 			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, buf);
+	free(buf);
 }
 
 int log_va_check_error(int rv, const char* format, va_list args) {
@@ -98,6 +99,7 @@ int log_va_check_error(int rv, const char* format, va_list args) {
 	vasprintf(&buf, format, args);
 
 	log_message(LLVL_ERROR, "%s (%s)", buf, strerror(savedErrno));
+	free(buf);
 
 	return 1;
 }

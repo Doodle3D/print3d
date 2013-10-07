@@ -78,6 +78,7 @@ void Logger::vaLog(ELOG_LEVEL level, const char* format, va_list args) const {
 	now = localtime(&ltime);
 	fprintf(stream_, "%02i-%02i %02i:%02i:%02i  %s\n",
 			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, buf);
+	free(buf);
 }
 
 bool Logger::checkError(int rv, const char* format, ...) const {
@@ -97,6 +98,7 @@ bool Logger::vaCheckError(int rv, const char* format, va_list args) const {
 	vasprintf(&buf, format, args);
 
 	log(ERROR, "%s (%s)", buf, strerror(savedErrno));
+	free(buf);
 
 	return true;
 }

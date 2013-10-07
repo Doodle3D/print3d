@@ -53,7 +53,7 @@ int AbstractDriver::closeConnection() {
 	return serial_.close();
 }
 
-bool AbstractDriver::isConnected() {
+bool AbstractDriver::isConnected() const {
 	return serial_.isOpen();
 }
 
@@ -159,7 +159,7 @@ int AbstractDriver::getNumLines() const {
 	return gcodeBuffer_.getTotalLines();
 }
 
-AbstractDriver::STATE AbstractDriver::getState() {
+AbstractDriver::STATE AbstractDriver::getState() const {
 	return state_;
 }
 void AbstractDriver::setState(STATE state) {

@@ -48,7 +48,7 @@ public:
 
 	int openConnection();
 	int closeConnection();
-	bool isConnected();
+	bool isConnected() const;
 
 	// should return in how much milliseconds it wants to be called again
 	virtual int update() = 0;
@@ -94,7 +94,7 @@ public:
 	 */
 	int getNumLines() const;
 
-	STATE getState();
+	STATE getState() const;
 	const std::string &getStateString(STATE state);
 
 protected:

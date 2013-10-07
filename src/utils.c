@@ -97,14 +97,13 @@ int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *
  */
 int readAndAppendAvailableData(int fd, char **buf, int *buflen, int timeout, int onlyOnce) {
 	struct pollfd pfd = { .fd = fd, .events = POLLIN };
-	int newbuflen = 0, totalreadlen = 0;
-	int rv;
+	int totalreadlen = 0;
   int exitValue;
 
 	while(1) {
-		newbuflen = *buflen + READ_BUF_SIZE;
+		int newbuflen = *buflen + READ_BUF_SIZE;
 		*buf = (char*)realloc(*buf, newbuflen);
-		rv = read(fd, *buf + *buflen, newbuflen - *buflen);
+		int rv = read(fd, *buf + *buflen, newbuflen - *buflen);
 
 		if (rv < 0) {
 			if (errno == EWOULDBLOCK || errno == EAGAIN) {
