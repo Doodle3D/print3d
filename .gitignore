@@ -1,3 +1,4 @@
 src/*.o
 src/print3d
+src/Testing
 build

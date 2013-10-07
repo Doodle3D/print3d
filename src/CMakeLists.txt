@@ -17,6 +17,7 @@ option(GENERATE_DOCS "generate documentation" OFF)
 add_subdirectory(server)
 add_subdirectory(drivers)
 add_subdirectory(frontends)
+add_subdirectory(unittest)
 
 add_library(logger logger.c logger.h)
 set_target_properties(logger PROPERTIES COMPILE_FLAGS "-fPIC")
