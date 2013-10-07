@@ -26,7 +26,7 @@ void Client::runCommands() {
 bool Client::sendData(const char* buf, int buflen) {
 	if (fd_ == -1) return false;
 
-	logger_.logIpcCmd(Logger::VERBOSE, buf, buflen, true); //NOTE: we assume the buffer contains an ipc command
+	logger_.logIpcCmd(Logger::BULK, buf, buflen, true); //NOTE: we assume the buffer contains an ipc command
 
 	int rv = ::send(fd_, buf, buflen, 0);
 

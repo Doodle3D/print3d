@@ -121,11 +121,11 @@ void AbstractDriver::resetPrint() {
 }
 
 void AbstractDriver::printNextLine() {
-	LOG(Logger::BULK, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getNumLines());
+	LOG(Logger::BULK, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getTotalLines());
 	string line;
 	if(gcodeBuffer_.getNextLine(line)) {
 		sendCode(line);
-		gcodeBuffer_.incrementCurrentLine();
+		gcodeBuffer_.setCurrentLine(gcodeBuffer_.getCurrentLine() + 1);
 	} else { // print finished
 		resetPrint();
 	}
@@ -156,7 +156,7 @@ int AbstractDriver::getCurrentLine() const {
 }
 
 int AbstractDriver::getNumLines() const {
-	return gcodeBuffer_.getNumLines();
+	return gcodeBuffer_.getTotalLines();
 }
 
 AbstractDriver::STATE AbstractDriver::getState() {

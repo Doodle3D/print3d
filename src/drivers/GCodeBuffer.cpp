@@ -4,13 +4,13 @@ using std::string;
 
 
 GCodeBuffer::GCodeBuffer()
-: currentLine_(0), numLines_(0)
+: currentLine_(0), bufferedLines_(0), totalLines_(0)
 { /* empty */ }
 
 void GCodeBuffer::set(const string &gcode) {
 	buffer_ = gcode;
 	cleanupGCode(0);
-	numLines_ = 0;
+	bufferedLines_ = totalLines_ = 0;
 	updateStats(0);
 }
 
@@ -23,7 +23,7 @@ void GCodeBuffer::append(const string &gcode) {
 
 void GCodeBuffer::clear() {
 	buffer_.clear();
-	numLines_ = 0;
+	bufferedLines_ = totalLines_ = 0;
 	updateStats(0);
 }
 
@@ -31,8 +31,12 @@ int32_t GCodeBuffer::getCurrentLine() const {
 	return currentLine_;
 }
 
-int32_t GCodeBuffer::getNumLines() const {
-	return numLines_;
+int32_t GCodeBuffer::getBufferedLines() const {
+	return bufferedLines_;
+}
+
+int32_t GCodeBuffer::getTotalLines() const {
+	return totalLines_;
 }
 
 const string &GCodeBuffer::getBuffer() const {
@@ -43,16 +47,8 @@ int32_t GCodeBuffer::getBufferSize() const {
 	return buffer_.length();
 }
 
-void GCodeBuffer::decrementCurrentLine() {
-	if (currentLine_ > 0) currentLine_--;
-}
-
-void GCodeBuffer::incrementCurrentLine() {
-	if (currentLine_ < numLines_) currentLine_++;
-}
-
 void GCodeBuffer::setCurrentLine(int32_t line) {
-	currentLine_ = std::min(line, numLines_);
+	currentLine_ = std::min(line, totalLines_);
 }
 
 bool GCodeBuffer::getNextLine(string &line) const {
@@ -66,8 +62,7 @@ bool GCodeBuffer::eraseLine() {
 
 	buffer_.erase(0, (pos == string::npos) ? pos : pos + 1);
 
-	numLines_--;
-	if (currentLine_ > numLines_) currentLine_ = numLines_;
+	bufferedLines_--;
 
 	return pos != string::npos;
 }
@@ -77,9 +72,11 @@ bool GCodeBuffer::eraseLine() {
  *********************/
 
 void GCodeBuffer::updateStats(size_t pos) {
-	numLines_ += std::count(buffer_.begin() + pos, buffer_.end(), '\n');
-	if (buffer_.length() > 0 && buffer_.at(buffer_.length() - 1) != '\n') numLines_++;
-	if (currentLine_ > numLines_) currentLine_ = numLines_;
+	int32_t addedLineCount = std::count(buffer_.begin() + pos, buffer_.end(), '\n');
+	if (buffer_.length() > 0 && buffer_.at(buffer_.length() - 1) != '\n') addedLineCount++;
+	bufferedLines_ += addedLineCount;
+	totalLines_ += addedLineCount;
+	if (currentLine_ > totalLines_) currentLine_ = totalLines_;
 }
 
 void GCodeBuffer::cleanupGCode(size_t pos) {

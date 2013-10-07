@@ -35,7 +35,7 @@ void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
 	const handlerFunctions* hfunc = HANDLERS;
 	IPC_COMMAND_CODE code = ipc_cmd_get(buf, buflen);
 
-	Logger::getInstance().logIpcCmd(Logger::VERBOSE, buf, buflen);
+	Logger::getInstance().logIpcCmd(Logger::BULK, buf, buflen);
 
 	while(hfunc->hndFunc) {
 		if (hfunc->code == code) hfunc->hndFunc(client, buf, buflen);
@@ -51,6 +51,7 @@ void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
 //static
 void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 	int numargs = ipc_cmd_num_args(buf, buflen);
+	LOG(Logger::VERBOSE, "received test command with %i arguments", numargs);
 
 	char* argtext = 0;
 	if (numargs > 0) {
@@ -78,6 +79,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 		int16_t arg;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &arg);
 		IPC_TEMPERATURE_PARAMETER which = (IPC_TEMPERATURE_PARAMETER)arg;
+		LOG(Logger::VERBOSE, "received get temperature command with arg %i", which);
 		int temp = 0;
 		switch(which) {
 		case IPC_TEMP_HOTEND: temp = driver->getTemperature(); break;
@@ -119,7 +121,6 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 		char* data = 0;
 		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
 		LOG(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
-		//LOG(Logger::BULK, "received gcode was '%s'", data);
 		AbstractDriver* driver = client.getServer().getDriver();
 		string s(data);
 		free(data);
@@ -200,6 +201,7 @@ void CommandHandler::hnd_heatup(Client& client, const char* buf, int buflen) {
 
 //static
 void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen) {
+	LOG(Logger::VERBOSE, "received get progress command");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	int16_t currentLine = driver->getCurrentLine();
@@ -213,6 +215,7 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 
 //static
 void CommandHandler::hnd_getState(Client& client, const char* buf, int buflen) {
+	LOG(Logger::VERBOSE, "received get state command");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	const string& state = driver->getStateString(driver->getState());

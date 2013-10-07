@@ -135,7 +135,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 	} else if(code.find("Resend:") != string::npos) { // please resend line
 
 		//currentLine_ = atoi(strstr(code.c_str(), "Resend:") + 7); // correct current line
-		gcodeBuffer_.decrementCurrentLine();
+		gcodeBuffer_.setCurrentLine(getCurrentLine() - 1);
 		LOG(Logger::BULK, "  Resend: %i", gcodeBuffer_.getCurrentLine());
 		printNextLine();
 
@@ -152,26 +152,26 @@ void MarlinDriver::parseTemperatures(string& code) {
 	// temperature hotend
 	std::size_t posT = code.find("T:");
 	temperature_ = findValue(code,posT+2);
-	LOG(Logger::BULK, "  temp '%i'",temperature_);
+	//LOG(Logger::BULK, "  temp '%i'",temperature_);
 
 	// target temperature hotend
 	std::size_t posTT = code.find("/",posT);
 	if(posTT != std::string::npos) {
 		targetTemperature_ = findValue(code,posTT+1);
-		LOG(Logger::BULK, "  targetTemp '%i'",targetTemperature_);
+		//LOG(Logger::BULK, "  targetTemp '%i'",targetTemperature_);
 	}
 
 	// bed temperature
 	std::size_t posB = code.find("B:");
 	if(posB != std::string::npos) {
 		bedTemperature_ = findValue(code,posB+2);
-		LOG(Logger::BULK, "  bedTemp '%i'",bedTemperature_);
+		//LOG(Logger::BULK, "  bedTemp '%i'",bedTemperature_);
 
 		// target bed temperature
 		std::size_t posTBT = code.find("/",posB);
 		if(posTBT != std::string::npos) {
 			targetBedTemperature_ = findValue(code,posTBT+1);
-			LOG(Logger::BULK, "  targetBedTemp '%i'",targetBedTemperature_);
+			//LOG(Logger::BULK, "  targetBedTemp '%i'",targetBedTemperature_);
 		}
 	}
 }
