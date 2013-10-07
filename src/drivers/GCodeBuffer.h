@@ -16,6 +16,8 @@ public:
 	const std::string &getBuffer() const;
 	int32_t getBufferSize() const;
 
+	void decrementCurrentLine();
+	void incrementCurrentLine();
 	void setCurrentLine(int32_t line);
 
 	bool getNextLine(std::string &line) const;

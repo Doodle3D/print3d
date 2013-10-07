@@ -43,6 +43,14 @@ int32_t GCodeBuffer::getBufferSize() const {
 	return buffer_.length();
 }
 
+void GCodeBuffer::decrementCurrentLine() {
+	if (currentLine_ > 0) currentLine_--;
+}
+
+void GCodeBuffer::incrementCurrentLine() {
+	if (currentLine_ < numLines_) currentLine_++;
+}
+
 void GCodeBuffer::setCurrentLine(int32_t line) {
 	currentLine_ = std::min(line, numLines_);
 }

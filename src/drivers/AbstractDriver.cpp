@@ -19,8 +19,6 @@ AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, con
   targetTemperature_(0),
   bedTemperature_(0),
   targetBedTemperature_(0),
-  currentLine_(1),
-  numLines_(-1),
   state_(DISCONNECTED),
   log_(Logger::getInstance()),
   server_(server),
@@ -67,58 +65,20 @@ bool AbstractDriver::isConnected() {
  * Set (replace) the GCode buffer
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
-	gcodeBuffer_ = gcode;
-	filterGCode();
-	updateGCodeInfo();
+	gcodeBuffer_.set(gcode);
 }
 /*
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
-	//setGCode(gcodeBuffer_ + gcode); //old approach
-	gcodeBuffer_ += gcode;
-	filterGCode();
-	updateGCodeInfo();
+	gcodeBuffer_.append(gcode);
 }
 
 /*
  * Clear (empty) GCode buffer
  */
 void AbstractDriver::clearGCode() {
-	setGCode("");
-}
-
-/*
- * Filter GCode, remove comments for example
- */
-void AbstractDriver::filterGCode() {
-	// replace \r with \n
-	std::replace( gcodeBuffer_.begin(), gcodeBuffer_.end(), '\r', '\n');
-
-	// replace \n\n with \n
-	std::size_t posDoubleNewline = 0;
-	while((posDoubleNewline = gcodeBuffer_.find("\n\n")) != string::npos) {
-		gcodeBuffer_.replace(posDoubleNewline, 2, "\n");
-	}
-
-	// remove all comments (;...)
-	std::size_t posComment = 0;
-	while((posComment = gcodeBuffer_.find(';')) != string::npos) {
-		std::size_t posCommentEnd = gcodeBuffer_.find('\n', posComment);
-		if(posCommentEnd == string::npos) { // no newline found
-			gcodeBuffer_.erase(posComment); // so erase remaining text
-		} else {
-			gcodeBuffer_.erase(posComment,posCommentEnd - posComment);
-		}
-	}
-}
-
-/*
- * Update GCode info, like number of lines.
- */
-void AbstractDriver::updateGCodeInfo() {
-	numLines_ = std::count(gcodeBuffer_.begin(), gcodeBuffer_.end(), '\n') + 1;
-	currentLine_ = std::min(currentLine_,numLines_);
+	gcodeBuffer_.clear();
 }
 
 void AbstractDriver::heatup(int temperature) {
@@ -157,17 +117,15 @@ void AbstractDriver::stopPrint(const std::string& endcode) {
 void AbstractDriver::resetPrint() {
 	LOG(Logger::BULK, "resetPrint()");
 	setState(IDLE);
-	currentLine_ = 1;
+	gcodeBuffer_.setCurrentLine(0);
 }
 
 void AbstractDriver::printNextLine() {
-	LOG(Logger::BULK, "printNextLine(): %i/%i",currentLine_,numLines_);
-	if(currentLine_ <= numLines_) {
-		string line;
-		if(getNextLine(line)) {
-			sendCode(line);
-			currentLine_++;
-		}
+	LOG(Logger::BULK, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getNumLines());
+	string line;
+	if(gcodeBuffer_.getNextLine(line)) {
+		sendCode(line);
+		gcodeBuffer_.incrementCurrentLine();
 	} else { // print finished
 		resetPrint();
 	}
@@ -194,11 +152,11 @@ int AbstractDriver::getTargetBedTemperature() const {
 }
 
 int AbstractDriver::getCurrentLine() const {
-	return currentLine_;
+	return gcodeBuffer_.getCurrentLine();
 }
 
 int AbstractDriver::getNumLines() const {
-	return numLines_;
+	return gcodeBuffer_.getNumLines();
 }
 
 AbstractDriver::STATE AbstractDriver::getState() {
@@ -244,28 +202,4 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 //TODO: add 57600?
 void AbstractDriver::switchBaudrate() {
 	setBaudrate((baudrate_ == B250000)? B115200 : B250000);
-}
-
-bool AbstractDriver::getNextLine(std::string& line) {
-	size_t posN = gcodeBuffer_.find("\n");
-	if(posN == string::npos) {
-		line = gcodeBuffer_.substr(0); // extract all
-		if(line.length() > 0) return true;
-		else return false;
-	} else {
-		line = gcodeBuffer_.substr(0,posN);
-		return true;
-	}
-}
-
-bool AbstractDriver::erasePrevLine() {
-	size_t posN = gcodeBuffer_.find("\n");
-	if(posN == string::npos) {
-		//NOTE: use clear() instead of erase(0) to prevent a compiler error in openwrt
-		gcodeBuffer_.clear();
-		return false;
-	} else {
-		gcodeBuffer_.erase(0,posN+1);
-		return true;
-	}
 }
