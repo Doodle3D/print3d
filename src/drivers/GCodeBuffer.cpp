@@ -86,12 +86,6 @@ void GCodeBuffer::cleanupGCode(size_t pos) {
 	//replace \r with \n
 	std::replace(buffer_.begin(), buffer_.end(), '\r', '\n');
 
-	//replace \n\n with \n
-	std::size_t posDoubleNewline = 0;
-	while((posDoubleNewline = buffer_.find("\n\n", posDoubleNewline)) != string::npos) {
-		buffer_.replace(posDoubleNewline, 2, "\n");
-	}
-
 	//remove all comments (;...)
 	std::size_t posComment = 0;
 	while((posComment = buffer_.find(';')) != string::npos) {
@@ -99,5 +93,11 @@ void GCodeBuffer::cleanupGCode(size_t pos) {
 
 		if(posCommentEnd == string::npos) buffer_.erase(posComment);
 		else buffer_.erase(posComment, posCommentEnd - posComment);
+	}
+
+	//replace \n\n with \n
+	std::size_t posDoubleNewline = 0;
+	while((posDoubleNewline = buffer_.find("\n\n", posDoubleNewline)) != string::npos) {
+		buffer_.replace(posDoubleNewline, 2, "\n");
 	}
 }

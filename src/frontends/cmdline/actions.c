@@ -140,7 +140,8 @@ static int act_printProgress() {
 	comm_closeSocket();
 
 	printf("print progress: %i of %i lines", currentLine, numLines);
-	if (numLines != 0) printf(" (%.1f%%)\n", (numLines != 0) ? (float)currentLine / numLines * 100 : 0);
+	if (numLines != 0) printf(" (%.1f%%)", (float)currentLine / numLines * 100);
+	printf("\n");
 
 	return 0;
 }
