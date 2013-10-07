@@ -112,7 +112,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 
 		parseTemperatures(code);
 		checkTemperatureAttempt_ = 0;
-		maxCheckTemperatureAttempts_ = 1;
+		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval
 		if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
