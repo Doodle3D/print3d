@@ -1,6 +1,10 @@
+#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
 #include "../communicator.h"
 #include "../../logger.h"
 #include "../../utils.h"
@@ -100,6 +104,51 @@ static int act_sendGcodeFile(const char *file) {
 	comm_closeSocket();
 
 	printf("sent gcode file and started print\n");
+	return 0;
+}
+
+static int act_sendGcodeFromStdin() {
+	comm_openSocketForDeviceId(deviceId);
+
+	if (comm_clearGcode() < 0) {
+		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
+		return 1;
+	}
+
+	printf("Please enter gcode and finish with C-d...\n");
+
+	char *gcode = NULL;
+	ssize_t gcode_len = 0, read_len = 0;
+	while (1) {
+		gcode_len += 128;
+		gcode = (char*)realloc(gcode, gcode_len);
+		ssize_t rv = read(STDIN_FILENO, gcode + read_len, gcode_len - read_len);
+
+		if (rv < 0) {
+			fprintf(stderr, "error reading from stdin (%s)\n", strerror(errno));
+			free(gcode);
+			return 1;
+		}
+
+		if (rv == 0) break;
+
+		read_len += rv;
+	}
+
+	if (comm_sendGcodeData(gcode) < 0) {
+		fprintf(stderr, "could not send gcode data (%s)\n", comm_getError());
+		return 1;
+	}
+	free(gcode);
+
+	if (comm_startPrintGcode() < 0) {
+		fprintf(stderr, "sent gcode data, but could not start print (%s)\n", comm_getError());
+		return 1;
+	}
+
+	comm_closeSocket();
+
+	printf("sent gcode data and started print\n");
 	return 0;
 }
 
@@ -224,7 +273,8 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-F,--force-run\t\tForce running with a default device if none could be found\n");
 		printf("\t-w,--heatup <temp>\tAsk the printer to heatup to the given temperature (degrees celcius)\n");
 		printf("\t-f,--gcode-file <file>\tPrint the given g-code file\n");
-		printf("\t-c,--gcode <gcode>\tPrint the specified line of g-code\n");
+		printf("\t-c,--gcode <gcode>\tPrint the specified line(s) of g-code\n");
+		printf("\t-r,--stdin\t\tPrint g-code read from stdin (end interactive input with C-d)\n");
 		printf("\t-k,--stop\t\tStop printing\n");
 		printf("\t-K,--stop-with-code <gcode> Stop printing, with specified end code\n");
 		return 0;
@@ -254,6 +304,8 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 			return 1;
 		}
 		return act_sendGcode(sendGcode);
+	case AT_SEND_STDIN:
+		return act_sendGcodeFromStdin();
 	case AT_STOP_PRINT:
 		return act_stopPrint(endGcode);
 	}

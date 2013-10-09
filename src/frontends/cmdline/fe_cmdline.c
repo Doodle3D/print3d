@@ -24,6 +24,7 @@ static struct option long_options[] = {
 		{"heatup", required_argument, NULL, 'w'},
 		{"gcode-file", required_argument, NULL, 'f'},
 		{"gcode", required_argument, NULL, 'c'},
+		{"stdin", no_argument, NULL, 'r'},
 		{"stop", no_argument, NULL, 'k'},
 		{"stop-with-code", required_argument, NULL, 'K'},
 
@@ -42,7 +43,7 @@ static ACTION_TYPE action = AT_NONE;
 
 void parseOptions(int argc, char **argv) {
 	char ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:kK:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
@@ -91,6 +92,10 @@ void parseOptions(int argc, char **argv) {
 		case 'c':
 			sendGcode = optarg;
 			action = AT_SEND_CODE;
+			deviceIdRequired = 1;
+			break;
+		case 'r':
+			action = AT_SEND_STDIN;
 			deviceIdRequired = 1;
 			break;
 		case 'k':
