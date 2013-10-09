@@ -1,10 +1,16 @@
 #ifndef GCODE_BUFFER_H_SEEN
 #define GCODE_BUFFER_H_SEEN
 
+#include <stdint.h>
 #include <string>
+#include <deque>
 
 class GCodeBuffer {
 public:
+	static const uint32_t MAX_BUFFER_SIZE;
+
+	typedef std::deque<std::string*> deque_stringP;
+
 	GCodeBuffer();
 
   void set(const std::string &gcode);
@@ -14,8 +20,8 @@ public:
 	int32_t getCurrentLine() const;
 	int32_t getBufferedLines() const;
 	int32_t getTotalLines() const;
-	const std::string &getBuffer() const;
-	int32_t getBufferSize() const;
+//	const std::string &getBuffer() const;
+//	int32_t getBufferSize() const;
 
 	void setCurrentLine(int32_t line);
 
@@ -23,13 +29,13 @@ public:
 	bool eraseLine();
 
 private:
-	std::string buffer_;
+	deque_stringP buffers_;
 	int32_t currentLine_;
 	int32_t bufferedLines_;
 	int32_t totalLines_;
 
-	void updateStats(size_t pos);
-	void cleanupGCode(size_t pos);
+	void updateStats(std::string *buffer, size_t pos);
+	void cleanupGCode(std::string *buffer, size_t pos);
 };
 
 #endif /* ! GCODE_BUFFER_H_SEEN */

@@ -78,8 +78,6 @@ static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 	} else if (rv < sbuflen) {
 		log_message(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
 		setError("could not send complete ipc command");
-	} else {
-		log_message(LLVL_BULK, "ipc command 0x%x sent", ipc_cmd_get(sbuf, sbuflen));
 	}
 
 	char *rbuf = 0;
