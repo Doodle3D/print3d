@@ -155,7 +155,7 @@ void MarlinDriver::parseTemperatures(string& code) {
 	//LOG(Logger::BULK, "  temp '%i'",temperature_);
 
 	// target temperature hotend
-	std::size_t posTT = code.find("/",posT);
+	std::size_t posTT = code.find('/',posT);
 	if(posTT != std::string::npos) {
 		targetTemperature_ = findValue(code,posTT+1);
 		//LOG(Logger::BULK, "  targetTemp '%i'",targetTemperature_);
@@ -168,7 +168,7 @@ void MarlinDriver::parseTemperatures(string& code) {
 		//LOG(Logger::BULK, "  bedTemp '%i'",bedTemperature_);
 
 		// target bed temperature
-		std::size_t posTBT = code.find("/",posB);
+		std::size_t posTBT = code.find('/',posB);
 		if(posTBT != std::string::npos) {
 			targetBedTemperature_ = findValue(code,posTBT+1);
 			//LOG(Logger::BULK, "  targetBedTemp '%i'",targetBedTemperature_);
