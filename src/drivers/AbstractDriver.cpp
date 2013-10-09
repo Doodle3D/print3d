@@ -151,11 +151,15 @@ int AbstractDriver::getTargetBedTemperature() const {
 	return targetBedTemperature_;
 }
 
-int AbstractDriver::getCurrentLine() const {
+int32_t AbstractDriver::getCurrentLine() const {
 	return gcodeBuffer_.getCurrentLine();
 }
 
-int AbstractDriver::getNumLines() const {
+int32_t AbstractDriver::getBufferedLines() const {
+	return gcodeBuffer_.getBufferedLines();
+}
+
+int32_t AbstractDriver::getTotalLines() const {
 	return gcodeBuffer_.getTotalLines();
 }
 

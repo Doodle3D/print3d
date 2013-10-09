@@ -60,12 +60,12 @@ else
 end
 
 
-local v1,v2 = printer:getProgress()
+local v1,v2,v3 = printer:getProgress()
 if v1 then
-	local percent = v1 / v2 * 100
-	print("printer:getProgress returned curr/total: " .. v1 .. "/" .. v2 .. "(" .. percent .. "%)")
+	local percent = v1 / v3 * 100
+	print("printer:getProgress returned curr/buff/total: " .. v1 .. "/" .. v2 .. "/" .. v3 .. " (" .. percent .. "%)")
 else
-	print("printer:getProgress returned false/nil");
+	print("printer:getProgress returned false/nil (" .. v2 .. ")");
 end
 
 

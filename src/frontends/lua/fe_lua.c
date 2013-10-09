@@ -260,18 +260,19 @@ static int l_heatup(lua_State *L) {
 }
 
 
-//returns currentLine+numLines or nil+errmsg
+//returns currentLine+bufferedLines+totalLines or nil+errmsg
 static int l_getProgress(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 
-	int16_t currentLine, numLines;
-	int rv = comm_getProgress(&currentLine, &numLines);
+	int32_t currentLine, bufferedLines, totalLines;
+	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines);
 	comm_closeSocket();
 
 	if (rv > -1) {
 		lua_pushnumber(L, currentLine);
-		lua_pushnumber(L, numLines);
-		return 2;
+		lua_pushnumber(L, bufferedLines);
+		lua_pushnumber(L, totalLines);
+		return 3;
 	} else {
 		lua_pushnil(L);
 		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());

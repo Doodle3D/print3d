@@ -204,11 +204,12 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 	LOG(Logger::VERBOSE, "received get progress command");
 	AbstractDriver* driver = client.getServer().getDriver();
 
-	int16_t currentLine = driver->getCurrentLine();
-	int16_t numLines = driver->getNumLines();
+	int32_t currentLine = driver->getCurrentLine();
+	int32_t bufferedLines = driver->getBufferedLines();
+	int32_t totalLines = driver->getTotalLines();
 
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "ww", currentLine, numLines);
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "WWW", currentLine, bufferedLines, totalLines);
 	client.sendData(cmd, cmdlen);
 	free(cmd);
 }

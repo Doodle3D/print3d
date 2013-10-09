@@ -36,7 +36,7 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
 		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "x", "" }, //NOTE: accepts end g-code (ignored if 0 length)
 		{ IPC_CMDQ_HEATUP, "heatup", "w", "" }, //NOTE: accepts heatup target temperature
-		{ IPC_CMDQ_GET_PROGRESS, "getProgress", "", "ww" }, //NOTE: returns currentLine and numLines
+		{ IPC_CMDQ_GET_PROGRESS, "getProgress", "", "WWW" }, //NOTE: returns currentLine, bufferedLines and totalLines
 		{ IPC_CMDQ_GET_STATE, "getState", "", "x" },
 
 		/* response commands send by server */

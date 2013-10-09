@@ -19,7 +19,7 @@ int comm_sendGcodeFile(const char *file);
 int comm_sendGcodeData(const char *gcode);
 
 int comm_heatup(int temperature);
-int comm_getProgress(int16_t *currentLine, int16_t *numLines);
+int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *numLines);
 int comm_getState(char **state);
 
 #endif /* COMMUNICATOR_H_SEEN */

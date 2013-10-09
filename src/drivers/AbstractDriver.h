@@ -85,14 +85,19 @@ public:
 	int getTargetBedTemperature() const;
 
 	/*
-	 * Get line number of codeBuffer that the printer should be printing
+	 * Get the line number which is currently being printed (current/total*100 yields progress percentage)
 	 */
-	int getCurrentLine() const;
+	int32_t getCurrentLine() const;
 
 	/*
-	 * Get line number of codeBuffer that the printer should be printing
+	 * Get the number of lines currently in the buffer
 	 */
-	int getNumLines() const;
+	int32_t getBufferedLines() const;
+
+	/*
+	 * Get the total number of lines which were appended to the buffer after the last clear or set
+	 */
+	int32_t getTotalLines() const;
 
 	STATE getState() const;
 	const std::string &getStateString(STATE state);

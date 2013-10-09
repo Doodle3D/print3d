@@ -177,19 +177,19 @@ static int act_sendGcode(const char *gcode) {
 }
 
 static int act_printProgress() {
-	int16_t currentLine = INT16_MIN, numLines = INT16_MIN;
+	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 
 	comm_openSocketForDeviceId(deviceId);
 
-	if (comm_getProgress(&currentLine, &numLines) < 0) {
+	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines) < 0) {
 		fprintf(stderr, "could not get printing progress (%s)\n", comm_getError());
 		return 1;
 	}
 
 	comm_closeSocket();
 
-	printf("print progress: %i of %i lines", currentLine, numLines);
-	if (numLines != 0) printf(" (%.1f%%)", (float)currentLine / numLines * 100);
+	printf("print progress: %zi of %zi lines (%zi buffered)", currentLine, totalLines, bufferedLines);
+	if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
 	printf("\n");
 
 	return 0;
