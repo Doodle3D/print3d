@@ -129,6 +129,7 @@ protected:
 
 private:
 	static const std::string STATE_NAMES[];
+	static const bool REQUEST_EXIT_ON_PORT_FAIL;
 
 	typedef enum BAUDRATE{
 		B115200 = 115200,

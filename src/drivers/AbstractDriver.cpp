@@ -13,6 +13,7 @@ using std::size_t;
 
 //STATIC
 const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing", "stopping" };
+const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : temperature_(0),
@@ -183,10 +184,12 @@ int AbstractDriver::readData() {
 	log_.checkError(rv, "cannot read from device");
 	if (rv == -2) {
 		LOG(Logger::ERROR, "remote end closed connection, closing port");
-		serial_.close();
+		closeConnection();
+		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
 	} else if (rv == -1 && errno == ENXIO) {
 		LOG(Logger::ERROR, "port was disconnected, closing port");
-		serial_.close();
+		closeConnection();
+		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
 	} else if (rv >= 0) {
 		//LOG(Logger::BULK, "read %i bytes from device", rv);
 	}

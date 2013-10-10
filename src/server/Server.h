@@ -13,7 +13,6 @@ class Client;
 class Server {
 public:
 	static const bool FORK_BY_DEFAULT;
-	static const bool EXIT_ON_PORT_FAIL;
 
 	typedef std::vector<Client*> vec_ClientP;
 	typedef std::set<int> set_int;
@@ -27,6 +26,9 @@ public:
 
 	AbstractDriver* getDriver();
 	const AbstractDriver* getDriver() const;
+
+	//will either not return, or return false
+	bool requestExit(int rv);
 
 private:
 	static const int SOCKET_MAX_BACKLOG;
