@@ -143,7 +143,7 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
-  //LOG(Logger::VERBOSE,"send(): %s",code);
+  //LOG(Logger::VERBOSE,"Serial::send(): %s",code);
 	if (portFd_ >= 0) {
 		::write(portFd_, code, strlen(code));
 		return true;

@@ -78,7 +78,6 @@ int MarlinDriver::update() {
 	if (state_ == PRINTING || state_ == STOPPING || timer_.getElapsedTimeInMilliSec() > UPDATE_INTERVAL) {
 		//LOG(Logger::BULK, "update()");
 		int rv = readData();
-		//LOG(Logger::BULK, "  rv: %i: '%s'",rv,serial_.getBuffer());//TEMP
 		if (rv > 0) {
 			string* line;
 			while((line = serial_.extractLine()) != NULL) {
@@ -196,6 +195,7 @@ void MarlinDriver::checkTemperature() {
 void MarlinDriver::sendCode(const std::string& code) {
 	//LOG(Logger::BULK, "sendCode(): %s",code.c_str());
 	if (isConnected()) {
+		extractGCodeInfo(code);
 		serial_.send((code+"\n").c_str());
 	}
 }

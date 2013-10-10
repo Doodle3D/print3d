@@ -340,7 +340,7 @@ int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *tota
 	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 3) >= 0) {
 		rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 0, currentLine);
 		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 1, bufferedLines);
-		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 1, totalLines);
+		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 2, totalLines);
 	} else {
 		rv = -1;
 	}
