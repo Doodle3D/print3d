@@ -36,6 +36,7 @@ public:
 		UNKNOWN = 0,
 		DISCONNECTED = 1,
 		IDLE,
+		BUFFERING,
 		PRINTING, /* executing commands */
 		STOPPING
 	} STATE;

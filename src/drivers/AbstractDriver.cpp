@@ -12,7 +12,7 @@ using std::size_t;
 
 
 //STATIC
-const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "printing", "stopping" };
+const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "buffering", "printing", "stopping" };
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
@@ -67,12 +67,14 @@ bool AbstractDriver::isConnected() const {
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
 	gcodeBuffer_.set(gcode);
+	if (getState() == IDLE) setState(BUFFERING);
 }
 /*
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
 	gcodeBuffer_.append(gcode);
+	if (getState() == IDLE) setState(BUFFERING);
 }
 
 /*
@@ -80,6 +82,8 @@ void AbstractDriver::appendGCode(const std::string& gcode) {
  */
 void AbstractDriver::clearGCode() {
 	gcodeBuffer_.clear();
+	STATE s = getState();
+	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
 }
 
 void AbstractDriver::heatup(int temperature) {
@@ -168,7 +172,7 @@ AbstractDriver::STATE AbstractDriver::getState() const {
 	return state_;
 }
 void AbstractDriver::setState(STATE state) {
-	LOG(Logger::BULK, "setState(): %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());
+	LOG(Logger::VERBOSE, "setState(): %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());//TEMP was BULK
 	state_ = state;
 }
 
