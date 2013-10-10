@@ -13,6 +13,7 @@ class Client;
 class Server {
 public:
 	static const bool FORK_BY_DEFAULT;
+	static const bool EXIT_ON_PORT_FAIL;
 
 	typedef std::vector<Client*> vec_ClientP;
 	typedef std::set<int> set_int;

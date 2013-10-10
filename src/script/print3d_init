@@ -1,0 +1,12 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+
+start() {
+	/bin/print3d-manager.sh > /dev/null 2> /dev/null &
+}
+
+stop() {
+	killall print3d-manager.sh
+	killall print3d
+}

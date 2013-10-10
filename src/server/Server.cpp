@@ -20,6 +20,7 @@ using std::string;
 
 
 const bool Server::FORK_BY_DEFAULT = false;
+const bool Server::EXIT_ON_PORT_FAIL = true;
 const int Server::SOCKET_MAX_BACKLOG = 5; //private
 const int Server::SELECT_LOG_FAST_LOOP = -1;
 
