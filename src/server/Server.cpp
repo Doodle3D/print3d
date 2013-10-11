@@ -106,7 +106,7 @@ int Server::start(bool fork) {
 			log_.checkError(::fcntl(connFd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on socket with fd ", connFd);
 
 			clients_.push_back(new Client(*this, connFd));
-			LOG(Logger::BULK, "new client with fd %i", connFd);
+			//LOG(Logger::BULK, "new client with fd %i", connFd);
 
 			maxFd = (connFd > maxFd ? connFd : maxFd);
 			FD_SET(connFd, &masterFds);
@@ -125,7 +125,8 @@ int Server::start(bool fork) {
 			}
 
 			if (rv == -2) {
-				LOG(Logger::BULK, "connection closed from client with fd %i", client->getFileDescriptor());
+				//LOG(Logger::BULK, "connection closed from client with fd %i", client->getFileDescriptor());
+				::close(client->getFileDescriptor());
 				FD_CLR(client->getFileDescriptor(), &masterFds);
 				delete(client);
 				it = clients_.erase(it);

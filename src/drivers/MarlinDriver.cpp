@@ -64,14 +64,16 @@ int MarlinDriver::update() {
 		LOG(Logger::BULK, "update temp()");
 		temperatureTimer_.start(); // restart timer
 
-		// We try receiving the temperature, until it's tried enough
-		if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
-			LOG(Logger::BULK, "  check temp %i/%i",checkTemperatureAttempt_,maxCheckTemperatureAttempts_);
-			checkTemperature();
-			checkTemperatureAttempt_++;
-		} else {
-			switchBaudrate();
-			checkTemperatureAttempt_ = 0;
+		// We try receiving the temperature, until it's tried enough, and disable the mechanism after we have received temperature once
+		if (checkTemperatureAttempt_ != -1) {
+			if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
+				LOG(Logger::BULK, "  check temp %i/%i",checkTemperatureAttempt_,maxCheckTemperatureAttempts_);
+				checkTemperature();
+				checkTemperatureAttempt_++;
+			} else {
+				switchBaudrate();
+				checkTemperatureAttempt_ = 0;
+			}
 		}
 	}
 
@@ -110,7 +112,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 	if(tempMessage || heatingMessage) { // temperature or heating
 
 		parseTemperatures(code);
-		checkTemperatureAttempt_ = 0;
+		checkTemperatureAttempt_ = -1; //set to -1 to disable baud rate switching mechanism
 		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval
