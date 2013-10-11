@@ -79,7 +79,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 		int16_t arg;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &arg);
 		IPC_TEMPERATURE_PARAMETER which = (IPC_TEMPERATURE_PARAMETER)arg;
-		LOG(Logger::VERBOSE, "received get temperature command with arg %i", which);
+		LOG(Logger::BULK, "received get temperature command with arg %i", which);
 		int temp = 0;
 		switch(which) {
 		case IPC_TEMP_HOTEND: temp = driver->getTemperature(); break;
