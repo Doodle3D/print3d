@@ -157,7 +157,7 @@ void MarlinDriver::parseTemperatures(string& code) {
 	std::size_t posTT = code.find('/',posT);
 	if(posTT != std::string::npos) {
 		targetTemperature_ = findValue(code,posTT+1);
-		//LOG(Logger::BULK, "  targetTemp '%i'",targetTemperature_);
+		LOG(Logger::VERBOSE, "  (parseTemperatures)targetTemp '%i'",targetTemperature_);//TEMP was commented
 	}
 
 	// bed temperature
@@ -235,7 +235,7 @@ void MarlinDriver::extractGCodeInfo(const string& gcode) {
 	std::size_t posHeat = gcode.find("M109");
 	if(posHeat != std::string::npos) {
 		targetTemperature_ = findValue(gcode, posHeat + 6);
-		LOG(Logger::BULK, "  targetTemperature_: %i",targetTemperature_);
+		LOG(Logger::VERBOSE, "  (extractGCodeInfo)targetTemperature_: %i",targetTemperature_);//TEMP was bulk
 	}
 
 	// check for a bed heat command (M190 S... / M190 R...)
