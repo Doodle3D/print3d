@@ -117,6 +117,25 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.getBufferedLines(), 0);
 		fructose_assert_eq(buffer.getTotalLines(), 0);
 	}
+
+	void testBufferSize(const std::string& test_name) {
+		GCodeBuffer buffer;
+		const string text1 = "line1\nline2\nline3\n";
+		const string text2 = "line1\nline2;comment\nline3\n";
+		const string text3 = "appended\n";
+
+		fructose_assert_eq(buffer.getBufferSize(), 0);
+		buffer.set(text1);
+		fructose_assert_eq(buffer.getBufferSize(), text1.length());
+		buffer.set(text2);
+		fructose_assert_eq(buffer.getBufferSize(), text2.length() - 8);
+		buffer.eraseLine();
+		fructose_assert_eq(buffer.getBufferSize(), text2.length() - 8 - 6);
+		buffer.append(text3);
+		fructose_assert_eq(buffer.getBufferSize(), text2.length() - 8 - 6 + text3.length());
+		buffer.clear();
+		fructose_assert_eq(buffer.getBufferSize(), 0);
+	}
 };
 
 int main(int argc, char** argv) {
@@ -126,5 +145,6 @@ int main(int argc, char** argv) {
 	tests.add_test("getErase", &t_GCodeBuffer::testGetErase);
 	tests.add_test("cleanup", &t_GCodeBuffer::testCleanup);
 	tests.add_test("lineCounting", &t_GCodeBuffer::testLineCounting);
+	tests.add_test("bufferSize", &t_GCodeBuffer::testBufferSize);
 	return tests.run(argc, argv);
 }

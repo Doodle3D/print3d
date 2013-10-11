@@ -7,8 +7,6 @@
 
 class GCodeBuffer {
 public:
-	static const uint32_t MAX_BUFFER_SIZE;
-
 	typedef std::deque<std::string*> deque_stringP;
 
 	GCodeBuffer();
@@ -21,7 +19,8 @@ public:
 	int32_t getBufferedLines() const;
 	int32_t getTotalLines() const;
 //	const std::string &getBuffer() const;
-//	int32_t getBufferSize() const;
+	int32_t getBufferSize() const;
+	int32_t getMaxBufferSize() const;
 
 	void setCurrentLine(int32_t line);
 
@@ -29,10 +28,14 @@ public:
 	bool eraseLine();
 
 private:
-	deque_stringP buffers_;
+	static const uint32_t MAX_BUCKET_SIZE;
+	static const uint32_t MAX_BUFFER_SIZE;
+
+	deque_stringP buckets_;
 	int32_t currentLine_;
 	int32_t bufferedLines_;
 	int32_t totalLines_;
+	int32_t bufferSize_;
 
 	void updateStats(std::string *buffer, size_t pos);
 	void cleanupGCode(std::string *buffer, size_t pos);
