@@ -13,6 +13,7 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 : AbstractDriver(server, serialPortPath, baudrate),
   checkTemperatureInterval_(2000),
   checkTemperatureAttempt_(0),
+  checkConnection_(true),
   maxCheckTemperatureAttempts_(2) {
 
 	/*//temperature parsing tests
@@ -64,15 +65,20 @@ int MarlinDriver::update() {
 		LOG(Logger::BULK, "update temp()");
 		temperatureTimer_.start(); // restart timer
 
-		// We try receiving the temperature, until it's tried enough, and disable the mechanism after we have received temperature once
-		if(checkTemperatureAttempt_ == -1 ||
-			(checkTemperatureAttempt_ != -1 && checkTemperatureAttempt_ < maxCheckTemperatureAttempts_)) {
-			LOG(Logger::BULK, "  check temp %i/%i",checkTemperatureAttempt_,maxCheckTemperatureAttempts_);
-			checkTemperature();
-			checkTemperatureAttempt_++;
+		// We check the temperature
+		// during startup we use this to check for a valid connection, when it's established we stop checking
+		if(checkConnection_) {
+			if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
+				LOG(Logger::BULK, "  check temp %i/%i",checkTemperatureAttempt_,maxCheckTemperatureAttempts_);
+				checkTemperature();
+				checkTemperatureAttempt_++;
+			} else {
+				switchBaudrate();
+				checkTemperatureAttempt_ = 0;
+			}
 		} else {
-			switchBaudrate();
-			checkTemperatureAttempt_ = 0;
+			LOG(Logger::BULK, "  check temp");
+			checkTemperature();
 		}
 	}
 
@@ -111,7 +117,8 @@ void MarlinDriver::readResponseCode(std::string& code) {
 	if(tempMessage || heatingMessage) { // temperature or heating
 
 		parseTemperatures(code);
-		checkTemperatureAttempt_ = -1; //set to -1 to disable baud rate switching mechanism
+		//checkTemperatureAttempt_ = -1; //set to -1 to disable baud rate switching mechanism
+		checkConnection_ = false; // stop checking connection (and switching baud rate)
 		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval

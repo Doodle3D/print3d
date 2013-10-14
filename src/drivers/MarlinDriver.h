@@ -32,6 +32,7 @@ private:
 	Timer timer_;
 	Timer temperatureTimer_;
 	int checkTemperatureInterval_;
+	bool checkConnection_;
 	int checkTemperatureAttempt_;
 	int maxCheckTemperatureAttempts_;
 
