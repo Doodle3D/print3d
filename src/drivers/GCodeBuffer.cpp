@@ -1,13 +1,17 @@
 #include "GCodeBuffer.h"
-
+#include <stdlib.h>
+#include <string.h>
 using std::string;
+
+//NOTE: see Server.cpp for comments on this macro
+#define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
 
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
 
 GCodeBuffer::GCodeBuffer()
-: currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0)
+: currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
 { /* empty */ }
 
 void GCodeBuffer::set(const string &gcode) {
@@ -114,6 +118,10 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
+	//LOG(Logger::BULK, "  cleanupGCode");
+	//LOG(Logger::BULK, "  buffer: ");
+	//LOG(Logger::BULK, "  %s",buffer->c_str());
+
 	size_t buflen = buffer->length();
 
 	//replace \r with \n
@@ -122,10 +130,16 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	//remove all comments (;...)
 	std::size_t posComment = 0;
 	while((posComment = buffer->find(';', pos)) != string::npos) {
+		//LOG(Logger::BULK, "  posComment: %i",posComment);
 		size_t posCommentEnd = buffer->find('\n', posComment);
-
-		if(posCommentEnd == string::npos) buffer->erase(posComment);
-		else buffer->erase(posComment, posCommentEnd - posComment);
+		//LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
+		if(posCommentEnd == string::npos) {
+			buffer->erase(posComment);
+			//LOG(Logger::BULK, " erase until npos");
+		} else {
+			buffer->erase(posComment, posCommentEnd - posComment);
+			//LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
+		}
 	}
 
 	//replace \n\n with \n
@@ -133,6 +147,14 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	while((posDoubleNewline = buffer->find("\n\n", posDoubleNewline)) != string::npos) {
 		buffer->replace(posDoubleNewline, 2, "\n");
 	}
+
+	// remove empty first line
+	if(buffer->find("\n",0) == 0) {
+		buffer->erase(0, 1);
+	}
+
+	//LOG(Logger::BULK, "  >buffer: ");
+	//LOG(Logger::BULK, "  %s",buffer->c_str());
 
 	bufferSize_ -= (buflen - buffer->length());
 }

@@ -6,4 +6,4 @@ set(HEADERS ${HEADERS} AbstractDriver.h DriverFactory.h GCodeBuffer.h MarlinDriv
 
 add_library(drivers ${SOURCES} ${HEADERS})
 
-target_link_libraries(drivers timer)
+target_link_libraries(drivers timer server)

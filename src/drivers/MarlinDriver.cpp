@@ -201,7 +201,7 @@ void MarlinDriver::checkTemperature() {
 }
 
 void MarlinDriver::sendCode(const std::string& code) {
-	//LOG(Logger::BULK, "sendCode(): %s",code.c_str());
+	LOG(Logger::BULK, "sendCode(): %s",code.c_str());
 	if (isConnected()) {
 		extractGCodeInfo(code);
 		serial_.send((code+"\n").c_str());

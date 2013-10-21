@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include <deque>
+#include "../server/Logger.h"
 
 class GCodeBuffer {
 public:
@@ -36,6 +37,8 @@ private:
 	int32_t bufferedLines_;
 	int32_t totalLines_;
 	int32_t bufferSize_;
+
+	Logger& log_;
 
 	void updateStats(std::string *buffer, size_t pos);
 	void cleanupGCode(std::string *buffer, size_t pos);
