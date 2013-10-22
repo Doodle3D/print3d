@@ -122,10 +122,11 @@ void MarlinDriver::readResponseCode(std::string& code) {
 		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval
-		if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
-		else if(state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
+		//if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
+		if(state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
 		else checkTemperatureInterval_ = 1500; // normal
 
+		LOG(Logger::BULK, "  checkTemperatureInterval_: '%i'",checkTemperatureInterval_);
 	} else if(code.find("ok") == 0) { // confirmation that code is received okay
 
 		//sendCode("M105"); // temp
