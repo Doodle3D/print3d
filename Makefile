@@ -45,4 +45,14 @@ define Package/print3d/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-runner.sh $(1)/bin/
 endef
 
+define Package/print3d/postinst
+	$${IPKG_INSTROOT}/etc/init.d/print3d enable
+	$${IPKG_INSTROOT}/etc/init.d/print3d start
+endef
+
+define Package/print3d/prerm
+	$${IPKG_INSTROOT}/etc/init.d/print3d stop
+	$${IPKG_INSTROOT}/etc/init.d/print3d disable
+endef
+
 $(eval $(call BuildPackage,print3d))
