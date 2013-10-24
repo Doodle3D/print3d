@@ -3,6 +3,8 @@
  */
 #include <iostream>
 #include <sstream>
+#include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "MakerbotDriver.h"
@@ -13,34 +15,85 @@ using std::string;
 using std::vector;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[MBD] " fmt, ##__VA_ARGS__)
+#ifndef LOG
+# define LOG(lvl, fmt, ...) log_.log(lvl, "[MBD] " fmt, ##__VA_ARGS__)
+#endif
 
 //const int MakerbotDriver::UPDATE_INTERVAL = 200;
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
-: AbstractDriver(server, serialPortPath, baudrate), bufferSpace_(512), headTemperature_(0)
+: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0), bufferSpace_(512)
 {}
 
 int MakerbotDriver::update() {
 	if (!isConnected()) return -1;
 
+	parser_.setBuffer((char*)gpxBuffer_, gpxBufferSize_);
+	while(parser_.parseNextCommand());
+	clearGpxBuffer();
+	sendCommands(parser_.commands);
+	parser_.commands.clear();
 	processQueue();
 
 	//HIER:
-	//- eerste pakketjes krijgen geen reactie, wss omdat de arduino nog aan het booten is (dit kan vrij lang duren _en_ vari‘ren (5 ~ 30 sec) (mss langer voor toolhead temp?) <- duurt ook lang in RepG)
+	//- sturen/ontvangen anders doen?
+	//- afhandelen antwoorden...soms meer dan 1 antwoord tegelijk, en die stapelen dan op?
+	//
+	//- (t-o-m) eerste pakketjes krijgen geen reactie, wss omdat de arduino nog aan het booten is (dit kan vrij lang duren _en_ vari‘ren (5 ~ 30 sec) (mss langer voor toolhead temp?) <- duurt ook lang in RepG)
 	//- af en toe (iig tijdens het start-timeout-moment) komt er een 0x60 terug en daarna '0x60 0x80 0xE0' en daarna steeds een byte daaraf (?)
-	getHeadTemperature();
-	LOG(Logger::VERBOSE, "  head temp: %i", headTemperature_);
+//	getHeadTemperature();
+//	LOG(Logger::VERBOSE, "  head temp: %i", temperature_);
 
-	return 500;
+	return 50; //FIXME: this should not need to be a low value
 }
 
-void MakerbotDriver::setGCode(const std::string& gcode) {
+void MakerbotDriver::clearGpxBuffer() {
+	free(gpxBuffer_); gpxBuffer_ = 0; gpxBufferSize_ = 0;
+}
+
+size_t MakerbotDriver::convertGcode(const string &gcode) {
+	int rv;
+	errno = 0; //'clear' error?
+	FILE *io = popen("gpx -s > /tmp/gpx-3rw58.out", "w");
+	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
+
+	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
+	if (rv < 0) { LOG(Logger::ERROR, "gpx write error (%s)", strerror(errno)); exit(1); }
+	if (rv < 1) { LOG(Logger::ERROR, "gpx short write (%i bytes written)", rv); exit(1); }
+
+	rv = pclose(io);
+	LOG(Logger::VERBOSE, "converted %i bytes of gcode (gpx exit status: %i)", gcode.size(), rv);
+
+	FILE *in = fopen("/tmp/gpx-3rw58.out", "r");
+	if (!in) { LOG(Logger::ERROR, "could not open gpx output file (%s)", strerror(errno)); exit(1); }
+
+	fseek(in, 0, SEEK_END);
+	size_t fsize = ftell(in);
+	rewind(in);
+
+	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + fsize);
+	rv = fread(gpxBuffer_ + gpxBufferSize_, fsize, 1, in);
+	if (rv < 0) { LOG(Logger::ERROR, "gpx output file read error (%s)", strerror(errno)); exit(1); }
+	if (rv < 1) { LOG(Logger::ERROR, "gpx output file short read (%i bytes written)", rv); exit(1); }
+
+	gpxBufferSize_ += fsize;
+
+	fclose(in);
+
+	return fsize;
+}
+
+void MakerbotDriver::setGCode(const string &gcode) {
+	clearGpxBuffer();
+	int rv = convertGcode(gcode);
+	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 //	AbstractDriver::setGCode(gcode);
 //	extractGCodeInfo(gcode);
 }
 
-void MakerbotDriver::appendGCode(const std::string& gcode) {
+void MakerbotDriver::appendGCode(const string &gcode) {
+	int rv = convertGcode(gcode);
+	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 //	AbstractDriver::appendGCode(gcode);
 //	extractGCodeInfo(gcode);
 }
@@ -83,6 +136,7 @@ void MakerbotDriver::readResponseCode(std::string& code) {
  *********************/
 
 void MakerbotDriver::processQueue() {
+	int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
 	if (!queue_.empty() && getBufferSpace()>480) {
 		for (int i=0; i<15; i++) {
 			if (queue_.empty()) break;
@@ -93,6 +147,7 @@ void MakerbotDriver::processQueue() {
 			sendPacket(payload,len);
 		}
 	}
+	if (oldQSize - queue_.size()) LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
 }
 
 void MakerbotDriver::sendPacket(uint8_t *payload, int len) {
@@ -125,12 +180,11 @@ uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 }
 
 bool MakerbotDriver::parseResponse(int cmd) {
-	//CHECK: does readDataWithLen() work correcly?
-	//TODO: add error checks to readDataWithLen() calls
-	//TODO: in the list below, 00 (get version) host query command seems to be missing?
 	//FIXME: ok readDataWithLen() might still read more than requested because the inner readAllAvailableData still reads MAX_BUFFER_SIZE... (in practice, packets from the t-o-m seem to be read at once)
-	serial_.readDataWithLen(1, 500); //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
+	//serial_.readDataWithLen(1, 100); //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
+	serial_.readData(50);
 	if (serial_.getBufferSize() > 0) {
+		printf("code %3i, buffer(%3i):", cmd, serial_.getBufferSize());
 		unsigned char *buf = (unsigned char*)serial_.getBuffer();
 		for (int i = 0; i < serial_.getBufferSize(); i++) {
 			printf(" 0x%02X", buf[i]);
@@ -140,10 +194,12 @@ bool MakerbotDriver::parseResponse(int cmd) {
 	if (serial_.extractByte()==0xD5) {
 //		cout << "0xD5 found" << endl;
 		//::usleep(5000); //prevent OF_SERIAL_NO_DATA
-		serial_.readDataWithLen(1, 5);
+		//serial_.readDataWithLen(1, 0);
+		serial_.readData();
 		int len = serial_.extractByte();
 		unsigned char buf[len+1];
-		serial_.readDataWithLen(len+1, 5);
+		serial_.readData();
+		//serial_.readDataWithLen(len+1, 0);
 		serial_.extractBytes(buf, len+1);
 		int crc = buf[len];
 		int code = buf[0];
@@ -156,7 +212,7 @@ bool MakerbotDriver::parseResponse(int cmd) {
 			case 3: break; //03 - Clear buffer: Empty the command buffer
 			case 7: break; //07 - Abort immediately: Stop machine, shut down job permanently
 			case 8: break; //08 - pause/resume: Halt execution temporarily
-			case 10: headTemperature_ = *reinterpret_cast<unsigned*>(buf+1); break; //Tool query: Query a tool for information
+			case 10: temperature_ = *reinterpret_cast<unsigned*>(buf+1); break; //Tool query: Query a tool for information
 			case 11: break; //11 - Is finished: See if the machine is currently busy
 			case 12: break; //12 - Read from EEPROM
 			case 13: break; //13 - Write to EEPROM
@@ -229,100 +285,6 @@ bool MakerbotDriver::parseResponse(int cmd) {
 	return false;
 }
 
-//bool MakerbotDriver::parseResponse(int cmd) {
-//	long t0 = timer_.getElapsedTimeInMilliSec();
-//	while (timer_.getElapsedTimeInMilliSec()-t0 < 100) { //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
-//		if (serial_.readByte()==0xD5) {
-//			//cout << "0xD5" << endl;
-//			::usleep(5000); //prevent OF_SERIAL_NO_DATA
-//			int len = serial_.readByte();
-//			unsigned char buf[len];
-//			serial_.readBytes(buf, len);
-//			int crc = serial_.readByte();
-//			int code = buf[0];
-//			if (code!=0x81) cout << getResponseMessage(code) << endl;
-//			//cout << dec << "cmd: " << cmd << " -> 0x" << hex << code << endl;
-//			switch (cmd) {
-//				////////////// Host Query Commands
-//				case 1: break; //01 - init: Initialize firmware to boot state
-//				case 2: bufferSpace_ = *reinterpret_cast<unsigned*>(buf+1); break; //Get available buffer size: Determine how much free memory is available for buffering commands
-//				case 3: break; //03 - Clear buffer: Empty the command buffer
-//				case 7: break; //07 - Abort immediately: Stop machine, shut down job permanently
-//				case 8: break; //08 - pause/resume: Halt execution temporarily
-//				case 10: headTemperature_ = *reinterpret_cast<unsigned*>(buf+1); break; //Tool query: Query a tool for information
-//				case 11: break; //11 - Is finished: See if the machine is currently busy
-//				case 12: break; //12 - Read from EEPROM
-//				case 13: break; //13 - Write to EEPROM
-//				case 14: break; //14 - Capture to file
-//				case 15: break; //15 - End capture to file
-//				case 16: break; //16 - Play back capture
-//				case 17: break; //17 - reset
-//				case 18: break; //18 - Get next filename
-//				case 20: break; //20 - Get build name
-//				case 21: break; //21 - Get extended position: Get the current
-//				case 22: break; //22 - Extended stop: Stop a subset of systems
-//				case 23: break; //23 - Get motherboard status
-//				case 24: break; //24 - Get build statistics
-//				case 25: break; //25 - Get communication statistics
-//				case 27: break; //27 - Get advanced version number
-//				///////////// Host Buffered Commands
-//				case 131: break; //131 - Find axes minimums: Move specified axes in the negative direction until limit switch is triggered.
-//				case 132: break; //132 - Find axes maximums: Move specified axes in the positive direction until limit switch is triggered.
-//				case 133: break; //133 - delay: pause all motion for the specified time
-//				case 134: break; //134 - Change Tool
-//				case 135: break; //135 - Wait for tool ready: Wait until a tool is ready before proceeding
-//				case 136: break; //136 - Tool action command: Send an action command to a tool for execution
-//				case 137: break; //137 - Enable/disable axes: Explicitly enable or disable stepper motor controllers
-//				case 139: break; //139 - Queue extended point
-//				case 140: break; //140 - Set extended position
-//				case 141: break; //141 - Wait for platform ready: Wait until a build platform is ready before proceeding
-//				case 142: break; //142 - Queue extended point, new style
-//				case 143: break; //143 - Store home positions
-//				case 144: break; //144 - Recall home positions
-//				case 145: break; //145 - Set digital potentiometer value
-//				case 146: break; //146 - Set RGB LED value
-//				case 147: break; //147 - Set Beep
-//				case 148: break; //148 - Wait for button
-//				case 149: break; //149 - Display message to LCD
-//				case 150: break; //150 - Set Build Percentage
-//				case 151: break; //151 - Queue Song
-//				case 152: break; //152 - reset to Factory
-//				case 153: break; //153 - Build start notification
-//				case 154: break; //154 - Build end notification
-//				case 155: break; //155 - Queue extended point x3g
-//				case 157: break; //157 - Stream Version
-//				//////////////////// Tool Query Commands
-//				//case 00: break; // Get version: Query firmware for version information
-//				//case 02: break; // Get toolhead temperature
-//				//case 17: break; // Get motor speed (RPM)
-//				//case 22: break; // Is tool ready?
-//				//case 25: break; // Read from EEPROM
-//				//case 26: break; // Write to EEPROM
-//				//case 30: break; // Get build platform temperature
-//				//case 32: break; // Get toolhead target temperature
-//				//case 33: break; // Get build platform target temperature
-//				//case 35: break; // Is build platform ready?
-//				//case 36: break; // Get tool status
-//				//case 37: break; // Get PID state
-//				//
-//				////////////////////// Tool Action Commands
-//				//case 01: break; // init: Initialize firmware to boot state
-//				//case 03: break; // Set toolhead target temperature
-//				//case 06: break; // Set motor speed (RPM)
-//				//case 10: break; // Enable/disable motor
-//				//case 12: break; // Enable/disable fan
-//				//case 13: break; // Enable/disable extra output
-//				//case 14: break; // Set servo 1 position
-//				//case 23: break; // pause/resume: Halt execution temporarily
-//				//case 24: break; // Abort immediately: Terminate all operations and reset
-//				//case 31: break; // Set build platform target temperature
-//			}
-//			return true;
-//		}
-//	}
-//	return false;
-//}
-
 string MakerbotDriver::getResponseMessage(int code) {
 	switch (code) {
 		case 0x80: return "Generic Packet error, packet discarded";
@@ -340,7 +302,7 @@ string MakerbotDriver::getResponseMessage(int code) {
 	}
 
 	std::ostringstream out;
-	out << "Unknown response code: " << code; //CHECK
+	out << "Unknown response code: " << code;
 	return out.str();
 }
 
@@ -372,7 +334,7 @@ void MakerbotDriver::sendCommands(vector<string> commands) {
 int MakerbotDriver::getHeadTemperature() {
 	uint8_t payload[] = { 10, 0, 2 };
 	sendPacket(payload,sizeof(payload));
-	return headTemperature_;
+	return temperature_;
 }
 
 int MakerbotDriver::getFirmwareVersion() {

@@ -4,8 +4,9 @@
 #include <deque>
 #include <string>
 #include <vector>
-#include "../Timer.h"
 #include "AbstractDriver.h"
+#include "S3GParser.h"
+#include "../Timer.h"
 #include "../server/Logger.h"
 
 class MakerbotDriver : public AbstractDriver {
@@ -15,6 +16,8 @@ public:
 	static const AbstractDriver::DriverInfo& getDriverInfo();
 	virtual int update();
 
+	void clearGpxBuffer();
+	size_t convertGcode(const std::string &gcode);//TEMP
 	//overrides
 	void setGCode(const std::string& gcode);
 	void appendGCode(const std::string& gcode);
@@ -27,11 +30,13 @@ protected:
 
 private:
 	Timer timer_;
+	S3GParser parser_;
+
+	unsigned char *gpxBuffer_;
+	size_t gpxBufferSize_;
 
 	uint32_t bufferSpace_;
 	std::deque<std::string> queue_;
-
-	uint16_t headTemperature_;
 
 	void processQueue();
 	void sendPacket(uint8_t *payload, int len);
