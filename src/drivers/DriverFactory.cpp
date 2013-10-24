@@ -1,4 +1,5 @@
 #include "MarlinDriver.h"
+#include "MakerbotDriver.h"
 #include "DriverFactory.h"
 
 //NOTE: see Server.cpp for comments on this macro
@@ -13,6 +14,7 @@ AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Serve
   // list all printer drivers (their driver info)
   if(driverInfos.empty()) {
     driverInfos.push_back( &MarlinDriver::getDriverInfo() );
+    driverInfos.push_back(&MakerbotDriver::getDriverInfo());
     LOG(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
   }
 

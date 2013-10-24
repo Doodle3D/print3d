@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(print3d)
 
-set(SOURCES ${SOURCES} AbstractDriver.cpp DriverFactory.cpp GCodeBuffer.cpp MarlinDriver.cpp Serial.cpp)
-set(HEADERS ${HEADERS} AbstractDriver.h DriverFactory.h GCodeBuffer.h MarlinDriver.h Serial.h)
+set(SOURCES ${SOURCES} AbstractDriver.cpp DriverFactory.cpp GCodeBuffer.cpp MakerbotDriver.cpp MBPacket.cpp MarlinDriver.cpp Serial.cpp)
+set(HEADERS ${HEADERS} AbstractDriver.h DriverFactory.h GCodeBuffer.h MakerbotDriver.h MBPacket.h MarlinDriver.h Serial.h)
 
 add_library(drivers ${SOURCES} ${HEADERS})
 

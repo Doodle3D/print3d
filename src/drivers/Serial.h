@@ -17,12 +17,18 @@ public:
   bool isOpen()  const;
 	SET_SPEED_RESULT setSpeed(int speed);
 	bool send(const char* code) const;
+	bool write(const unsigned char *data, size_t datalen);
+	bool write(const unsigned char b);
 
-  int readData();
+  int readData(int timeout = 0, bool onlyOnce = false);
+  int readDataWithLen(int len, int timeout);
 
   char* getBuffer();
   int getBufferSize()  const;
   int getFileDescriptor() const;
+
+  int extractByte();
+  int extractBytes(unsigned char *buf, size_t buflen);
 
   //convenience function for plain text data
   std::string* extractLine();

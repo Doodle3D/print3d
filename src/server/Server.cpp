@@ -26,10 +26,10 @@ const int Server::SELECT_LOG_FAST_LOOP = -1;
 Server::Server(const string& serialPortPath, const string& socketPath)
 : socketPath_(socketPath),
   log_(Logger::getInstance()), socketFd_(-1),
-  printerDriver_(DriverFactory::createDriver("marlin_ultimaker", *this, serialPortPath, 115200))
+  printerDriver_(DriverFactory::createDriver("makerbot_generic", *this, serialPortPath, 115200))
 {
   if(printerDriver_ == 0) {
-    LOG(Logger::ERROR, "no printer driver found for marlin_ultimaker");
+    LOG(Logger::ERROR, "no printer driver found for makerbot_generic");
   }
   driverDelay = 0;
 }

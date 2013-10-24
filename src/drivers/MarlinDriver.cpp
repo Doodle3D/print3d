@@ -12,8 +12,8 @@ const int MarlinDriver::UPDATE_INTERVAL = 200;
 MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate),
   checkTemperatureInterval_(2000),
-  checkTemperatureAttempt_(0),
   checkConnection_(true),
+  checkTemperatureAttempt_(0),
   maxCheckTemperatureAttempts_(2) {
 
 	/*//temperature parsing tests

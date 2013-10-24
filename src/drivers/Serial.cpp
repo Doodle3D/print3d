@@ -152,13 +152,45 @@ bool Serial::send(const char* code) const {
 	}
 }
 
-int Serial::readData() {
+bool Serial::write(const unsigned char *data, size_t datalen) {
+	if (portFd_ >= 0) {
+		::write(portFd_, data, datalen);
+		return true;
+	} else {
+		return false;
+	}
+}
+
+bool Serial::write(const unsigned char b) {
+	if (portFd_ >= 0) {
+		::write(portFd_, &b, 1);
+		return true;
+	} else {
+		return false;
+	}
+}
+
+int Serial::readData(int timeout, bool onlyOnce) {
   //Logger& log = Logger::getInstance();
 	//log.log(Logger::VERBOSE,"Serial::readData");
 
 
-  int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, 0, 0);
+  int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, timeout, onlyOnce ? 1 : 0);
   return rv;
+}
+
+//TODO: rename
+int Serial::readDataWithLen(int len, int timeout) {
+	int startSize = bufferSize_;
+
+	while (bufferSize_ < startSize + len) {
+		int rv = readData(timeout, true); //read with timeout but do not retry (we do that ourselves using the while)
+
+		if (rv < 0) return rv; //error occured
+		else if (rv == 0) break; //nothing read within timeout, do 'normal' return
+	}
+
+	return bufferSize_ - startSize;
 }
 
 char* Serial::getBuffer() {
@@ -171,6 +203,30 @@ int Serial::getBufferSize() const {
 
 int Serial::getFileDescriptor() const {
 	return portFd_;
+}
+
+//returns -1 if no data available
+int Serial::extractByte() {
+	if (bufferSize_ == 0) return -1;
+
+	unsigned char result = buffer_[0];
+	memmove(buffer_, buffer_ + 1, bufferSize_ - 1);
+	bufferSize_--;
+	buffer_ = (char*)realloc(buffer_, bufferSize_);
+
+	return result;
+}
+
+//returns -1 if no data available
+int Serial::extractBytes(unsigned char *buf, size_t buflen) {
+	if (bufferSize_ < buflen) return -1;
+
+	memcpy(buf, buffer_, buflen);
+	memmove(buffer_, buffer_ + buflen, bufferSize_ - buflen);
+	bufferSize_ -= buflen;
+	buffer_ = (char*)realloc(buffer_, bufferSize_);
+
+	return buflen;
 }
 
 string* Serial::extractLine() {
