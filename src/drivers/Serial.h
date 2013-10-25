@@ -21,11 +21,15 @@ public:
 	bool write(const unsigned char b);
 
   int readData(int timeout = 0, bool onlyOnce = false);
-  int readDataWithLen(int len, int timeout);
+  int readDataWithLen(int len, int timeout); //may read more than len, but not less
+
+  int readByteDirect(int timeout = 0);
+  int readBytesDirect(unsigned char *buf, size_t buflen, int timeout = 0);
 
   char* getBuffer();
   int getBufferSize()  const;
   int getFileDescriptor() const;
+  void clearBuffer();
 
   int extractByte();
   int extractBytes(unsigned char *buf, size_t buflen);

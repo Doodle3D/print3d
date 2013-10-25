@@ -1,4 +1,12 @@
 /*
+ * TODO:
+ * - find out why extruder is inverted (gcode from repG, in which the same gcode works)
+ * - the 135 wait command seems to wait until toolhead is 100 degrees, where it also stays during printing
+ *   -> perhaps head and bed are confused? (e.g. because M109 is used to set bed temp...)
+ * - the t-o-m takes about 12 seconds to start responding, we need a way to detect this moment (rq firmware version until sane value?)
+ * - integrate with AbstractDriver (keep vars updated, override gcodebuffer things (used for states and progress))
+ * - read uci config in server to create the correct type of driver
+ * - allow to sepcify fixed baud rate?
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
  */
 #include <iostream>
@@ -25,7 +33,11 @@ MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath
 : AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0), bufferSpace_(512)
 {}
 
+static int lastCode = -1;
+
 int MakerbotDriver::update() {
+	static int counter = 0;//TEMP
+
 	if (!isConnected()) return -1;
 
 	parser_.setBuffer((char*)gpxBuffer_, gpxBufferSize_);
@@ -41,10 +53,15 @@ int MakerbotDriver::update() {
 	//
 	//- (t-o-m) eerste pakketjes krijgen geen reactie, wss omdat de arduino nog aan het booten is (dit kan vrij lang duren _en_ vari‘ren (5 ~ 30 sec) (mss langer voor toolhead temp?) <- duurt ook lang in RepG)
 	//- af en toe (iig tijdens het start-timeout-moment) komt er een 0x60 terug en daarna '0x60 0x80 0xE0' en daarna steeds een byte daaraf (?)
-//	getHeadTemperature();
-//	LOG(Logger::VERBOSE, "  head temp: %i", temperature_);
+	if (counter == 30) {
+		getHeadTemperature();
+		LOG(Logger::VERBOSE, "  head temp: %i, buf space: %i", temperature_, bufferSpace_);
 
-	return 50; //FIXME: this should not need to be a low value
+		counter = 0;
+	}
+	counter++;
+
+	return 1000 / 30; //the of test also runs at 30fps...
 }
 
 void MakerbotDriver::clearGpxBuffer() {
@@ -54,7 +71,7 @@ void MakerbotDriver::clearGpxBuffer() {
 size_t MakerbotDriver::convertGcode(const string &gcode) {
 	int rv;
 	errno = 0; //'clear' error?
-	FILE *io = popen("gpx -s > /tmp/gpx-3rw58.out", "w");
+	FILE *io = popen("gpx -m t6 -s > /tmp/gpx-3rw58.out", "w");
 	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
 
 	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
@@ -137,20 +154,34 @@ void MakerbotDriver::readResponseCode(std::string& code) {
 
 void MakerbotDriver::processQueue() {
 	int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
-	if (!queue_.empty() && getBufferSpace()>480) {
-		for (int i=0; i<15; i++) {
+	if (!queue_.empty() && getBufferSpace()>480) { //NOTE: last time buffering was tested, this value was at 400
+//		for (int i=0; i<15; i++) {
+//			if (queue_.empty()) break;
+//			string command = queue_.front();
+//			queue_.pop_front();
+//			int len = command.size();
+//			uint8_t *payload = (uint8_t*)command.c_str();
+//			sendPacket(payload,len);
+//		}
+		while (true) {
 			if (queue_.empty()) break;
 			string command = queue_.front();
+			if (command.size() > bufferSpace_ - 5) break;
+
 			queue_.pop_front();
 			int len = command.size();
 			uint8_t *payload = (uint8_t*)command.c_str();
 			sendPacket(payload,len);
 		}
 	}
-	if (oldQSize - queue_.size()) LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
+	if (oldQSize - queue_.size()) {
+		LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
+//		LOG(Logger::VERBOSE, "actual buffer space: %i", getBufferSpace());
+	}
 }
 
 void MakerbotDriver::sendPacket(uint8_t *payload, int len) {
+	lastCode = payload[0];
 	serial_.write(0xD5);
 	serial_.write(len);
 	uint8_t crc = 0;
@@ -160,10 +191,15 @@ void MakerbotDriver::sendPacket(uint8_t *payload, int len) {
 	}
 	serial_.write(crc);
 	bufferSpace_ -= len; //approximation of space left in buffer
+	cout << " [sent: " << lastCode << ", l:" << len << "] ";
 	//lastCommand = payload[0]; //is this safe?
-	if (!parseResponse(payload[0])) {
-		cout << "Timeout occured waiting on makerbot response" << endl;
+	int rv = parseResponse(payload[0]);
+	switch (rv) {
+		case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
+		case -2: cout << "makerbot response timeout" << endl; break;
+		case -3: cout << "makerbot response CRC error" << endl; break;
 	}
+	cout << endl;
 }
 
 uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
@@ -179,29 +215,38 @@ uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 	return crc;
 }
 
-bool MakerbotDriver::parseResponse(int cmd) {
+//return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
+int MakerbotDriver::parseResponse(int cmd) {
 	//FIXME: ok readDataWithLen() might still read more than requested because the inner readAllAvailableData still reads MAX_BUFFER_SIZE... (in practice, packets from the t-o-m seem to be read at once)
 	//serial_.readDataWithLen(1, 100); //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
-	serial_.readData(50);
-	if (serial_.getBufferSize() > 0) {
-		printf("code %3i, buffer(%3i):", cmd, serial_.getBufferSize());
-		unsigned char *buf = (unsigned char*)serial_.getBuffer();
-		for (int i = 0; i < serial_.getBufferSize(); i++) {
-			printf(" 0x%02X", buf[i]);
-		}
-		printf("\n");
-	}
-	if (serial_.extractByte()==0xD5) {
+	//serial_.readData(500);
+//	if (serial_.getBufferSize() > 0) {
+//		printf("code %3i, buffer(%3i):", cmd, serial_.getBufferSize());
+//		unsigned char *buf = (unsigned char*)serial_.getBuffer();
+//		for (int i = 0; i < serial_.getBufferSize(); i++) {
+//			printf(" 0x%02X", buf[i]);
+//		}
+//		printf("\n");
+//	}
+	int rv = serial_.readByteDirect(1000);
+	if (rv == 0xD5) {
 //		cout << "0xD5 found" << endl;
 		//::usleep(5000); //prevent OF_SERIAL_NO_DATA
 		//serial_.readDataWithLen(1, 0);
-		serial_.readData();
-		int len = serial_.extractByte();
+		int len = serial_.readByteDirect(1000);
+		if (len <= 0) return len;
 		unsigned char buf[len+1];
-		serial_.readData();
+		//serial_.readData();
+		rv = serial_.readBytesDirect(buf, len+1, 1000);
+		if (rv <= 0) return rv;
 		//serial_.readDataWithLen(len+1, 0);
-		serial_.extractBytes(buf, len+1);
+		//serial_.extractBytes(buf, len+1);
+
 		int crc = buf[len];
+		int realCrc = 0;
+		for (int i = 0; i < len; i++) realCrc = _crc_ibutton_update(realCrc, buf[i]);
+		if (crc != realCrc) return -3;
+
 		int code = buf[0];
 		if (code!=0x81) cout << getResponseMessage(code) << endl;
 		//cout << dec << "cmd: " << cmd << " -> 0x" << hex << code << endl;
@@ -280,9 +325,9 @@ bool MakerbotDriver::parseResponse(int cmd) {
 			//case 24: break; // Abort immediately: Terminate all operations and reset
 			//case 31: break; // Set build platform target temperature
 		}
-		return true;
+		return 0;
 	}
-	return false;
+	return rv;
 }
 
 string MakerbotDriver::getResponseMessage(int code) {

@@ -41,7 +41,7 @@ private:
 	void processQueue();
 	void sendPacket(uint8_t *payload, int len);
 	uint8_t _crc_ibutton_update(uint8_t crc, uint8_t data);
-	bool parseResponse(int cmd);
+	int parseResponse(int cmd);
 	std::string getResponseMessage(int code);
 	void sendCommands(std::vector<std::string> commands);
 	int getHeadTemperature();

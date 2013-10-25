@@ -118,7 +118,7 @@ public:
 			return false;
 		}
 		uint8_t command = buffer[bufferPos++];
-		LOG(Logger::VERBOSE, "parseNextCommand %3i; buffer: %i/%i", command, bufferPos, bufferSize);
+		//LOG(Logger::VERBOSE, "parseNextCommand %3i; buffer: %i/%i", command, bufferPos, bufferSize);
 
 		if (command==136) parseToolAction();
 		else if (command==149) parseDisplayMessageAction();

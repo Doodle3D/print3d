@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -193,6 +194,42 @@ int Serial::readDataWithLen(int len, int timeout) {
 	return bufferSize_ - startSize;
 }
 
+int Serial::readByteDirect(int timeout) {
+	unsigned char data = 0;
+	int rv = readBytesDirect(&data, 1, timeout);
+
+	if (rv == 0) return -2;
+	else if (rv < 0) return rv;
+	else return data;
+}
+
+int Serial::readBytesDirect(unsigned char *buf, size_t buflen, int timeout) {
+	struct pollfd pfd; pfd.fd = portFd_; pfd.events = POLLIN;
+
+	while (true) {
+		int rv = read(portFd_, buf, buflen);
+
+		if (rv < 0) {
+			if (errno == EWOULDBLOCK || errno == EAGAIN) {
+				//recv() would block...if a timeout has been requested, we wait and then try again if data became available
+				pfd.revents = 0;
+				if (timeout > 0) poll(&pfd, 1, timeout);
+
+				if ((pfd.revents & POLLIN) == 0) return 0;
+			} else if (errno != EINTR) {
+				//ignore it if the call was interrupted (i.e. try again)
+        return rv;
+			}
+		} else if (rv == 0) {
+			return -2;
+		} else {
+			return rv;
+		}
+	}
+
+	return 0;
+}
+
 char* Serial::getBuffer() {
   return buffer_;
 }
@@ -203,6 +240,11 @@ int Serial::getBufferSize() const {
 
 int Serial::getFileDescriptor() const {
 	return portFd_;
+}
+
+void Serial::clearBuffer() {
+	free(buffer_); buffer_ = 0;
+	bufferSize_ = 0;
 }
 
 //returns -1 if no data available
