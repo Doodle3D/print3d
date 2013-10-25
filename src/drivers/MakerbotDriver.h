@@ -38,13 +38,15 @@ private:
 	uint32_t bufferSpace_;
 	std::deque<std::string> queue_;
 
+	size_t currentCmd_, totalCmds_;
+
 	void processQueue();
-	void sendPacket(uint8_t *payload, int len);
+	bool sendPacket(uint8_t *payload, int len, bool updateBufferSpace = true);
 	uint8_t _crc_ibutton_update(uint8_t crc, uint8_t data);
-	int parseResponse(int cmd);
+	int parseResponse(int cmd, int toolcmd = -1);
 	std::string getResponseMessage(int code);
 	void sendCommands(std::vector<std::string> commands);
-	int getHeadTemperature();
+	bool updateTemperatures();
 	int getFirmwareVersion();
 	int getBufferSpace();
 };

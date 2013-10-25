@@ -167,4 +167,6 @@ public:
 //	}
 };
 
+#undef LOG
+
 #endif /* ! S3G_PARSER_H_SEEN */

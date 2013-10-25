@@ -1,9 +1,16 @@
 /*
  * TODO:
  * - find out why extruder is inverted (gcode from repG, in which the same gcode works)
+ *   -> this is fixed after unticking 'invert A' in repG in the board settings
  * - the 135 wait command seems to wait until toolhead is 100 degrees, where it also stays during printing
  *   -> perhaps head and bed are confused? (e.g. because M109 is used to set bed temp...)
+ *   -> gpx does indeed translate M109 to head temp & wait; M140 is the bed equiv for M104 and M190 is the bed equiv for M109
  * - the t-o-m takes about 12 seconds to start responding, we need a way to detect this moment (rq firmware version until sane value?)
+ * - change gpx to prevent it from emitting start/end commands (unless we actually want them)
+ * - override clear gcode to reset command counters
+ * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
+ *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
+ * - implement packet send retrying (up to 5 times)
  * - integrate with AbstractDriver (keep vars updated, override gcodebuffer things (used for states and progress))
  * - read uci config in server to create the correct type of driver
  * - allow to sepcify fixed baud rate?
@@ -30,7 +37,7 @@ using std::vector;
 //const int MakerbotDriver::UPDATE_INTERVAL = 200;
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
-: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0), bufferSpace_(512)
+: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0), bufferSpace_(512), currentCmd_(0), totalCmds_(0)
 {}
 
 static int lastCode = -1;
@@ -47,15 +54,12 @@ int MakerbotDriver::update() {
 	parser_.commands.clear();
 	processQueue();
 
-	//HIER:
-	//- sturen/ontvangen anders doen?
-	//- afhandelen antwoorden...soms meer dan 1 antwoord tegelijk, en die stapelen dan op?
-	//
-	//- (t-o-m) eerste pakketjes krijgen geen reactie, wss omdat de arduino nog aan het booten is (dit kan vrij lang duren _en_ vari‘ren (5 ~ 30 sec) (mss langer voor toolhead temp?) <- duurt ook lang in RepG)
-	//- af en toe (iig tijdens het start-timeout-moment) komt er een 0x60 terug en daarna '0x60 0x80 0xE0' en daarna steeds een byte daaraf (?)
 	if (counter == 30) {
-		getHeadTemperature();
-		LOG(Logger::VERBOSE, "  head temp: %i, buf space: %i", temperature_, bufferSpace_);
+		updateTemperatures();
+		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, cmdbuf: %i/%i/%i, prbuf space: %i",
+				temperature_, targetTemperature_,
+				bedTemperature_, targetBedTemperature_,
+				currentCmd_, queue_.size(), totalCmds_, bufferSpace_);
 
 		counter = 0;
 	}
@@ -101,6 +105,7 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 }
 
 void MakerbotDriver::setGCode(const string &gcode) {
+	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	int rv = convertGcode(gcode);
 	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
@@ -154,15 +159,7 @@ void MakerbotDriver::readResponseCode(std::string& code) {
 
 void MakerbotDriver::processQueue() {
 	int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
-	if (!queue_.empty() && getBufferSpace()>480) { //NOTE: last time buffering was tested, this value was at 400
-//		for (int i=0; i<15; i++) {
-//			if (queue_.empty()) break;
-//			string command = queue_.front();
-//			queue_.pop_front();
-//			int len = command.size();
-//			uint8_t *payload = (uint8_t*)command.c_str();
-//			sendPacket(payload,len);
-//		}
+	if (!queue_.empty() && getBufferSpace()>480) {
 		while (true) {
 			if (queue_.empty()) break;
 			string command = queue_.front();
@@ -172,6 +169,7 @@ void MakerbotDriver::processQueue() {
 			int len = command.size();
 			uint8_t *payload = (uint8_t*)command.c_str();
 			sendPacket(payload,len);
+			currentCmd_++;
 		}
 	}
 	if (oldQSize - queue_.size()) {
@@ -180,7 +178,8 @@ void MakerbotDriver::processQueue() {
 	}
 }
 
-void MakerbotDriver::sendPacket(uint8_t *payload, int len) {
+//updateBufferSpace defaults to true, set to false for non-buffered commands
+bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
 	lastCode = payload[0];
 	serial_.write(0xD5);
 	serial_.write(len);
@@ -190,16 +189,17 @@ void MakerbotDriver::sendPacket(uint8_t *payload, int len) {
 		serial_.write(payload[i]);
 	}
 	serial_.write(crc);
-	bufferSpace_ -= len; //approximation of space left in buffer
-	cout << " [sent: " << lastCode << ", l:" << len << "] ";
-	//lastCommand = payload[0]; //is this safe?
-	int rv = parseResponse(payload[0]);
+	if (updateBufferSpace) bufferSpace_ -= len; //approximation of space left in buffer
+	//cout << " [sent: " << lastCode << ", l:" << len << "] ";
+
+	int rv = parseResponse(payload[0], payload[0] == 10 ? payload[2] : -1);
 	switch (rv) {
 		case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
 		case -2: cout << "makerbot response timeout" << endl; break;
 		case -3: cout << "makerbot response CRC error" << endl; break;
 	}
-	cout << endl;
+	//cout << endl;
+	return rv == 0 ? true : false;
 }
 
 uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
@@ -216,8 +216,7 @@ uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 }
 
 //return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
-int MakerbotDriver::parseResponse(int cmd) {
-	//FIXME: ok readDataWithLen() might still read more than requested because the inner readAllAvailableData still reads MAX_BUFFER_SIZE... (in practice, packets from the t-o-m seem to be read at once)
+int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	//serial_.readDataWithLen(1, 100); //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
 	//serial_.readData(500);
 //	if (serial_.getBufferSize() > 0) {
@@ -228,16 +227,16 @@ int MakerbotDriver::parseResponse(int cmd) {
 //		}
 //		printf("\n");
 //	}
-	int rv = serial_.readByteDirect(1000);
+	int rv = serial_.readByteDirect(1000); //value 1000 is taken from s3g python script (StreamWriter.py)
 	if (rv == 0xD5) {
 //		cout << "0xD5 found" << endl;
 		//::usleep(5000); //prevent OF_SERIAL_NO_DATA
 		//serial_.readDataWithLen(1, 0);
-		int len = serial_.readByteDirect(1000);
+		int len = serial_.readByteDirect(1000); //using 1000 again is not right of course
 		if (len <= 0) return len;
 		unsigned char buf[len+1];
 		//serial_.readData();
-		rv = serial_.readBytesDirect(buf, len+1, 1000);
+		rv = serial_.readBytesDirect(buf, len+1, 1000); //using 1000 again is not right of course
 		if (rv <= 0) return rv;
 		//serial_.readDataWithLen(len+1, 0);
 		//serial_.extractBytes(buf, len+1);
@@ -257,7 +256,16 @@ int MakerbotDriver::parseResponse(int cmd) {
 			case 3: break; //03 - Clear buffer: Empty the command buffer
 			case 7: break; //07 - Abort immediately: Stop machine, shut down job permanently
 			case 8: break; //08 - pause/resume: Halt execution temporarily
-			case 10: temperature_ = *reinterpret_cast<unsigned*>(buf+1); break; //Tool query: Query a tool for information
+			case 10: { //Tool query: Query a tool for information
+				uint16_t t = *reinterpret_cast<unsigned*>(buf+1);
+				switch (toolcmd) {
+					case 2: temperature_ = t; break;
+					case 30: bedTemperature_ = t; break;
+					case 32: targetTemperature_ = t; break;
+					case 33: targetBedTemperature_ = t; break;
+					default: LOG(Logger::WARNING, "parseResponse: unrecognized or missing tool command (%u)", toolcmd); break;
+				}
+			}; break;
 			case 11: break; //11 - Is finished: See if the machine is currently busy
 			case 12: break; //12 - Read from EEPROM
 			case 13: break; //13 - Write to EEPROM
@@ -363,6 +371,7 @@ void MakerbotDriver::sendCommands(vector<string> commands) {
 	for (int i=0; i<commands.size(); i++) {
 		queue_.push_back(commands.at(i));
 	}
+	totalCmds_ += commands.size();
 }
 
 //void setFan(bool state) {
@@ -376,16 +385,29 @@ void MakerbotDriver::sendCommands(vector<string> commands) {
 //	sendPacket(payload,sizeof(payload));
 //}
 
-int MakerbotDriver::getHeadTemperature() {
-	uint8_t payload[] = { 10, 0, 2 };
-	sendPacket(payload,sizeof(payload));
-	return temperature_;
+bool MakerbotDriver::updateTemperatures() {
+	int rv = true;
+	uint8_t payload[] = { 10, 0, 0 };
+
+	payload[2] = 2; //tool #0 temp
+	if (!sendPacket(payload,sizeof(payload), false)) rv = false;
+
+	payload[2] = 30; //build platform temp
+	if (!sendPacket(payload,sizeof(payload), false)) rv = false;
+
+	payload[2] = 32; //tool #0 target temp
+	if (!sendPacket(payload,sizeof(payload), false)) rv = false;
+
+	payload[2] = 33; //build platform target temp
+	if (!sendPacket(payload,sizeof(payload), false)) rv = false;
+
+	return rv;
 }
 
 int MakerbotDriver::getFirmwareVersion() {
 	//00 - Get version: Query firmware for version information
 	uint8_t payload[] = { 0 };
-	sendPacket(payload,sizeof(payload));
+	sendPacket(payload,sizeof(payload), false);
 	return 0; //FIXME
 }
 
