@@ -102,7 +102,7 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 
 	int rv;
 	errno = 0; //'clear' error?
-	FILE *io = popen("gpx -s > /tmp/gpx-3rw58.out", "w");
+	FILE *io = popen("gpx -s -n > /tmp/gpx-3rw58.out", "w");
 	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
 
 	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
