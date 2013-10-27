@@ -12,9 +12,9 @@ public:
 
 	GCodeBuffer();
 
-  void set(const std::string &gcode);
-  void append(const std::string &gcode);
-  void clear();
+	void set(const std::string &gcode);
+	void append(const std::string &gcode);
+	void clear();
 
 	int32_t getCurrentLine() const;
 	int32_t getBufferedLines() const;
@@ -25,8 +25,8 @@ public:
 
 	void setCurrentLine(int32_t line);
 
-	bool getNextLine(std::string &line) const;
-	bool eraseLine();
+	bool getNextLine(std::string &line, size_t amount = 1) const;
+	bool eraseLine(size_t amount = 1);
 
 private:
 	static const uint32_t MAX_BUCKET_SIZE;

@@ -19,6 +19,8 @@ void GCodeBuffer::set(const string &gcode) {
 	append(gcode);
 }
 
+//NOTE: currently this function will never split given gcode into parts for
+//separate buckets, so MAX_BUCKET_SIZE is not a strict limit
 void GCodeBuffer::append(const string &gcode) {
 
 	if (buckets_.size() == 0) buckets_.push_back(new string());
@@ -73,7 +75,9 @@ void GCodeBuffer::setCurrentLine(int32_t line) {
 	currentLine_ = std::min(line, totalLines_);
 }
 
-bool GCodeBuffer::getNextLine(string &line) const {
+//NOTE: FIXME: when requesting multiple lines, be aware that this function will currently
+//return at most the first bucket, i.e. it does not concatenate data from multiple buffers.
+bool GCodeBuffer::getNextLine(string &line, size_t amount) const {
 	if (buckets_.size() == 0) {
 		line = "";
 		return false;
@@ -81,15 +85,34 @@ bool GCodeBuffer::getNextLine(string &line) const {
 
 	string *b = buckets_.front();
 	size_t posN = b->find('\n');
+
+	if (amount > 1) {
+		size_t i;
+		for (i = amount - 1; i > 0; i--) {
+			posN = b->find('\n', posN + 1);
+			if (posN == string::npos) break;
+		}
+		if (i > 0 && !(i == 1 && posN == string::npos && *(b->rbegin()) != '\n')) return false;
+	}
+
 	line = b->substr(0, posN);
 	return (posN != string::npos || line.length() > 0);
 }
 
-bool GCodeBuffer::eraseLine() {
+bool GCodeBuffer::eraseLine(size_t amount) {
 	if (buckets_.size() == 0) return false;
 
 	string *b = buckets_.front();
 	size_t pos = b->find('\n');
+
+	if (amount > 1) {
+		size_t i;
+		for (i = amount - 1; i > 0; i--) {
+			pos = b->find('\n', pos + 1);
+			if (pos == string::npos) break;
+		}
+		if (i > 0 && !(i == 1 && pos == string::npos && *(b->rbegin()) != '\n')) return false;
+	}
 
 	size_t len = b->length();
 	b->erase(0, (pos == string::npos) ? pos : pos + 1);

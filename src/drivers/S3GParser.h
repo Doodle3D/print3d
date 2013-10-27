@@ -82,8 +82,10 @@ public:
 		string packetData;
 		packetData.append(&buffer[bufferPos],3);
 
-		uint8_t index = buffer[bufferPos++];
-		uint8_t cmd = buffer[bufferPos++];
+//		uint8_t index = buffer[bufferPos++];
+//		uint8_t cmd = buffer[bufferPos++];
+		bufferPos++; bufferPos++;
+
 		uint8_t payloadLen = buffer[bufferPos++];
 
 		packetData.append(&buffer[bufferPos],payloadLen);

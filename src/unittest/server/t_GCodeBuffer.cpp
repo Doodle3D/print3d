@@ -5,7 +5,7 @@
 using std::string;
 
 struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
-	void testSet(const std::string& test_name) {
+	void testSet(const string& test_name) {
 		GCodeBuffer buffer;
 
 		fructose_assert_eq(buffer.getTotalLines(), 0);
@@ -23,7 +23,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.getTotalLines(), 1);
 	}
 
-	void testAppend(const std::string& test_name) {
+	void testAppend(const string& test_name) {
 		GCodeBuffer buffer;
 
 		buffer.set("abc\n");
@@ -35,7 +35,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.getTotalLines(), 2);
 	}
 
-	void testGetErase(const std::string& test_name) {
+	void testGetErase(const string& test_name) {
 		GCodeBuffer buffer;
 
 		const string line1 = "line 1", line2 = "line 2", line3 = "line 3", line4 = "line 4";
@@ -73,7 +73,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(lineBuf, "");
 	}
 
-	void testCleanup(const std::string& test_name) {
+	void testCleanup(const string& test_name) {
 		GCodeBuffer buffer;
 		string lineBuf;
 		bool rv;
@@ -91,7 +91,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(lineBuf, "car+new mix");
 	}
 
-	void testLineCounting(const std::string& test_name) {
+	void testLineCounting(const string& test_name) {
 		GCodeBuffer buffer;
 
 		fructose_assert_eq(buffer.getCurrentLine(), 0);
@@ -118,7 +118,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.getTotalLines(), 0);
 	}
 
-	void testBufferSize(const std::string& test_name) {
+	void testBufferSize(const string& test_name) {
 		GCodeBuffer buffer;
 		const string text1 = "line1\nline2\nline3\n";
 		const string text2 = "line1\nline2;comment\nline3\n";
@@ -136,6 +136,58 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		buffer.clear();
 		fructose_assert_eq(buffer.getBufferSize(), 0);
 	}
+
+	void testMultiLineGet(const string& test_name) {
+		GCodeBuffer buffer;
+		bool rv;
+		string rl;
+		const string l1nl = "line 1\n", l2nl = "line 2\n", l3nl = "line 3\n";
+		const string l1noNl = "line 1", l2noNl = "line 2", l3noNl = "line 3";
+
+		buffer.set(l1nl + l2nl + l3nl);
+		rv = buffer.getNextLine(rl);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1noNl);
+		rv = buffer.getNextLine(rl, 1);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1noNl);
+		rv = buffer.getNextLine(rl, 2);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2noNl);
+		rv = buffer.getNextLine(rl, 3);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+		rv = buffer.getNextLine(rl, 4);
+		fructose_assert_eq(rv, false);
+
+		buffer.set(l1nl + l2nl + l3noNl);
+		rv = buffer.getNextLine(rl, 3);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+	}
+
+	void testMultiLineErase(const string& test_name) {
+		GCodeBuffer buffer;
+		bool rv;
+		string rl;
+		const string l1nl = "line 1\n", l2nl = "line 2\n", l3nl = "line 3\n";
+		const string l1noNl = "line 1", l2noNl = "line 2", l3noNl = "line 3";
+
+		buffer.set(l1nl + l2nl + l3nl);
+		rv = buffer.getNextLine(rl, 3);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+		rv = buffer.eraseLine(2);
+		fructose_assert_eq(rv, true);
+		rv = buffer.getNextLine(rl, 2);
+		fructose_assert_eq(rv, false);
+		rv = buffer.getNextLine(rl);
+		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l3noNl);
+
+		rv = buffer.eraseLine();
+		fructose_assert_eq(rv, true);
+		rv = buffer.eraseLine();
+		fructose_assert_eq(rv, false);
+	}
+
+	void testBucketBoundaries(const string& test_name) {
+		fructose_assert_eq(true, false);
+		//append() and getNextLine() currently do not operate across bucket boundaries.
+	}
 };
 
 int main(int argc, char** argv) {
@@ -146,5 +198,8 @@ int main(int argc, char** argv) {
 	tests.add_test("cleanup", &t_GCodeBuffer::testCleanup);
 	tests.add_test("lineCounting", &t_GCodeBuffer::testLineCounting);
 	tests.add_test("bufferSize", &t_GCodeBuffer::testBufferSize);
+	tests.add_test("multiLineGet", &t_GCodeBuffer::testMultiLineGet);
+	tests.add_test("multiLineErase", &t_GCodeBuffer::testMultiLineErase);
+	//tests.add_test("bucketBoundaries", &t_GCodeBuffer::testBucketBoundaries);
 	return tests.run(argc, argv);
 }
