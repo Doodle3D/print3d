@@ -21,6 +21,11 @@ public:
 	//overrides
 	void setGCode(const std::string& gcode);
 	void appendGCode(const std::string& gcode);
+	void clearGCode();
+
+	int32_t getCurrentLine() const;
+	int32_t getBufferedLines() const;
+	int32_t getTotalLines() const;
 
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
@@ -29,6 +34,9 @@ protected:
 	void readResponseCode(std::string& code);
 
 private:
+//	static const int WAIT_GCODE_LINES;
+	static const int MAX_GPX_BUFFER_SIZE;
+
 	Timer timer_;
 	S3GParser parser_;
 
@@ -39,13 +47,14 @@ private:
 	std::deque<std::string> queue_;
 
 	size_t currentCmd_, totalCmds_;
+	bool validResponseReceived_;
 
 	void processQueue();
 	bool sendPacket(uint8_t *payload, int len, bool updateBufferSpace = true);
 	uint8_t _crc_ibutton_update(uint8_t crc, uint8_t data);
 	int parseResponse(int cmd, int toolcmd = -1);
 	std::string getResponseMessage(int code);
-	void sendCommands(std::vector<std::string> commands);
+	void queueCommands(std::vector<std::string> commands);
 	bool updateTemperatures();
 	int getFirmwareVersion();
 	int getBufferSpace();

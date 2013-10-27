@@ -68,46 +68,46 @@ public:
 	/*
 	 * Get cached extruder temperature
 	 */
-	int getTemperature() const;
+	uint16_t getTemperature() const;
 
 	/*
 	 * Get cached extruder target temperature
 	 */
-	int getTargetTemperature() const;
+	uint16_t getTargetTemperature() const;
 
 	/*
 	 * Get cached bed temperature
 	 */
-	int getBedTemperature() const;
+	uint16_t getBedTemperature() const;
 
 	/*
 	 * Get cached bed target temperature
 	 */
-	int getTargetBedTemperature() const;
+	uint16_t getTargetBedTemperature() const;
 
 	/*
 	 * Get the line number which is currently being printed (current/total*100 yields progress percentage)
 	 */
-	int32_t getCurrentLine() const;
+	virtual int32_t getCurrentLine() const;
 
 	/*
 	 * Get the number of lines currently in the buffer
 	 */
-	int32_t getBufferedLines() const;
+	virtual int32_t getBufferedLines() const;
 
 	/*
 	 * Get the total number of lines which were appended to the buffer after the last clear or set
 	 */
-	int32_t getTotalLines() const;
+	virtual int32_t getTotalLines() const;
 
 	STATE getState() const;
 	const std::string &getStateString(STATE state);
 
 protected:
-	int temperature_;
-	int targetTemperature_;
-	int bedTemperature_;
-	int targetBedTemperature_;
+	uint16_t temperature_;
+	uint16_t targetTemperature_;
+	uint16_t bedTemperature_;
+	uint16_t targetBedTemperature_;
 	STATE state_;
 
 	GCodeBuffer gcodeBuffer_;

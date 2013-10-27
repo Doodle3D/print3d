@@ -66,14 +66,12 @@ bool AbstractDriver::isConnected() const {
  * Set (replace) the GCode buffer
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
-	gcodeBuffer_.set(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 }
 /*
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
-	gcodeBuffer_.append(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 }
 
@@ -81,7 +79,6 @@ void AbstractDriver::appendGCode(const std::string& gcode) {
  * Clear (empty) GCode buffer
  */
 void AbstractDriver::clearGCode() {
-	gcodeBuffer_.clear();
 	STATE s = getState();
 	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
 }
@@ -105,7 +102,7 @@ void AbstractDriver::startPrint(STATE state) {
 	LOG(Logger::BULK, "startPrint");
 	if (state != PRINTING && state != STOPPING) resetPrint();
 	setState(state);
-	printNextLine();
+	//printNextLine();
 }
 
 void AbstractDriver::stopPrint() {
@@ -140,19 +137,19 @@ void AbstractDriver::printNextLine() {
 /*
  * Getters and setters
  */
-int AbstractDriver::getTemperature() const {
+uint16_t AbstractDriver::getTemperature() const {
 	return temperature_;
 }
 
-int AbstractDriver::getTargetTemperature() const {
+uint16_t AbstractDriver::getTargetTemperature() const {
 	return targetTemperature_;
 }
 
-int AbstractDriver::getBedTemperature() const {
+uint16_t AbstractDriver::getBedTemperature() const {
 	return bedTemperature_;
 }
 
-int AbstractDriver::getTargetBedTemperature() const {
+uint16_t AbstractDriver::getTargetBedTemperature() const {
 	return targetBedTemperature_;
 }
 

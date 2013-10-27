@@ -1,19 +1,22 @@
 /*
  * TODO:
- * - find out why extruder is inverted (gcode from repG, in which the same gcode works)
- *   -> this is fixed after unticking 'invert A' in repG in the board settings
+ * - checkout gpx (modify and use) and libuci (use) into aux directory
+ * - change gpx to prevent it from emitting start/end commands (unless we actually want them)
+ * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
+ * - read uci config in server to create the correct type of driver
+ *   -> allow to sepcify fixed baud rate?
+ *
+ * - test marlin driver, several minor modifications have been made (adding gcode, temps are now uint16)
+ *
+ * - close connection on read/write errors (see AbstractDriver:readData())
+ * - short write on print stop?
  * - the 135 wait command seems to wait until toolhead is 100 degrees, where it also stays during printing
  *   -> perhaps head and bed are confused? (e.g. because M109 is used to set bed temp...)
  *   -> gpx does indeed translate M109 to head temp & wait; M140 is the bed equiv for M104 and M190 is the bed equiv for M109
- * - the t-o-m takes about 12 seconds to start responding, we need a way to detect this moment (rq firmware version until sane value?)
- * - change gpx to prevent it from emitting start/end commands (unless we actually want them)
- * - override clear gcode to reset command counters
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
  *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
- * - implement packet send retrying (up to 5 times)
- * - integrate with AbstractDriver (keep vars updated, override gcodebuffer things (used for states and progress))
- * - read uci config in server to create the correct type of driver
- * - allow to sepcify fixed baud rate?
+ * - set/append/clear gcode functions are a bit weird now. refactor this
+ *
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
  */
 #include <iostream>
@@ -34,10 +37,14 @@ using std::vector;
 # define LOG(lvl, fmt, ...) log_.log(lvl, "[MBD] " fmt, ##__VA_ARGS__)
 #endif
 
-//const int MakerbotDriver::UPDATE_INTERVAL = 200;
+//NOTE: this should an amount that fits in one GcodeBuffer's bucket because getNextLine() cannot cross bucket boundaries
+//const int MakerbotDriver::WAIT_GCODE_LINES = 1000; //approximation: 1000 lines * 35 chars < 1024 bytes * 50
+const int MakerbotDriver::MAX_GPX_BUFFER_SIZE = 1024 * 50;
+
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
-: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0), bufferSpace_(512), currentCmd_(0), totalCmds_(0)
+: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0),
+  bufferSpace_(512), currentCmd_(0), totalCmds_(0), validResponseReceived_(false)
 {}
 
 static int lastCode = -1;
@@ -47,12 +54,32 @@ int MakerbotDriver::update() {
 
 	if (!isConnected()) return -1;
 
+	//Notes on using the gcodeBuffer (and why it is currently unused in this driver):
+	//1) it would require getNextLine and eraseLine to process as many lines as possible of the requested amount
+	//2) similarly, WAIT_GCODE_LINES should not be strict (or the end of the gcode would never be processed)
+	//3) a trick would have to be devised to report progress accurately (instead of 'progressing' WAIT_GCODE_LINES lines at a time)
+//	if (gcodeBuffer_.getBufferedLines() >= WAIT_GCODE_LINES && gpxBufferSize_ < MAX_GPX_BUFFER_SIZE) {
+//		string gcode;
+//		if (!gcodeBuffer_.getNextLine(gcode, WAIT_GCODE_LINES)) {
+//			LOG(Logger::ERROR, "could not extract %i lines from gcode buffer while it claims to have them", WAIT_GCODE_LINES);
+//		} else {
+//			gcodeBuffer_.eraseLine(WAIT_GCODE_LINES);
+//			convertGcode(gcode);
+//		}
+//	}
+
+	//use parser as one-shot converter from command stream to separate commands and add them to our queue
 	parser_.setBuffer((char*)gpxBuffer_, gpxBufferSize_);
 	while(parser_.parseNextCommand());
 	clearGpxBuffer();
-	sendCommands(parser_.commands);
+	queueCommands(parser_.commands);
 	parser_.commands.clear();
-	processQueue();
+
+	STATE s = getState();
+	if (s == PRINTING || s == STOPPING) {
+		processQueue();
+		//TODO: setState(IDLE) if all code has been processed
+	}
 
 	if (counter == 30) {
 		updateTemperatures();
@@ -108,19 +135,36 @@ void MakerbotDriver::setGCode(const string &gcode) {
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	int rv = convertGcode(gcode);
+	AbstractDriver::setGCode("");
 	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
-//	AbstractDriver::setGCode(gcode);
-//	extractGCodeInfo(gcode);
 }
 
 void MakerbotDriver::appendGCode(const string &gcode) {
 	int rv = convertGcode(gcode);
+	AbstractDriver::appendGCode("");
 	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
-//	AbstractDriver::appendGCode(gcode);
-//	extractGCodeInfo(gcode);
+}
+
+void MakerbotDriver::clearGCode() {
+	AbstractDriver::clearGCode();
+	currentCmd_ = totalCmds_ = 0;
+	clearGpxBuffer();
+	queue_.clear();
 }
 
 
+//FIXME: having the makerbot printer buffer is very nice, but it does make this value slightly inaccurate (esp. when starting/stopping)
+int32_t MakerbotDriver::getCurrentLine() const {
+	return currentCmd_;
+}
+
+int32_t MakerbotDriver::getBufferedLines() const {
+	return queue_.size();
+}
+
+int32_t MakerbotDriver::getTotalLines() const {
+	return totalCmds_;
+}
 
 
 //STATIC
@@ -158,47 +202,71 @@ void MakerbotDriver::readResponseCode(std::string& code) {
  *********************/
 
 void MakerbotDriver::processQueue() {
-	int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
-	if (!queue_.empty() && getBufferSpace()>480) {
-		while (true) {
-			if (queue_.empty()) break;
-			string command = queue_.front();
-			if (command.size() > bufferSpace_ - 5) break;
+	if (!queue_.empty()) {
+		int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
+		if (getBufferSpace() > 480) {
+			while (true) {
+				if (queue_.empty()) break;
+				string command = queue_.front();
+				if (command.size() > bufferSpace_ - 5) break;
 
-			queue_.pop_front();
-			int len = command.size();
-			uint8_t *payload = (uint8_t*)command.c_str();
-			sendPacket(payload,len);
-			currentCmd_++;
+				queue_.pop_front();
+				int len = command.size();
+				uint8_t *payload = (uint8_t*)command.c_str();
+				sendPacket(payload,len);
+				currentCmd_++;
+			}
 		}
-	}
-	if (oldQSize - queue_.size()) {
-		LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
-//		LOG(Logger::VERBOSE, "actual buffer space: %i", getBufferSpace());
+		if (oldQSize - queue_.size()) {
+			LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
+	//		LOG(Logger::VERBOSE, "actual buffer space: %i", getBufferSpace());
+		}
+	} else {
+		setState(IDLE);
+		LOG(Logger::VERBOSE, "Print queue empty. Done!");
 	}
 }
 
+//FIXME: retrying should only be used for retryable errors
 //updateBufferSpace defaults to true, set to false for non-buffered commands
 bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
-	lastCode = payload[0];
-	serial_.write(0xD5);
-	serial_.write(len);
+	unsigned char *pktBuf = (unsigned char*)malloc(len + 3);
+	pktBuf[0] = 0xD5;
+	pktBuf[1] = len;
 	uint8_t crc = 0;
 	for (int i = 0; i < len; i++) {
 		crc = _crc_ibutton_update(crc, payload[i]);
-		serial_.write(payload[i]);
+		pktBuf[2 + i] = payload[i];
 	}
-	serial_.write(crc);
+	pktBuf[2 + len] = crc;
+
+	lastCode = payload[0];
 	if (updateBufferSpace) bufferSpace_ -= len; //approximation of space left in buffer
 	//cout << " [sent: " << lastCode << ", l:" << len << "] ";
 
-	int rv = parseResponse(payload[0], payload[0] == 10 ? payload[2] : -1);
-	switch (rv) {
-		case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
-		case -2: cout << "makerbot response timeout" << endl; break;
-		case -3: cout << "makerbot response CRC error" << endl; break;
+	int retriesLeft = 5;
+	int rv;
+	while (retriesLeft > 0) {
+		serial_.write(pktBuf, len + 3);
+		//NOTE: in case of a tool action command (10), also pass the tool command code (payload[2])
+		rv = parseResponse(payload[0], payload[0] == 10 ? payload[2] : -1);
+		switch (rv) {
+			case 0:
+				if (!validResponseReceived_) LOG(Logger::VERBOSE, "hello makerbot!");
+				validResponseReceived_ = true;
+				break;
+			case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
+			case -2: cout << "makerbot response timeout" << endl; break;
+			case -3: cout << "makerbot response CRC error" << endl; break;
+		}
+		if (rv == 0 || rv == -3) break; //do not retry if the _response_ crc was invalid, packet has probably been received successfully by printer
+
+		retriesLeft--;
+		if (retriesLeft > 0) LOG(Logger::WARNING, "resending packet (%i tries left)", retriesLeft);
 	}
+
 	//cout << endl;
+	free(pktBuf);
 	return rv == 0 ? true : false;
 }
 
@@ -367,8 +435,8 @@ string MakerbotDriver::getResponseMessage(int code) {
 //	return result;
 //}
 
-void MakerbotDriver::sendCommands(vector<string> commands) {
-	for (int i=0; i<commands.size(); i++) {
+void MakerbotDriver::queueCommands(vector<string> commands) {
+	for (int i = 0; i < commands.size(); i++) {
 		queue_.push_back(commands.at(i));
 	}
 	totalCmds_ += commands.size();

@@ -16,6 +16,7 @@ public:
 	//overrides
 	void setGCode(const std::string& gcode);
 	void appendGCode(const std::string& gcode);
+	void clearGCode();
 
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
