@@ -9,10 +9,6 @@
  * - test marlin driver, several minor modifications have been made (adding gcode, temps are now uint16)
  *
  * - close connection on read/write errors (see AbstractDriver:readData())
- * - short write on print stop?
- * - the 135 wait command seems to wait until toolhead is 100 degrees, where it also stays during printing
- *   -> perhaps head and bed are confused? (e.g. because M109 is used to set bed temp...)
- *   -> gpx does indeed translate M109 to head temp & wait; M140 is the bed equiv for M104 and M190 is the bed equiv for M109
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
  *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
  * - set/append/clear gcode functions are a bit weird now. refactor this
@@ -135,18 +131,20 @@ void MakerbotDriver::setGCode(const string &gcode) {
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	int rv = convertGcode(gcode);
-	AbstractDriver::setGCode("");
+	if (getState() == IDLE) setState(BUFFERING);
 	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 }
 
 void MakerbotDriver::appendGCode(const string &gcode) {
 	int rv = convertGcode(gcode);
-	AbstractDriver::appendGCode("");
+	if (getState() == IDLE) setState(BUFFERING);
 	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 }
 
 void MakerbotDriver::clearGCode() {
-	AbstractDriver::clearGCode();
+	STATE s = getState();
+	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
+
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	queue_.clear();
@@ -184,6 +182,25 @@ const AbstractDriver::DriverInfo& MakerbotDriver::getDriverInfo() {
 
 AbstractDriver* MakerbotDriver::create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
 	return new MakerbotDriver(server, serialPortPath, baudrate);
+}
+
+void MakerbotDriver::startPrint(const std::string& gcode, AbstractDriver::STATE state) {
+	setGCode(gcode);
+	AbstractDriver::startPrint(state);
+}
+
+//FIXME: for set/append/clear gcode and start/stop print functions: buffer management is very hacky
+//because of lack of distinction between abstract driver and implementations. The abstract stopprint
+//clear the gcode buffer, which doesn't matter for us....but it is ugly and should be rewritten.
+void MakerbotDriver::stopPrint(const std::string& endcode) {
+	clearGCode();
+	setGCode(endcode);
+	AbstractDriver::stopPrint(endcode);
+}
+
+void MakerbotDriver::resetPrint() {
+	AbstractDriver::resetPrint();
+	currentCmd_ = 0;
 }
 
 void MakerbotDriver::sendCode(const std::string& code) {

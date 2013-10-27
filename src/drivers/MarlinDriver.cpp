@@ -100,20 +100,13 @@ int MarlinDriver::update() {
 }
 
 void MarlinDriver::setGCode(const std::string& gcode) {
-	gcodeBuffer_.set(gcode);
-	AbstractDriver::setGCode("");
+	AbstractDriver::setGCode(gcode);
 	extractGCodeInfo(gcode);
 }
 
 void MarlinDriver::appendGCode(const std::string& gcode) {
-	gcodeBuffer_.append(gcode);
-	AbstractDriver::appendGCode("");
+	AbstractDriver::appendGCode(gcode);
 	extractGCodeInfo(gcode);
-}
-
-void MarlinDriver::clearGCode() {
-	gcodeBuffer_.clear();
-	AbstractDriver::clearGCode();
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {

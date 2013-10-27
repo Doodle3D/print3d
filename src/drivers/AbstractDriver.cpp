@@ -66,12 +66,14 @@ bool AbstractDriver::isConnected() const {
  * Set (replace) the GCode buffer
  */
 void AbstractDriver::setGCode(const std::string& gcode) {
+	gcodeBuffer_.set(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 }
 /*
  * Append GCode to GCode buffer
  */
 void AbstractDriver::appendGCode(const std::string& gcode) {
+	gcodeBuffer_.set(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 }
 
@@ -79,6 +81,7 @@ void AbstractDriver::appendGCode(const std::string& gcode) {
  * Clear (empty) GCode buffer
  */
 void AbstractDriver::clearGCode() {
+	gcodeBuffer_.clear();
 	STATE s = getState();
 	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
 }
