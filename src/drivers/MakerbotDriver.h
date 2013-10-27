@@ -60,7 +60,10 @@ private:
 	void queueCommands(std::vector<std::string> commands);
 	bool updateTemperatures();
 	int getFirmwareVersion();
-	int getBufferSpace();
+	int requestBufferSpace();
+	void playSong(uint8_t song=0);
+	void resetPrinterBuffer();
+	void abort();
 };
 
 #endif /* ! MAKERBOT_DRIVER_H_SEEN */

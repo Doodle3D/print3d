@@ -84,6 +84,8 @@ int MakerbotDriver::update() {
 				bedTemperature_, targetBedTemperature_,
 				currentCmd_, queue_.size(), totalCmds_, bufferSpace_);
 
+		requestBufferSpace();
+
 		counter = 0;
 	}
 	counter++;
@@ -96,14 +98,16 @@ void MakerbotDriver::clearGpxBuffer() {
 }
 
 size_t MakerbotDriver::convertGcode(const string &gcode) {
+	if (gcode.size()==0) return 0;
+
 	int rv;
 	errno = 0; //'clear' error?
-	FILE *io = popen("gpx -m t6 -s > /tmp/gpx-3rw58.out", "w");
+	FILE *io = popen("gpx -s > /tmp/gpx-3rw58.out", "w");
 	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
 
 	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
 	if (rv < 0) { LOG(Logger::ERROR, "gpx write error (%s)", strerror(errno)); exit(1); }
-	if (rv < 1) { LOG(Logger::ERROR, "gpx short write (%i bytes written)", rv); exit(1); }
+	if (rv == 0 ) { LOG(Logger::ERROR, "gpx short write (%i bytes written)", rv); exit(1); }
 
 	rv = pclose(io);
 	LOG(Logger::VERBOSE, "converted %i bytes of gcode (gpx exit status: %i)", gcode.size(), rv);
@@ -148,6 +152,8 @@ void MakerbotDriver::clearGCode() {
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	queue_.clear();
+	resetPrinterBuffer();
+	abort();
 }
 
 
@@ -221,7 +227,7 @@ void MakerbotDriver::readResponseCode(std::string& code) {
 void MakerbotDriver::processQueue() {
 	if (!queue_.empty()) {
 		int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
-		if (getBufferSpace() > 480) {
+		if (requestBufferSpace() > 480) {
 			while (true) {
 				if (queue_.empty()) break;
 				string command = queue_.front();
@@ -496,17 +502,32 @@ int MakerbotDriver::getFirmwareVersion() {
 	return 0; //FIXME
 }
 
-int MakerbotDriver::getBufferSpace() {
+int MakerbotDriver::requestBufferSpace() {
 	////02 - Get available buffer size: Determine how much free memory is available for buffering commands
 	uint8_t payload[] = { 2 };
 	sendPacket(payload,sizeof(payload));
 	return bufferSpace_; //updated by sendPacket->parseResponse
 }
 
-//void playSong(uint8_t song=0) { ////151 - Queue Song
-//	uint8_t payload[] = {151, song};
-//	sendPacket(payload,sizeof(payload));
-//}
+void MakerbotDriver::playSong(uint8_t song) { ////151 - Queue Song
+	uint8_t payload[] = {151, song};
+	sendPacket(payload,sizeof(payload));
+}
+
+void MakerbotDriver::resetPrinterBuffer() { //03 - Clear buffer
+	uint8_t payload[] = { 3 };
+	sendPacket(payload,sizeof(payload));
+}
+
+void MakerbotDriver::abort() {
+	//07 - Abort immediately: Stop machine, shut down job permanently
+	uint8_t payload[] = { 7 };
+	sendPacket(payload,sizeof(payload));
+	queue_.clear();
+}
+
+
+
 //uint32_t unpack_int32(unsigned char *c) {
 //	uint32_t result = c[0];
 //	result += c[1] << 8;
