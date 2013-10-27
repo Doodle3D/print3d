@@ -1,10 +1,10 @@
 /*
  * TODO:
- * - checkout gpx (modify and use) and libuci (use) into aux directory
- * - change gpx to prevent it from emitting start/end commands (unless we actually want them)
+ * - test on wifibox
  * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
+ * - checkout libuci into aux directory
  * - read uci config in server to create the correct type of driver
- *   -> allow to sepcify fixed baud rate?
+ *   -> allow to specify fixed baud rate? (which disables auto-switching in marlindriver)
  *
  * - test marlin driver, several minor modifications have been made (adding gcode, temps are now uint16)
  *
@@ -12,6 +12,7 @@
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
  *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
  * - set/append/clear gcode functions are a bit weird now. refactor this
+ * - modify gpx so we can compile it as a (static) lib and get rid of the popen kludge
  *
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
  */
