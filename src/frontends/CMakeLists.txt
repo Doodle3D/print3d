@@ -11,4 +11,3 @@ set_target_properties(fe_common PROPERTIES COMPILE_FLAGS "-fPIC")
 target_link_libraries(fe_common ipc_shared logger utils)
 
 add_subdirectory(cmdline)
-add_subdirectory(lua)
