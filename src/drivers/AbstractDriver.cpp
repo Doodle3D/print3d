@@ -195,6 +195,10 @@ int AbstractDriver::readData() {
 		LOG(Logger::ERROR, "port was disconnected, closing port");
 		closeConnection();
 		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
+	} else if (rv == -1 && errno == EBADF) {
+		LOG(Logger::ERROR, "port file descriptor became invalid, closing port");
+		closeConnection();
+		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
 	} else if (rv >= 0) {
 		//LOG(Logger::BULK, "read %i bytes from device", rv);
 	}

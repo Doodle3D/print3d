@@ -55,9 +55,7 @@ private:
 	bool validResponseReceived_;
 
 	void processQueue();
-	bool sendPacket(uint8_t *payload, int len, bool updateBufferSpace = true);
 	uint8_t _crc_ibutton_update(uint8_t crc, uint8_t data);
-	int parseResponse(int cmd, int toolcmd = -1);
 	std::string getResponseMessage(int code);
 	void queueCommands(std::vector<std::string> commands);
 	bool updateTemperatures();
@@ -66,6 +64,12 @@ private:
 	void playSong(uint8_t song=0);
 	void resetPrinterBuffer();
 	void abort();
+
+	int parseResponse(int cmd, int toolcmd = -1);
+	bool sendPacket(uint8_t *payload, int len, bool updateBufferSpace = true);
+	int readAndCheckError(int timeout);
+	int readAndCheckError(unsigned char *buf, size_t buflen, int timeout);
+	void handleReadError(int rv);
 };
 
 #endif /* ! MAKERBOT_DRIVER_H_SEEN */

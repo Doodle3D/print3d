@@ -1,6 +1,5 @@
 /*
  * TODO:
- * - close connection on read/write errors (see AbstractDriver:readData())
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
  *   -> also read baud rate to allow setting it to a fixed value? (i.e., disable auto-switching in marlindriver)
@@ -8,7 +7,6 @@
  *
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
  *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
- * - test marlin driver, several minor modifications have been made (temps are now uint16)
  *
  * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
  * - set/append/clear gcode functions are a bit weird now. refactor this
@@ -23,6 +21,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "MakerbotDriver.h"
+#include "../server/Server.h"
 #include "../aux/GPX.git/libgpx.h"
 
 using std::cout;
@@ -400,7 +399,7 @@ void MakerbotDriver::abort() {
 int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 
 	//read 0xD5
-	int rv = serial_.readByteDirect(100); //value 1000 is taken from s3g python script (StreamWriter.py)
+	int rv = readAndCheckError(100); //value 1000 is taken from s3g python script (StreamWriter.py)
 
 	if (rv<0) {
 		LOG(Logger::WARNING, "parseResponse: serial.readByte return value=%d", rv);
@@ -415,7 +414,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	usleep(5000); //5000 microseconds = 5 milliseconds
 
 	//read length of packet data
-	int len = serial_.readByteDirect(100);
+	int len = readAndCheckError(100);
 	if (len <= 0) {
 		LOG(Logger::WARNING, "parseResponse: response get package length: len=%i", len);
 		return len;
@@ -430,7 +429,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	}
 
 	//read crc from serial
-	int crc = serial_.readByteDirect(100);
+	int crc = readAndCheckError(100);
 	if (crc < 0) { //can CRC be zero? i think so
 		LOG(Logger::WARNING, "parseResponse: CRC=%i", crc);
 		return len;
@@ -438,14 +437,14 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 
 	//calculate expected crc
 	int realCrc = 0;
-	if (cmd!=2) printf("response packet for cmd %i (len=%i): ",cmd,len);
+//	if (cmd!=2) printf("response packet for cmd %i (len=%i): ",cmd,len);
 	for (int i = 0; i < len; i++) {
 		//cout << hex << ((int)buf[i]) << " ";
-		if (cmd!=2) printf("%.02x ",buf[i]);
+//		if (cmd!=2) printf("%.02x ",buf[i]);
 		realCrc = _crc_ibutton_update(realCrc, buf[i]);
 	}
-	if (cmd!=2) printf("[crc: %i/%i]",crc, realCrc);
-	if (cmd!=2) cout << endl;
+//	if (cmd!=2) printf("[crc: %i/%i]",crc, realCrc);
+//	if (cmd!=2) cout << endl;
 
 	//check received crc with expected 'real' crc
 	if (crc != realCrc) {
@@ -479,35 +478,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 }
 
 
-////updateBufferSpace defaults to true, set to false for non-buffered commands
-//bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
-//	int rv = 0;
-//	bufferSpace_ -= len; //approximation of space left in buffer
-//
-//	serial_.write(0xD5);
-//	serial_.write(len);
-//
-//	uint8_t crc = 0;
-//	for (int i=0; i<len; i++) {
-//		crc = _crc_ibutton_update(crc,payload[i]);
-//		serial_.write(payload[i]);
-//	}
-//	serial_.write(crc);
-//
-//	uint8_t cmd = payload[0];
-//	uint8_t toolcmd = cmd==10 ? payload[2] : -1;
-//
-//	rv = parseResponse(cmd, toolcmd);
-//	if (rv!=0) {
-//		cout << "response parser error: " << rv << endl; //Timeout occured waiting on makerbot response" << endl;
-//	}
-//
-//	return rv == 0 ? true : false;
-//}
-
-
-
-//FIXME: retrying should only be used for retryable errors
+//FIXME: retrying should be used for retry-able errors only
 //updateBufferSpace defaults to true, set to false for non-buffered commands
 bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
 	unsigned char *pktBuf = (unsigned char*)malloc(len + 3);
@@ -524,7 +495,7 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 
 	uint8_t cmd = payload[0];
 
-	LOG(Logger::VERBOSE, "send: cmd=%u, len=%u, crc=%u", cmd, len, crc);
+	//LOG(Logger::VERBOSE, "send: cmd=%u, len=%u, crc=%u", cmd, len, crc);
 
 
 	if (updateBufferSpace) bufferSpace_ -= len; //approximation of space left in buffer
@@ -555,4 +526,32 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 	//cout << endl;
 	free(pktBuf);
 	return rv == 0 ? true : false;
+}
+
+int MakerbotDriver::readAndCheckError(int timeout) {
+	int rv = serial_.readByteDirect(timeout);
+	if (log_.checkError(rv, "cannot read from device")) handleReadError(rv);
+	return rv;
+}
+
+int MakerbotDriver::readAndCheckError(unsigned char *buf, size_t buflen, int timeout) {
+	int rv = serial_.readBytesDirect(buf, buflen, timeout);
+	if (log_.checkError(rv, "cannot read from device")) handleReadError(rv);
+	return rv;
+}
+
+void MakerbotDriver::handleReadError(int rv) {
+	if (rv == -2) {
+		LOG(Logger::ERROR, "remote end closed connection, closing port");
+		closeConnection();
+		if (AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
+	} else if (rv == -1 && errno == ENXIO) {
+		LOG(Logger::ERROR, "port was disconnected, closing port");
+		closeConnection();
+		if (AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
+	} else if (rv == -1 && errno == EBADF) {
+		LOG(Logger::ERROR, "port file descriptor became invalid, closing port");
+		closeConnection();
+		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
+	}
 }

@@ -104,6 +104,8 @@ public:
 	const std::string &getStateString(STATE state);
 
 protected:
+	static const bool REQUEST_EXIT_ON_PORT_FAIL;
+
 	uint16_t temperature_;
 	uint16_t targetTemperature_;
 	uint16_t bedTemperature_;
@@ -130,7 +132,6 @@ protected:
 
 private:
 	static const std::string STATE_NAMES[];
-	static const bool REQUEST_EXIT_ON_PORT_FAIL;
 
 	typedef enum BAUDRATE{
 		B115200 = 115200,
