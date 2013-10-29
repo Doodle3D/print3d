@@ -24,6 +24,9 @@ add_library(logger logger.c logger.h)
 set_target_properties(logger PROPERTIES COMPILE_FLAGS "-fPIC")
 target_link_libraries(logger ipc_shared)
 
+add_library(settings settings.c settings.h)
+set_target_properties(settings PROPERTIES COMPILE_FLAGS "-fPIC")
+
 add_library(timer Timer.cpp Timer.h)
 
 add_library(utils utils.c utils.h)

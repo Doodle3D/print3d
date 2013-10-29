@@ -10,6 +10,7 @@
 #include "Server.h"
 #include "Client.h"
 #include "Logger.h"
+#include "../settings.h"
 #include "../utils.h"
 #include "../drivers/DriverFactory.h"
 
@@ -24,12 +25,20 @@ const int Server::SOCKET_MAX_BACKLOG = 5; //private
 const int Server::SELECT_LOG_FAST_LOOP = -1;
 
 Server::Server(const string& serialPortPath, const string& socketPath) :
-		socketPath_(socketPath), log_(Logger::getInstance()), socketFd_(-1), printerDriver_(
-				DriverFactory::createDriver("makerbot_generic", *this,
-						serialPortPath, 115200)) {
-	if (printerDriver_ == 0) {
-		LOG(Logger::ERROR, "no printer driver found for makerbot_generic");
+		socketPath_(socketPath), log_(Logger::getInstance()), socketFd_(-1), printerDriver_(0)
+{
+	char *printerType = settings_get("wifibox.general.printer_type");
+	printerType = "makerbot_generic";//TEMP
+	if (printerType) {
+		LOG(Logger::INFO, "printer type from settings: '%s'", printerType);
+		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 115200);
+		if (printerDriver_ == 0) {
+			LOG(Logger::ERROR, "no printer driver found for type '%s'", printerType);
+		}
+	} else {
+		LOG(Logger::ERROR, "could not retrieve printer type from settings");
 	}
+
 	driverDelay = 0;
 }
 
