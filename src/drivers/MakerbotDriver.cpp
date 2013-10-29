@@ -422,7 +422,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 
 	//read packet data from serial
 	unsigned char buf[len];
-	rv = serial_.readBytesDirect(buf, len, 100);
+	rv = readAndCheckError(buf, len, 100);
 	if (rv <= 0) {
 		LOG(Logger::WARNING, "parseResponse: read packet serial response value=%i", rv);
 		return rv;
@@ -460,9 +460,9 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 
 	//depending on cmd interpret packet
 	switch (cmd) {
-		case 2: { bufferSpace_ = *reinterpret_cast<unsigned*>(buf+1); break; }
+		case 2: { bufferSpace_ = read32(buf+1); break; }
 		case 10: { //Tool query: Query a tool for information
-			uint16_t t = *reinterpret_cast<unsigned*>(buf+1);
+			uint16_t t = read16(buf+1);
 			if (toolcmd==2) temperature_ = t;
 			else if (toolcmd==30) bedTemperature_ = t;
 			else if (toolcmd==32) targetTemperature_ = t;
@@ -530,13 +530,15 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 
 int MakerbotDriver::readAndCheckError(int timeout) {
 	int rv = serial_.readByteDirect(timeout);
-	if (log_.checkError(rv, "cannot read from device")) handleReadError(rv);
+	log_.checkError(rv, "cannot read from device");
+	if (rv < 0) handleReadError(rv);
 	return rv;
 }
 
 int MakerbotDriver::readAndCheckError(unsigned char *buf, size_t buflen, int timeout) {
 	int rv = serial_.readBytesDirect(buf, buflen, timeout);
-	if (log_.checkError(rv, "cannot read from device")) handleReadError(rv);
+	log_.checkError(rv, "cannot read from device");
+	if (rv < 0) handleReadError(rv);
 	return rv;
 }
 
@@ -554,4 +556,23 @@ void MakerbotDriver::handleReadError(int rv) {
 		closeConnection();
 		if (REQUEST_EXIT_ON_PORT_FAIL) server_.requestExit(1);
 	}
+}
+
+uint16_t MakerbotDriver::read16(unsigned char *buf) {
+#ifndef __LITTLE_ENDIAN__
+	LOG(Logger::INFO, "swapping bytes %02X %02X", *(buf), *(buf+1));
+	unsigned char swap;
+	swap = *(buf); *(buf) = *(buf+1); *(buf+1) = swap;
+#endif
+	return *reinterpret_cast<unsigned*>(buf);
+}
+
+uint32_t MakerbotDriver::read32(unsigned char *buf) {
+#ifndef __LITTLE_ENDIAN__
+	LOG(Logger::INFO, "swapping bytes %02X %02X %02X %02X", *(buf), *(buf+1), *(buf+2), *(buf+3));
+	unsigned char swap;
+	swap = *(buf); *(buf) = *(buf+3); *(buf+3) = swap;
+	swap = *(buf+1); *(buf+1) = *(buf+2); *(buf+2) = swap;
+#endif
+	return *reinterpret_cast<unsigned*>(buf);
 }

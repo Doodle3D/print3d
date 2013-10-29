@@ -48,6 +48,17 @@ int main(int argc, char** argv) {
 
 	printf("Print 3D server\n");
 
+	/* show some basic information on the platform type */
+	printf("Platform information: ");
+#ifdef __BIG_ENDIAN__
+	printf("big endian");
+#elif __LITTLE_ENDIAN__
+	printf("little endian");
+#else
+	printf("unknown endianness");
+#endif
+	printf(", sizeof(short)=%zu, sizeof(int)=%zu, sizeof(long)=%zu, sizeof(float)=%zu\n", sizeof(short), sizeof(int), sizeof(long), sizeof(float));
+
 	if (showHelp) {
 		printf("The following options are accepted (forking is %s by default):\n", Server::FORK_BY_DEFAULT ? "on" : "off");
 		printf("\t-h,--help\t\tDisplay this help message\n");

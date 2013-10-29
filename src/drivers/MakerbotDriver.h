@@ -70,6 +70,8 @@ private:
 	int readAndCheckError(int timeout);
 	int readAndCheckError(unsigned char *buf, size_t buflen, int timeout);
 	void handleReadError(int rv);
+	uint16_t read16(unsigned char *buf);
+	uint32_t read32(unsigned char *buf);
 };
 
 #endif /* ! MAKERBOT_DRIVER_H_SEEN */
