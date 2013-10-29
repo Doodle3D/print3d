@@ -59,9 +59,9 @@ public:
 	virtual void clearGCode();
 
 	virtual void startPrint(const std::string& gcode, STATE state = PRINTING);
-	void startPrint(STATE state = PRINTING);
-	void stopPrint();
 	virtual void stopPrint(const std::string& endcode);
+	virtual void startPrint(STATE state = PRINTING);
+	virtual void stopPrint();
 
 	void heatup(int temperature);
 

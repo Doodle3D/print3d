@@ -1,12 +1,23 @@
 /*
  * TODO:
+ * - add ferror check to fwrite error evaluation just because it should be there
+ * - printing in chunks seemed to skip some commands: movement was off, it started doing printing movements immediately at a fast pace
+ *   -> dump the command buffer just before starting to print and compare chunked and filed using s3g-decompiler?
+ *
+ * - on CRC errors, this is the response to a 2 (get free space) command:
+ *   'CRC mismatch in response for cmd 2(-1). calced: D6, payload+crc: 05 81 E1 83 65 FF 7F'
+ *   ...where E1 83 65 FF seems like a very odd amount of 'free bytes'...and probably inconsistent with the accompanying checksum
+ * - rep2x on rick's new laptop stutters sometimes (up to at least half a second)
+ *   -> because no data arrives? so 1sec timeout becomes an issue
+ *   -> drop the read timeouts and replace with select wait + timer to measure timeout...would also be more accurate
  * - test on wifibox
  * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
- * - checkout libuci into aux directory
- * - read uci config in server to create the correct type of driver
- *   -> allow to specify fixed baud rate? (which disables auto-switching in marlindriver)
+ * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
+ * - read uci config in server to create the correct type of driver (see lua frontend for reference)
+ *   -> also read baud rate to allow setting it to a fixed value? (i.e., disable auto-switching in marlindriver)
  *
- * - test marlin driver, several minor modifications have been made (adding gcode, temps are now uint16)
+ * - test marlin driver, several minor modifications have been made (temps are now uint16)
+ * - test chunked transfers (if the gpx -n switch works really)
  *
  * - close connection on read/write errors (see AbstractDriver:readData())
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
@@ -15,6 +26,7 @@
  * - modify gpx so we can compile it as a (static) lib and get rid of the popen kludge
  *
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
+ * online iButton CRC calculator: http://www.datastat.com/sysadminjournal/maximcrc.cgi
  */
 #include <iostream>
 #include <sstream>
@@ -23,6 +35,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "MakerbotDriver.h"
+#include "../aux/GPX.git/libgpx.h"
 
 using std::cout;
 using std::endl;
@@ -98,14 +111,33 @@ void MakerbotDriver::clearGpxBuffer() {
 	free(gpxBuffer_); gpxBuffer_ = 0; gpxBufferSize_ = 0;
 }
 
+//#define USE_EXTERNAL_GPX //TEMP
 size_t MakerbotDriver::convertGcode(const string &gcode) {
 	if (gcode.size()==0) return 0;
+
+#ifndef USE_EXTERNAL_GPX
+
+	unsigned char *cvtBuf = 0;
+	long cvtBufLen = 0;
+	gpx_setSuppressEpilogue(1); //only necessary once
+	gpx_convert(gcode.c_str(), gcode.size(), &cvtBuf, &cvtBufLen);
+	LOG(Logger::VERBOSE, "got back %i bytes, cvtBuf=%p", cvtBufLen, cvtBuf);//TEMP
+
+	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + cvtBufLen);
+	memcpy(gpxBuffer_ + gpxBufferSize_, cvtBuf, cvtBufLen);
+	free(cvtBuf); //cvtBuf = 0; cvtBufLen = 0;
+	gpxBufferSize_ += cvtBufLen;
+
+	return cvtBufLen;
+
+#else
 
 	int rv;
 	errno = 0; //'clear' error?
 	FILE *io = popen("gpx -s -n > /tmp/gpx-3rw58.out", "w");
 	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
 
+	clearerr(io);
 	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
 	if (rv < 0) { LOG(Logger::ERROR, "gpx write error (%s)", strerror(errno)); exit(1); }
 	if (rv == 0 ) { LOG(Logger::ERROR, "gpx short write (%i bytes written)", rv); exit(1); }
@@ -121,15 +153,20 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 	rewind(in);
 
 	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + fsize);
+
+	//NOTE: this only works when all gcode is being added at once, otherwise gpx will lose its internal state with each block
+	clearerr(in);
 	rv = fread(gpxBuffer_ + gpxBufferSize_, fsize, 1, in);
 	if (rv < 0) { LOG(Logger::ERROR, "gpx output file read error (%s)", strerror(errno)); exit(1); }
-	if (rv < 1) { LOG(Logger::ERROR, "gpx output file short read (%i bytes written)", rv); exit(1); }
+
+	if (rv == 0 && ferror(in)) { LOG(Logger::ERROR, "gpx output file short read (%i bytes read)", rv); exit(1); }
 
 	gpxBufferSize_ += fsize;
 
 	fclose(in);
 
 	return fsize;
+#endif
 }
 
 void MakerbotDriver::setGCode(const string &gcode) {
@@ -146,6 +183,7 @@ void MakerbotDriver::appendGCode(const string &gcode) {
 	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 }
 
+//FIXME: clear/set/append gcode and start/stop print functions need a big overhaul. it's unreadable and unmaintainable atm
 void MakerbotDriver::clearGCode() {
 	STATE s = getState();
 	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
@@ -153,6 +191,7 @@ void MakerbotDriver::clearGCode() {
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	queue_.clear();
+	gpx_clear_state(); //FIXME: this should probably also be called on init
 	resetPrinterBuffer();
 	abort();
 }
@@ -193,7 +232,8 @@ AbstractDriver* MakerbotDriver::create(Server& server, const std::string& serial
 
 void MakerbotDriver::startPrint(const std::string& gcode, AbstractDriver::STATE state) {
 	setGCode(gcode);
-	AbstractDriver::startPrint(state);
+
+	startPrint(state);
 }
 
 //FIXME: for set/append/clear gcode and start/stop print functions: buffer management is very hacky
@@ -203,6 +243,28 @@ void MakerbotDriver::stopPrint(const std::string& endcode) {
 	clearGCode();
 	setGCode(endcode);
 	AbstractDriver::stopPrint(endcode);
+}
+
+void MakerbotDriver::startPrint(STATE state) {
+//	FILE *queueDump = fopen("/tmp/queuedump.log", "w");
+//	LOG(Logger::VERBOSE, "dumping %i commands...", queue_.size());//TEMP
+//	int bytes = 0;
+//	while(true) {
+//		if (queue_.size() == 0) break;
+//		string cmd = queue_.front();
+//		bytes += cmd.size();//TEMP
+//		queue_.pop_front();
+//		fwrite(cmd.c_str(), cmd.size(), 1, queueDump);
+//	}
+//	fclose(queueDump);
+//	LOG(Logger::VERBOSE, "dumped %i bytes...", bytes);//TEMP
+//	exit(11);
+
+	AbstractDriver::startPrint(state);
+}
+
+void MakerbotDriver::stopPrint() {
+	stopPrint("");
 }
 
 void MakerbotDriver::resetPrint() {
@@ -333,10 +395,15 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 		//serial_.readDataWithLen(len+1, 0);
 		//serial_.extractBytes(buf, len+1);
 
-		int crc = buf[len];
-		int realCrc = 0;
+		uint8_t crc = buf[len];
+		uint8_t realCrc = 0;
 		for (int i = 0; i < len; i++) realCrc = _crc_ibutton_update(realCrc, buf[i]);
-		if (crc != realCrc) return -3;
+		if (crc != realCrc) {
+			printf("CRC mismatch in response for cmd %i(%i). calced: %02X, payload+crc: %02X", cmd, toolcmd, realCrc, len);
+			for (int i = 0; i <= len; i++) { printf(" %02X", buf[i]); }
+			printf("\n");
+			return -3;
+		}
 
 		int code = buf[0];
 		if (code!=0x81) cout << getResponseMessage(code) << endl;

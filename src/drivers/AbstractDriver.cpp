@@ -92,6 +92,7 @@ void AbstractDriver::heatup(int temperature) {
 	sendCode(oss.str());
 }
 
+#include <iostream>
 /*
  * Print control
  */
@@ -99,6 +100,13 @@ void AbstractDriver::startPrint(const std::string& gcode, STATE state) {
 	LOG(Logger::BULK, "startPrint(): %s",gcode.c_str());
 	if (gcode.length() > 0) setGCode(gcode);
 	startPrint(state);
+}
+
+void AbstractDriver::stopPrint(const std::string& endcode) {
+	LOG(Logger::BULK, "stopPrint(): with %i bytes of end g-code", endcode.length());
+	resetPrint();
+	setGCode(endcode);
+	startPrint(STOPPING);
 }
 
 void AbstractDriver::startPrint(STATE state) {
@@ -110,13 +118,6 @@ void AbstractDriver::startPrint(STATE state) {
 
 void AbstractDriver::stopPrint() {
 	stopPrint("");
-}
-
-void AbstractDriver::stopPrint(const std::string& endcode) {
-	LOG(Logger::BULK, "stopPrint(): with %i bytes of end g-code", endcode.length());
-	resetPrint();
-	setGCode(endcode);
-	startPrint(STOPPING);
 }
 
 void AbstractDriver::resetPrint() {
