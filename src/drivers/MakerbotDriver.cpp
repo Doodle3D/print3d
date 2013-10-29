@@ -1,29 +1,17 @@
 /*
  * TODO:
- * - add ferror check to fwrite error evaluation just because it should be there
- * - printing in chunks seemed to skip some commands: movement was off, it started doing printing movements immediately at a fast pace
- *   -> dump the command buffer just before starting to print and compare chunked and filed using s3g-decompiler?
- *
- * - on CRC errors, this is the response to a 2 (get free space) command:
- *   'CRC mismatch in response for cmd 2(-1). calced: D6, payload+crc: 05 81 E1 83 65 FF 7F'
- *   ...where E1 83 65 FF seems like a very odd amount of 'free bytes'...and probably inconsistent with the accompanying checksum
- * - rep2x on rick's new laptop stutters sometimes (up to at least half a second)
- *   -> because no data arrives? so 1sec timeout becomes an issue
- *   -> drop the read timeouts and replace with select wait + timer to measure timeout...would also be more accurate
- * - test on wifibox
- * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
+ * - close connection on read/write errors (see AbstractDriver:readData())
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
  *   -> also read baud rate to allow setting it to a fixed value? (i.e., disable auto-switching in marlindriver)
+ * - test on wifibox
  *
- * - test marlin driver, several minor modifications have been made (temps are now uint16)
- * - test chunked transfers (if the gpx -n switch works really)
- *
- * - close connection on read/write errors (see AbstractDriver:readData())
  * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
  *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
+ * - test marlin driver, several minor modifications have been made (temps are now uint16)
+ *
+ * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
  * - set/append/clear gcode functions are a bit weird now. refactor this
- * - modify gpx so we can compile it as a (static) lib and get rid of the popen kludge
  *
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
  * online iButton CRC calculator: http://www.datastat.com/sysadminjournal/maximcrc.cgi
