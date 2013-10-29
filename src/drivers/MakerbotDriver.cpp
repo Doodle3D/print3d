@@ -108,7 +108,18 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 	long cvtBufLen = 0;
 	gpx_setSuppressEpilogue(1); //only necessary once
 	gpx_convert(gcode.c_str(), gcode.size(), &cvtBuf, &cvtBufLen);
-	LOG(Logger::VERBOSE, "got back %i bytes, cvtBuf=%p", cvtBufLen, cvtBuf);//TEMP
+
+//	//TEMP (give this file dump code a permanent place - it's useful. and move to startPrint so we can also debug chunked data transfers)
+//	LOG(Logger::VERBOSE, "got back %i bytes, cvtBuf=%p", cvtBufLen, cvtBuf);
+////	fprintf(stderr, "conversion result:");
+////	for (int i = 0; i < cvtBufLen; i++) { //this loop is only useful when sending single or few commands
+////		fprintf(stderr, " %02X", cvtBuf[i]);
+////	}
+//	fprintf(stderr, " (dumped to /tmp/gpxdump.log)\n");
+//	FILE *dump = fopen("/tmp/gpxdump.log", "w");
+//	if (fwrite(cvtBuf, cvtBufLen, 1, dump) == 0) perror("could not write data");
+//	fclose(dump);
+//	exit(13);
 
 	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + cvtBufLen);
 	memcpy(gpxBuffer_ + gpxBufferSize_, cvtBuf, cvtBufLen);
@@ -179,8 +190,11 @@ void MakerbotDriver::clearGCode() {
 	clearGpxBuffer();
 	queue_.clear();
 	gpx_clear_state(); //FIXME: this should probably also be called on init
-	resetPrinterBuffer();
-	abort();
+
+	if(isConnected()) {
+		resetPrinterBuffer();
+		abort();
+	}
 }
 
 
