@@ -339,7 +339,7 @@ string MakerbotDriver::getResponseMessage(int code) {
 }
 
 void MakerbotDriver::queueCommands(vector<string> commands) {
-	for (int i = 0; i < commands.size(); i++) {
+	for (size_t i = 0; i < commands.size(); i++) {
 		queue_.push_back(commands.at(i));
 	}
 	totalCmds_ += commands.size();

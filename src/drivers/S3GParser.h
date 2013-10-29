@@ -62,7 +62,7 @@ public:
 	int calcsize(char c) { //http://docs.python.org/2/library/struct.html
 		char chars[] = "@=<>!cbB?hHiIlLqQfdspP";
 		char sizes[] = "0000011112244448848005";
-		for (int i=0; i<sizeof(chars); i++) {
+		for (size_t i=0; i<sizeof(chars); i++) {
 			if (chars[i]==c) return sizes[i]-'0';
 		}
 		//cout << c;
@@ -72,7 +72,7 @@ public:
 
 	int calcsize(string format) {
 		int size=0;
-		for (int i=0; i<format.size(); i++) {
+		for (size_t i=0; i<format.size(); i++) {
 			size+=calcsize(format.at(i));
 		}
 		return size;
