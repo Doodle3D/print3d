@@ -99,6 +99,11 @@ int MarlinDriver::update() {
 	return UPDATE_INTERVAL - timer_.getElapsedTimeInMilliSec();
 }
 
+void MarlinDriver::startPrint(STATE state) {
+	AbstractDriver::startPrint(state);
+	printNextLine();
+}
+
 void MarlinDriver::setGCode(const std::string& gcode) {
 	AbstractDriver::setGCode(gcode);
 	extractGCodeInfo(gcode);
