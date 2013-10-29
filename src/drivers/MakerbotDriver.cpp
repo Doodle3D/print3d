@@ -313,48 +313,7 @@ void MakerbotDriver::processQueue() {
 	}
 }
 
-//FIXME: retrying should only be used for retryable errors
-//updateBufferSpace defaults to true, set to false for non-buffered commands
-bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
-	unsigned char *pktBuf = (unsigned char*)malloc(len + 3);
-	pktBuf[0] = 0xD5;
-	pktBuf[1] = len;
-	uint8_t crc = 0;
-	for (int i = 0; i < len; i++) {
-		crc = _crc_ibutton_update(crc, payload[i]);
-		pktBuf[2 + i] = payload[i];
-	}
-	pktBuf[2 + len] = crc;
 
-	lastCode = payload[0];
-	if (updateBufferSpace) bufferSpace_ -= len; //approximation of space left in buffer
-	//cout << " [sent: " << lastCode << ", l:" << len << "] ";
-
-	int retriesLeft = 5;
-	int rv;
-	while (retriesLeft > 0) {
-		serial_.write(pktBuf, len + 3);
-		//NOTE: in case of a tool action command (10), also pass the tool command code (payload[2])
-		rv = parseResponse(payload[0], payload[0] == 10 ? payload[2] : -1);
-		switch (rv) {
-			case 0:
-				if (!validResponseReceived_) LOG(Logger::VERBOSE, "hello makerbot!");
-				validResponseReceived_ = true;
-				break;
-			case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
-			case -2: cout << "makerbot response timeout" << endl; break;
-			case -3: cout << "makerbot response CRC error" << endl; break;
-		}
-		if (rv == 0 || rv == -3) break; //do not retry if the _response_ crc was invalid, packet has probably been received successfully by printer
-
-		retriesLeft--;
-		if (retriesLeft > 0) LOG(Logger::WARNING, "resending packet (%i tries left)", retriesLeft);
-	}
-
-	//cout << endl;
-	free(pktBuf);
-	return rv == 0 ? true : false;
-}
 
 uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 	uint8_t i;
@@ -369,133 +328,7 @@ uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 	return crc;
 }
 
-//return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
-int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
-	//serial_.readDataWithLen(1, 100); //timeout after 100ms (officialy 40ms but makerbots sometimes need longer occording to docs
-	//serial_.readData(500);
-//	if (serial_.getBufferSize() > 0) {
-//		printf("code %3i, buffer(%3i):", cmd, serial_.getBufferSize());
-//		unsigned char *buf = (unsigned char*)serial_.getBuffer();
-//		for (int i = 0; i < serial_.getBufferSize(); i++) {
-//			printf(" 0x%02X", buf[i]);
-//		}
-//		printf("\n");
-//	}
-	int rv = serial_.readByteDirect(1000); //value 1000 is taken from s3g python script (StreamWriter.py)
-	if (rv == 0xD5) {
-//		cout << "0xD5 found" << endl;
-		//::usleep(5000); //prevent OF_SERIAL_NO_DATA
-		//serial_.readDataWithLen(1, 0);
-		int len = serial_.readByteDirect(1000); //using 1000 again is not right of course
-		if (len <= 0) return len;
-		unsigned char buf[len+1];
-		//serial_.readData();
-		rv = serial_.readBytesDirect(buf, len+1, 1000); //using 1000 again is not right of course
-		if (rv <= 0) return rv;
-		//serial_.readDataWithLen(len+1, 0);
-		//serial_.extractBytes(buf, len+1);
 
-		uint8_t crc = buf[len];
-		uint8_t realCrc = 0;
-		for (int i = 0; i < len; i++) realCrc = _crc_ibutton_update(realCrc, buf[i]);
-		if (crc != realCrc) {
-			printf("CRC mismatch in response for cmd %i(%i). calced: %02X, payload+crc: %02X", cmd, toolcmd, realCrc, len);
-			for (int i = 0; i <= len; i++) { printf(" %02X", buf[i]); }
-			printf("\n");
-			return -3;
-		}
-
-		int code = buf[0];
-		if (code!=0x81) cout << getResponseMessage(code) << endl;
-		//cout << dec << "cmd: " << cmd << " -> 0x" << hex << code << endl;
-		switch (cmd) {
-			////////////// Host Query Commands
-			case 1: break; //01 - init: Initialize firmware to boot state
-			case 2: bufferSpace_ = *reinterpret_cast<unsigned*>(buf+1); break; //Get available buffer size: Determine how much free memory is available for buffering commands
-			case 3: break; //03 - Clear buffer: Empty the command buffer
-			case 7: break; //07 - Abort immediately: Stop machine, shut down job permanently
-			case 8: break; //08 - pause/resume: Halt execution temporarily
-			case 10: { //Tool query: Query a tool for information
-				uint16_t t = *reinterpret_cast<unsigned*>(buf+1);
-				switch (toolcmd) {
-					case 2: temperature_ = t; break;
-					case 30: bedTemperature_ = t; break;
-					case 32: targetTemperature_ = t; break;
-					case 33: targetBedTemperature_ = t; break;
-					default: LOG(Logger::WARNING, "parseResponse: unrecognized or missing tool command (%u)", toolcmd); break;
-				}
-			}; break;
-			case 11: break; //11 - Is finished: See if the machine is currently busy
-			case 12: break; //12 - Read from EEPROM
-			case 13: break; //13 - Write to EEPROM
-			case 14: break; //14 - Capture to file
-			case 15: break; //15 - End capture to file
-			case 16: break; //16 - Play back capture
-			case 17: break; //17 - reset
-			case 18: break; //18 - Get next filename
-			case 20: break; //20 - Get build name
-			case 21: break; //21 - Get extended position: Get the current
-			case 22: break; //22 - Extended stop: Stop a subset of systems
-			case 23: break; //23 - Get motherboard status
-			case 24: break; //24 - Get build statistics
-			case 25: break; //25 - Get communication statistics
-			case 27: break; //27 - Get advanced version number
-			///////////// Host Buffered Commands
-			case 131: break; //131 - Find axes minimums: Move specified axes in the negative direction until limit switch is triggered.
-			case 132: break; //132 - Find axes maximums: Move specified axes in the positive direction until limit switch is triggered.
-			case 133: break; //133 - delay: pause all motion for the specified time
-			case 134: break; //134 - Change Tool
-			case 135: break; //135 - Wait for tool ready: Wait until a tool is ready before proceeding
-			case 136: break; //136 - Tool action command: Send an action command to a tool for execution
-			case 137: break; //137 - Enable/disable axes: Explicitly enable or disable stepper motor controllers
-			case 139: break; //139 - Queue extended point
-			case 140: break; //140 - Set extended position
-			case 141: break; //141 - Wait for platform ready: Wait until a build platform is ready before proceeding
-			case 142: break; //142 - Queue extended point, new style
-			case 143: break; //143 - Store home positions
-			case 144: break; //144 - Recall home positions
-			case 145: break; //145 - Set digital potentiometer value
-			case 146: break; //146 - Set RGB LED value
-			case 147: break; //147 - Set Beep
-			case 148: break; //148 - Wait for button
-			case 149: break; //149 - Display message to LCD
-			case 150: break; //150 - Set Build Percentage
-			case 151: break; //151 - Queue Song
-			case 152: break; //152 - reset to Factory
-			case 153: break; //153 - Build start notification
-			case 154: break; //154 - Build end notification
-			case 155: break; //155 - Queue extended point x3g
-			case 157: break; //157 - Stream Version
-			//////////////////// Tool Query Commands
-			//case 00: break; // Get version: Query firmware for version information
-			//case 02: break; // Get toolhead temperature
-			//case 17: break; // Get motor speed (RPM)
-			//case 22: break; // Is tool ready?
-			//case 25: break; // Read from EEPROM
-			//case 26: break; // Write to EEPROM
-			//case 30: break; // Get build platform temperature
-			//case 32: break; // Get toolhead target temperature
-			//case 33: break; // Get build platform target temperature
-			//case 35: break; // Is build platform ready?
-			//case 36: break; // Get tool status
-			//case 37: break; // Get PID state
-			//
-			////////////////////// Tool Action Commands
-			//case 01: break; // init: Initialize firmware to boot state
-			//case 03: break; // Set toolhead target temperature
-			//case 06: break; // Set motor speed (RPM)
-			//case 10: break; // Enable/disable motor
-			//case 12: break; // Enable/disable fan
-			//case 13: break; // Enable/disable extra output
-			//case 14: break; // Set servo 1 position
-			//case 23: break; // pause/resume: Halt execution temporarily
-			//case 24: break; // Abort immediately: Terminate all operations and reset
-			//case 31: break; // Set build platform target temperature
-		}
-		return 0;
-	}
-	return rv;
-}
 
 string MakerbotDriver::getResponseMessage(int code) {
 	switch (code) {
@@ -518,31 +351,12 @@ string MakerbotDriver::getResponseMessage(int code) {
 	return out.str();
 }
 
-//string pack_int16(uint16_t i) {
-//	i = htonl(i);
-//	string result = " ";
-//	result[0] = i & 0xff;
-//	result[1] = i >> 8;
-//	return result;
-//}
-
 void MakerbotDriver::queueCommands(vector<string> commands) {
 	for (int i = 0; i < commands.size(); i++) {
 		queue_.push_back(commands.at(i));
 	}
 	totalCmds_ += commands.size();
 }
-
-//void setFan(bool state) {
-//	uint8_t payload[] = { 136, 0, 12, 1, state };
-//	sendPacket(payload,sizeof(payload));
-//}
-//void setHeadTemperature(int temp) {
-//	string str_temp_int16 = pack_int16(temp);
-//	cout << "set temp: " << (int)str_temp_int16[0] << " " << (int)str_temp_int16[1] << endl;
-//	uint8_t payload[] = { 136, 0, 3, 2, str_temp_int16[0], str_temp_int16[1] };
-//	sendPacket(payload,sizeof(payload));
-//}
 
 bool MakerbotDriver::updateTemperatures() {
 	int rv = true;
@@ -594,36 +408,163 @@ void MakerbotDriver::abort() {
 	queue_.clear();
 }
 
+//return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
+int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
+
+	//read 0xD5
+	int rv = serial_.readByteDirect(100); //value 1000 is taken from s3g python script (StreamWriter.py)
+
+	if (rv<0) {
+		LOG(Logger::WARNING, "parseResponse: serial.readByte return value=%d", rv);
+		return rv;
+	}
+
+	if (rv!=0xD5) {
+		LOG(Logger::WARNING, "parseResponse: expected 0xD5 instead of 0x%.02x", rv);
+		return -99;
+	}
+
+	usleep(5000); //5000 microseconds = 5 milliseconds
+
+	//read length of packet data
+	int len = serial_.readByteDirect(100);
+	if (len <= 0) {
+		LOG(Logger::WARNING, "parseResponse: response get package length: len=%i", len);
+		return len;
+	}
+
+	//read packet data from serial
+	unsigned char buf[len];
+	rv = serial_.readBytesDirect(buf, len, 100);
+	if (rv <= 0) {
+		LOG(Logger::WARNING, "parseResponse: read packet serial response value=%i", rv);
+		return rv;
+	}
+
+	//read crc from serial
+	int crc = serial_.readByteDirect(100);
+	if (crc < 0) { //can CRC be zero? i think so
+		LOG(Logger::WARNING, "parseResponse: CRC=%i", crc);
+		return len;
+	}
+
+	//calculate expected crc
+	int realCrc = 0;
+	if (cmd!=2) printf("response packet for cmd %i (len=%i): ",cmd,len);
+	for (int i = 0; i < len; i++) {
+		//cout << hex << ((int)buf[i]) << " ";
+		if (cmd!=2) printf("%.02x ",buf[i]);
+		realCrc = _crc_ibutton_update(realCrc, buf[i]);
+	}
+	if (cmd!=2) printf("[crc: %i/%i]",crc, realCrc);
+	if (cmd!=2) cout << endl;
+
+	//check received crc with expected 'real' crc
+	if (crc != realCrc) {
+		LOG(Logger::WARNING, "CRC check failed (cmd %i)",cmd);
+		return -3;
+	}
+
+	//read response code from packet. 0x81 is success
+	int code = buf[0];
+	if (code!=0x81) {
+		cout << getResponseMessage(code) << endl;
+	}
+
+	//depending on cmd interpret packet
+	switch (cmd) {
+		case 2: { bufferSpace_ = *reinterpret_cast<unsigned*>(buf+1); break; }
+		case 10: { //Tool query: Query a tool for information
+			uint16_t t = *reinterpret_cast<unsigned*>(buf+1);
+			if (toolcmd==2) temperature_ = t;
+			else if (toolcmd==30) bedTemperature_ = t;
+			else if (toolcmd==32) targetTemperature_ = t;
+			else if (toolcmd==33) targetBedTemperature_ = t;
+			else LOG(Logger::WARNING, "parseResponse: unrecognized or missing tool command (%u)", toolcmd);
+			break; }
+		default:
+			LOG(Logger::WARNING, "other command: %i", cmd);
+			break;
+	}
+
+	return 0; //everything should be fine now
+}
 
 
-//uint32_t unpack_int32(unsigned char *c) {
-//	uint32_t result = c[0];
-//	result += c[1] << 8;
-//	result += c[2] << 16;
-//	result += c[3] << 24;
-//	return result;
+////updateBufferSpace defaults to true, set to false for non-buffered commands
+//bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
+//	int rv = 0;
+//	bufferSpace_ -= len; //approximation of space left in buffer
+//
+//	serial_.write(0xD5);
+//	serial_.write(len);
+//
+//	uint8_t crc = 0;
+//	for (int i=0; i<len; i++) {
+//		crc = _crc_ibutton_update(crc,payload[i]);
+//		serial_.write(payload[i]);
+//	}
+//	serial_.write(crc);
+//
+//	uint8_t cmd = payload[0];
+//	uint8_t toolcmd = cmd==10 ? payload[2] : -1;
+//
+//	rv = parseResponse(cmd, toolcmd);
+//	if (rv!=0) {
+//		cout << "response parser error: " << rv << endl; //Timeout occured waiting on makerbot response" << endl;
+//	}
+//
+//	return rv == 0 ? true : false;
 //}
-//void setText(string txt) { //149 - Display message to LCD
-//	uint8_t payload[txt.size() + 6];
-//	uint8_t header[] = { 149, 3, 1, 1, 1 };
-//	memcpy(payload, header, sizeof(header));
-//	memcpy(payload+sizeof(header), txt.c_str(), txt.size());
-//	payload[sizeof(payload)-1] = '\0';
-//	sendPacket(payload,sizeof(payload));
-//}
-//void abort() {
-//	//07 - Abort immediately: Stop machine, shut down job permanently
-//	uint8_t payload[] = { 7 };
-//	sendPacket(payload,sizeof(payload));
-//	queue.clear();
-//}
-//void clearDisplay() {
-//	//149 - Display message to LCD
-//	uint8_t payload[] = { 149, 3, 0, 0, 0, '\0'};
-//	sendPacket(payload,sizeof(payload));
-//}
-//void clearBuffer() {
-//	//03 - Clear buffer: Empty the command buffer
-//	uint8_t payload[] = { 3 };
-//	sendPacket(payload,sizeof(payload));
-//}
+
+
+
+//FIXME: retrying should only be used for retryable errors
+//updateBufferSpace defaults to true, set to false for non-buffered commands
+bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
+	unsigned char *pktBuf = (unsigned char*)malloc(len + 3);
+	pktBuf[0] = 0xD5;
+	pktBuf[1] = len;
+	uint8_t crc = 0;
+	for (int i = 0; i < len; i++) {
+		crc = _crc_ibutton_update(crc, payload[i]);
+		pktBuf[2 + i] = payload[i];
+	}
+	pktBuf[2 + len] = crc;
+
+	lastCode = payload[0];
+
+	uint8_t cmd = payload[0];
+
+	LOG(Logger::VERBOSE, "send: cmd=%u, len=%u, crc=%u", cmd, len, crc);
+
+
+	if (updateBufferSpace) bufferSpace_ -= len; //approximation of space left in buffer
+	//cout << " [sent: " << lastCode << ", l:" << len << "] ";
+
+	int retriesLeft = 5;
+	int rv;
+	while (retriesLeft > 0) {
+		serial_.write(pktBuf, len + 3);
+		//NOTE: in case of a tool action command (10), also pass the tool command code (payload[2])
+		rv = parseResponse(cmd, cmd == 10 ? payload[2] : -1);
+		switch (rv) {
+			case 0:
+				if (!validResponseReceived_) LOG(Logger::VERBOSE, "hello makerbot!");
+				validResponseReceived_ = true;
+				//LOG(Logger::VERBOSE, "ok");
+				break;
+			case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
+			case -2: cout << "makerbot response timeout" << endl; break;
+			case -3: cout << "makerbot response CRC error" << endl; break;
+		}
+		if (rv == 0 || rv == -3) break; //do not retry if the _response_ crc was invalid, packet has probably been received successfully by printer
+
+		retriesLeft--;
+		if (retriesLeft > 0) LOG(Logger::WARNING, "resending packet (%i tries left) (rv=%i for cmd: %u)", retriesLeft, rv, cmd);
+	}
+
+	//cout << endl;
+	free(pktBuf);
+	return rv == 0 ? true : false;
+}
