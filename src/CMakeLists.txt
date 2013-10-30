@@ -27,6 +27,11 @@ target_link_libraries(logger ipc_shared)
 add_library(settings settings.c settings.h)
 set_target_properties(settings PROPERTIES COMPILE_FLAGS "-fPIC")
 
+#TODO: only link against libuci for openwrt
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+	target_link_libraries(settings -luci)
+endif(not APPLE)
+
 add_library(timer Timer.cpp Timer.h)
 
 add_library(utils utils.c utils.h)

@@ -27,8 +27,10 @@ const int Server::SELECT_LOG_FAST_LOOP = -1;
 Server::Server(const string& serialPortPath, const string& socketPath) :
 		socketPath_(socketPath), log_(Logger::getInstance()), socketFd_(-1), printerDriver_(0)
 {
-	char *printerType = settings_get("wifibox.general.printer_type");
-	printerType = "makerbot_generic";//TEMP
+	if (!settings_init()) LOG(Logger::ERROR, "could not initialize uci settings context");
+
+	char *uci_key = "wifibox.general.printer_type";
+	const char *printerType = settings_get(uci_key);
 	if (printerType) {
 		LOG(Logger::INFO, "printer type from settings: '%s'", printerType);
 		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 115200);
@@ -44,6 +46,7 @@ Server::Server(const string& serialPortPath, const string& socketPath) :
 
 Server::~Server() {
 	closeSocket();
+	settings_deinit();
 }
 
 //returns -1 on error, >0 after fork or 0 after successful (not-fork) exit
@@ -74,8 +77,7 @@ int Server::start(bool fork) {
 			return rv; //return rv unless we are a successfuly spawned child process
 	}
 
-	//HIER *** foutafhandeling niet vergeten
-	printerDriver_->openConnection();
+	if (printerDriver_) printerDriver_->openConnection();
 
 	fd_set masterFds;
 	fd_set readFds;

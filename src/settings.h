@@ -13,7 +13,7 @@
 
 int settings_init();
 int settings_deinit();
-char *settings_get(const char *uci_spec);
+const char *settings_get(const char *uci_spec);
 
 #ifdef __cplusplus
 	} //extern "C"
