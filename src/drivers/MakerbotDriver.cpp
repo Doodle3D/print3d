@@ -98,7 +98,7 @@ void MakerbotDriver::clearGpxBuffer() {
 	free(gpxBuffer_); gpxBuffer_ = 0; gpxBufferSize_ = 0;
 }
 
-//#define USE_EXTERNAL_GPX //TEMP
+//NOTE: do not use external gpx. It forgets state in between calls, causing it to generate incorrect coordinates etc.
 size_t MakerbotDriver::convertGcode(const string &gcode) {
 	if (gcode.size()==0) return 0;
 
@@ -398,15 +398,17 @@ void MakerbotDriver::playSong(uint8_t song) { ////151 - Queue Song
 }
 
 void MakerbotDriver::resetPrinterBuffer() { //03 - Clear buffer
-	uint8_t payload[] = { 3 };
-	sendPacket(payload,sizeof(payload));
+	//LOG(Logger::BULK, "not sending reset_print_buffer command to prevent serial port from being closed");
+//	uint8_t payload[] = { 3 };
+//	sendPacket(payload,sizeof(payload));
 }
 
 void MakerbotDriver::abort() {
-	//07 - Abort immediately: Stop machine, shut down job permanently
-	uint8_t payload[] = { 7 };
-	sendPacket(payload,sizeof(payload));
-	queue_.clear();
+	//LOG(Logger::BULK, "not sending abort command to prevent serial port from being closed");
+//	//07 - Abort immediately: Stop machine, shut down job permanently
+//	uint8_t payload[] = { 7 };
+//	sendPacket(payload,sizeof(payload));
+//	queue_.clear();
 }
 
 //return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
@@ -483,8 +485,12 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 			else if (toolcmd==33) targetBedTemperature_ = t;
 			else LOG(Logger::WARNING, "parseResponse: unrecognized or missing tool command (%u)", toolcmd);
 			break; }
+		case 3: break; //clear buffer
+		case 7: break; //abort
+		case 136: break; //tool action command
+		case 155: break; //queue extended point
 		default:
-			LOG(Logger::WARNING, "other command: %i", cmd);
+			LOG(Logger::WARNING, "other command: %i (toolcmd: %i)", cmd, toolcmd);
 			break;
 	}
 
@@ -572,18 +578,21 @@ void MakerbotDriver::handleReadError(int rv) {
 	}
 }
 
+//NOTE: somehow it looks like we don't need to swap int16 as opposed to int32
 uint16_t MakerbotDriver::read16(unsigned char *buf) {
 #ifndef __LITTLE_ENDIAN__
-	LOG(Logger::INFO, "swapping bytes %02X %02X", *(buf), *(buf+1));
-	unsigned char swap;
-	swap = *(buf); *(buf) = *(buf+1); *(buf+1) = swap;
+	//LOG(Logger::INFO, "swapping bytes %02X %02X", *(buf), *(buf+1));
+	//unsigned char swap;
+	//swap = *(buf); *(buf) = *(buf+1); *(buf+1) = swap;
+	//LOG(Logger::INFO, "swapped bytes %02X %02X", *(buf), *(buf+1));
 #endif
-	return *reinterpret_cast<unsigned*>(buf);
+	return *(buf) + (*(buf+1)<<8);
+	//return *reinterpret_cast<unsigned*>(buf);
 }
 
 uint32_t MakerbotDriver::read32(unsigned char *buf) {
 #ifndef __LITTLE_ENDIAN__
-	LOG(Logger::INFO, "swapping bytes %02X %02X %02X %02X", *(buf), *(buf+1), *(buf+2), *(buf+3));
+//	LOG(Logger::INFO, "swapping bytes %02X %02X %02X %02X", *(buf), *(buf+1), *(buf+2), *(buf+3));
 	unsigned char swap;
 	swap = *(buf); *(buf) = *(buf+3); *(buf+3) = swap;
 	swap = *(buf+1); *(buf+1) = *(buf+2); *(buf+2) = swap;
