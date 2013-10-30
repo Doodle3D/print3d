@@ -222,8 +222,37 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 	static AbstractDriver::DriverInfo info;
 
 	if (supportedFirmware.empty()) {
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("rigidbot") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("printrbot") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bukobot") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("cartesio") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("cyrus") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("delta_rostockmax") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("deltamaker") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("eventorbot") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("felix") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("gigabot") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("kossel") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("leapfrog_creatr") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_aO_101") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_m2") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_prusa") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makibox") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("orca_0_3") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ord_bot_hadron") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("printxel_3d") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("prusa_i3") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("prusa_iteration_2") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("rapman") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("reprappro_huxley") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("reprappro_mendel") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("robo_3d_printer") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("shapercube") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("tantillus") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("vision_3d_printer") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_generic") );
-		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_ultimaker") );
+
 
 		info.supportedFirmware = supportedFirmware;
 		info.creator = &MarlinDriver::create;
