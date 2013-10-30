@@ -3,10 +3,6 @@
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
  *   -> also read baud rate to allow setting it to a fixed value? (i.e., disable auto-switching in marlindriver)
- * - test on wifibox
- *
- * - sometimes readings are swapped (e.g. hTgt as hAct, or hAct as bAct, or hAct as bufFree)
- *   -> seems like this always happens together with an error, perhaps the response arrives anyway and gets assigned incorrectly?
  *
  * - the t-o-m takes about 12 seconds to start responding, do we need an extra state CONNECTING?
  * - set/append/clear gcode functions are a bit weird now. refactor this
