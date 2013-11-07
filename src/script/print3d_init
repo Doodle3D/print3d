@@ -3,6 +3,10 @@
 START=99
 
 start() {
+	echo 0 > /sys/devices/virtual/gpio/gpio8/value
+	sleep 1
+	echo 1 > /sys/devices/virtual/gpio/gpio8/value
+
 	/bin/print3d-manager.sh > /dev/null 2> /dev/null &
 }
 
