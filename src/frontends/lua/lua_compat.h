@@ -22,7 +22,7 @@
 #endif
 
 #if !defined LUA_VERSION_NUM || LUA_VERSION_NUM==501
-#warning "Lua 5.1 compatibility definitions enabled"
+//#warning "Lua 5.1 compatibility definitions enabled"
 
 /* Adapted from Lua 5.2.0 */
 static void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {

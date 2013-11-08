@@ -29,7 +29,7 @@ Server::Server(const string& serialPortPath, const string& socketPath) :
 {
 	if (!settings_init()) LOG(Logger::ERROR, "could not initialize uci settings context");
 
-	char *uci_key = "wifibox.general.printer_type";
+	const char *uci_key = "wifibox.general.printer_type";
 	const char *printerType = settings_get(uci_key);
 	if (printerType) {
 		LOG(Logger::INFO, "printer type from settings: '%s'", printerType);

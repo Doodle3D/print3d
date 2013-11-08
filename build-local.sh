@@ -8,6 +8,7 @@ BUILD_TARGET=Debug
 #CMAKE_FLAGS="-G \"Unix Makefiles\""
 CMAKE_FLAGS=("-G" "Unix Makefiles")
 INTERACTIVE_MODE=no
+TEST_MODE=no
 
 for arg in $@; do
 	case $arg in
@@ -19,6 +20,9 @@ for arg in $@; do
 		;;
 	-i)
 		INTERACTIVE_MODE=yes
+		;;
+	-t)
+		TEST_MODE=yes
 		;;
 	*)
 		if [ $arg == "Debug" -o $arg == "Release" -o $arg == "RelWithDebInfo" -o $arg == "MinSizeRel" ]; then
@@ -49,4 +53,8 @@ if [ $INTERACTIVE_MODE == "yes" -a $? -eq 0 ]; then
 	$CCMAKE $SRC_DIR
 fi
 
-$MAKE
+if [ ! $TEST_MODE == "yes" ]; then
+	$MAKE
+else
+	$MAKE test
+fi

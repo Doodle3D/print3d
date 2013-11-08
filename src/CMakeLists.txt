@@ -17,8 +17,10 @@ option(GENERATE_DOCS "generate documentation" OFF)
 add_subdirectory(server)
 add_subdirectory(drivers)
 add_subdirectory(frontends)
-add_subdirectory(unittest)
 add_subdirectory(aux)
+if(NOT CMAKE_CROSSCOMPILING)
+	add_subdirectory(unittest)
+endif(NOT CMAKE_CROSSCOMPILING)
 
 add_library(logger logger.c logger.h)
 set_target_properties(logger PROPERTIES COMPILE_FLAGS "-fPIC")
@@ -27,10 +29,9 @@ target_link_libraries(logger ipc_shared)
 add_library(settings settings.c settings.h)
 set_target_properties(settings PROPERTIES COMPILE_FLAGS "-fPIC")
 
-#TODO: only link against libuci for openwrt
-if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+if(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
 	target_link_libraries(settings -luci)
-endif(not APPLE)
+endif(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
 
 add_library(timer Timer.cpp Timer.h)
 
