@@ -61,7 +61,9 @@ int MakerbotDriver::update() {
 //		}
 //	}
 
+	// if data in gpx buffer, parse and seperate in packages
 	//use parser as one-shot converter from command stream to separate commands and add them to our queue
+	// TODO: move to appendGCode?
 	parser_.setBuffer((char*)gpxBuffer_, gpxBufferSize_);
 	while(parser_.parseNextCommand());
 	clearGpxBuffer();
@@ -74,7 +76,7 @@ int MakerbotDriver::update() {
 		//TODO: setState(IDLE) if all code has been processed
 	}
 
-	if (counter == 30) {
+	if (counter == 30) { // TODO: replace for time based timer?
 		updateTemperatures();
 		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, cmdbuf: %i/%i/%i, prbuf space: %i",
 				temperature_, targetTemperature_,
@@ -100,9 +102,10 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 
 #ifndef USE_EXTERNAL_GPX
 
+	// create convert buffer
 	unsigned char *cvtBuf = 0;
 	long cvtBufLen = 0;
-	gpx_setSuppressEpilogue(1); //only necessary once
+	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
 	gpx_convert(gcode.c_str(), gcode.size(), &cvtBuf, &cvtBufLen);
 
 //	//TEMP (give this file dump code a permanent place - it's useful. and move to startPrint so we can also debug chunked data transfers)
@@ -117,6 +120,8 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 //	fclose(dump);
 //	exit(13);
 
+	// add converted gpx code to gpxbuffer
+	// this is seperate into commands in update method
 	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + cvtBufLen);
 	memcpy(gpxBuffer_ + gpxBufferSize_, cvtBuf, cvtBufLen);
 	free(cvtBuf); //cvtBuf = 0; cvtBufLen = 0;
@@ -289,10 +294,12 @@ void MakerbotDriver::readResponseCode(std::string& code) {
 void MakerbotDriver::processQueue() {
 	if (!queue_.empty()) {
 		int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
+		// refill the printer buffer when there is enough space
 		if (requestBufferSpace() > 480) {
 			while (true) {
 				if (queue_.empty()) break;
 				string command = queue_.front();
+				// check if their is space for this command (which vary in length)
 				if (command.size() > bufferSpace_ - 5) break;
 
 				queue_.pop_front();
@@ -503,10 +510,9 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 	//TODO: also flush on retries? (see s3g/conveyor)
 	//serial_.flushReadBuffer();
 
-	//check for unexpected bytes in the serial read buffer and flush them.
+	//check for unexpected bytes in the serial read buffer and eat them.
 	unsigned char buf[100];
 	int rv2 = readAndCheckError(buf, len, 0);
-
 	if (rv2 > 0) {
 		LOG(Logger::WARNING, "sendPacket: There where %i unexpected bytes in the serial read buffer", rv2);
 	}
