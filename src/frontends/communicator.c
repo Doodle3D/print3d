@@ -252,6 +252,7 @@ int comm_sendGcodeFile(const char *file) {
 }
 
 int comm_sendGcodeData(const char *gcode) {
+	uint32_t startTime = getMillis();
 	clearError();
 
 	int rv = 0;
@@ -310,7 +311,8 @@ int comm_sendGcodeData(const char *gcode) {
 		startP = endP + 1;
 		packetNum++;
 	}
-	log_message(LLVL_INFO, "gcode data sent in %i packets", packetNum);
+	uint32_t endTime = getMillis();
+	log_message(LLVL_INFO, "gcode data sent in %i packets (%ul msecs)", packetNum, endTime - startTime);
 
 	return rv;
 }

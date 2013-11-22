@@ -33,6 +33,7 @@ extern "C" {
  */
 void cfmakeraw(struct termios2 *termios_p);
 int ioctl(int fildes, int request, ... /* arg */);
+int	tcflush(int fildes, int action);
 
 #ifdef __cplusplus
 } //extern "C"
@@ -245,6 +246,10 @@ int Serial::getFileDescriptor() const {
 void Serial::clearBuffer() {
 	free(buffer_); buffer_ = 0;
 	bufferSize_ = 0;
+}
+
+int Serial::flushReadBuffer() {
+	return tcflush(portFd_, TCIFLUSH);
 }
 
 //returns -1 if no data available
