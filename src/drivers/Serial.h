@@ -30,6 +30,7 @@ public:
   int getBufferSize()  const;
   int getFileDescriptor() const;
   void clearBuffer();
+  int flushReadBuffer();
 
   int extractByte();
   int extractBytes(unsigned char *buf, size_t buflen);

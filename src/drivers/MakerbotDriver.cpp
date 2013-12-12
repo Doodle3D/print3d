@@ -220,6 +220,7 @@ const AbstractDriver::DriverInfo& MakerbotDriver::getDriverInfo() {
 
 	if (supportedFirmware.empty()) {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_replicator2") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_replicator2x") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_thingomatic") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_generic") );
 
@@ -506,10 +507,13 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 //FIXME: retrying should be used for retry-able errors only
 //updateBufferSpace defaults to true, set to false for non-buffered commands
 bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpace) {
+	//TODO: see if flushing also works (unfortunately this issue could not be reproduced consistently)
+	//TODO: also flush on retries? (see s3g/conveyor)
+	//serial_.flushReadBuffer();
 
-	//check for unexpected bytes in the serial read buffer and flush them.
+	//check for unexpected bytes in the serial read buffer and eat them.
 	unsigned char buf[100];
-	int rv2 = readAndCheckError(buf, len, 100);
+	int rv2 = readAndCheckError(buf, len, 0);
 	if (rv2 > 0) {
 		LOG(Logger::WARNING, "sendPacket: There where %i unexpected bytes in the serial read buffer", rv2);
 	}

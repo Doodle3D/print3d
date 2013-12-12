@@ -224,6 +224,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 	if (supportedFirmware.empty()) {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("rigidbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("printrbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bukobot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("cartesio") );
