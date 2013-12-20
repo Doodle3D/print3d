@@ -1,3 +1,11 @@
+/*
+ * This file is part of the Doodle3D project (http://doodle3d.com).
+ *
+ * Copyright (c) 2013, Doodle3D
+ * This software is licensed under the terms of the GNU GPL v2 or later.
+ * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
+ */
+
 /**
  * This file contains compatibility definitions for Lua 5.1. At the time of
  * writing, OpenWrt does not include Lua 5.2, therefore we provide 5.2 specific

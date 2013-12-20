@@ -1,4 +1,12 @@
 /*
+ * This file is part of the Doodle3D project (http://doodle3d.com).
+ *
+ * Copyright (c) 2013, Doodle3D
+ * This software is licensed under the terms of the GNU GPL v2 or later.
+ * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
+ */
+
+/*
  * TODO:
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
