@@ -46,7 +46,10 @@ const int MakerbotDriver::MAX_GPX_BUFFER_SIZE = 1024 * 50;
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0),
   bufferSpace_(512), currentCmd_(0), totalCmds_(0), validResponseReceived_(false)
-{}
+{
+	gpx_clear_state();
+	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
+}
 
 static int lastCode = -1;
 
@@ -104,16 +107,12 @@ void MakerbotDriver::clearGpxBuffer() {
 	free(gpxBuffer_); gpxBuffer_ = 0; gpxBufferSize_ = 0;
 }
 
-//NOTE: do not use external gpx. It forgets state in between calls, causing it to generate incorrect coordinates etc.
 size_t MakerbotDriver::convertGcode(const string &gcode) {
 	if (gcode.size()==0) return 0;
-
-#ifndef USE_EXTERNAL_GPX
 
 	// create convert buffer
 	unsigned char *cvtBuf = 0;
 	long cvtBufLen = 0;
-	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
 	gpx_convert(gcode.c_str(), gcode.size(), &cvtBuf, &cvtBufLen);
 
 //	//TEMP (give this file dump code a permanent place - it's useful. and move to startPrint so we can also debug chunked data transfers)
@@ -136,44 +135,6 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 	gpxBufferSize_ += cvtBufLen;
 
 	return cvtBufLen;
-
-#else
-
-	int rv;
-	errno = 0; //'clear' error?
-	FILE *io = popen("gpx -s -n > /tmp/gpx-3rw58.out", "w");
-	if (!io) { LOG(Logger::ERROR, "could not popen gpx (possible errno: %s)", strerror(errno)); exit(1); }
-
-	clearerr(io);
-	rv = fwrite(gcode.c_str(), gcode.size(), 1, io);
-	if (rv < 0) { LOG(Logger::ERROR, "gpx write error (%s)", strerror(errno)); exit(1); }
-	if (rv == 0 ) { LOG(Logger::ERROR, "gpx short write (%i bytes written)", rv); exit(1); }
-
-	rv = pclose(io);
-	LOG(Logger::VERBOSE, "converted %i bytes of gcode (gpx exit status: %i)", gcode.size(), rv);
-
-	FILE *in = fopen("/tmp/gpx-3rw58.out", "r");
-	if (!in) { LOG(Logger::ERROR, "could not open gpx output file (%s)", strerror(errno)); exit(1); }
-
-	fseek(in, 0, SEEK_END);
-	size_t fsize = ftell(in);
-	rewind(in);
-
-	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + fsize);
-
-	//NOTE: this only works when all gcode is being added at once, otherwise gpx will lose its internal state with each block
-	clearerr(in);
-	rv = fread(gpxBuffer_ + gpxBufferSize_, fsize, 1, in);
-	if (rv < 0) { LOG(Logger::ERROR, "gpx output file read error (%s)", strerror(errno)); exit(1); }
-
-	if (rv == 0 && ferror(in)) { LOG(Logger::ERROR, "gpx output file short read (%i bytes read)", rv); exit(1); }
-
-	gpxBufferSize_ += fsize;
-
-	fclose(in);
-
-	return fsize;
-#endif
 }
 
 void MakerbotDriver::setGCode(const string &gcode) {
@@ -427,9 +388,9 @@ void MakerbotDriver::abort() {
 
 //return values: 0 on success, -1 on system error, -2 on timeout, -3 on crc error
 int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
-
+	static int timeout = 250;
 	//read 0xD5
-	int rv = readAndCheckError(100); //value 1000 is taken from s3g python script (StreamWriter.py)
+	int rv = readAndCheckError(timeout); //value 1000 is taken from s3g python script (StreamWriter.py)
 
 	if (rv<0) {
 		LOG(Logger::WARNING, "parseResponse: serial.readByte return value=%d", rv);
@@ -444,7 +405,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	usleep(5000); //5000 microseconds = 5 milliseconds
 
 	//read length of packet data
-	int len = readAndCheckError(100);
+	int len = readAndCheckError(timeout);
 	if (len <= 0) {
 		LOG(Logger::WARNING, "parseResponse: response get package length: len=%i", len);
 		return len;
@@ -452,14 +413,14 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 
 	//read packet data from serial
 	unsigned char buf[len];
-	rv = readAndCheckError(buf, len, 100);
+	rv = readAndCheckError(buf, len, timeout);
 	if (rv <= 0) {
 		LOG(Logger::WARNING, "parseResponse: read packet serial response value=%i", rv);
 		return rv;
 	}
 
 	//read crc from serial
-	int crc = readAndCheckError(100);
+	int crc = readAndCheckError(timeout);
 	if (crc < 0) { //can CRC be zero? i think so
 		LOG(Logger::WARNING, "parseResponse: CRC=%i", crc);
 		return len;
@@ -485,7 +446,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	//read response code from packet. 0x81 is success
 	int code = buf[0];
 	if (code!=0x81) {
-		cout << getResponseMessage(code) << endl;
+		LOG(Logger::INFO, "response message 0x%x (=%s)", code, getResponseMessage(code).c_str());
 	}
 
 	//depending on cmd interpret packet
@@ -558,9 +519,9 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 				validResponseReceived_ = true;
 				//LOG(Logger::VERBOSE, "ok");
 				break;
-			case -1: cout << "makerbot response system error (" << strerror(errno) << ")" << endl; break;
-			case -2: cout << "makerbot response timeout" << endl; break;
-			case -3: cout << "makerbot response CRC error" << endl; break;
+			case -1: LOG(Logger::ERROR, "makerbot response system error (%s)", strerror(errno)); break;
+			case -2: LOG(Logger::ERROR, "makerbot response timeout"); break;
+			case -3: LOG(Logger::ERROR, "makerbot response CRC error"); break;
 		}
 		if (rv == 0 || rv == -3) break; //do not retry if the _response_ crc was invalid, packet has probably been received successfully by printer
 
