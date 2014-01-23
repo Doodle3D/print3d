@@ -449,7 +449,8 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 		LOG(Logger::INFO, "response message 0x%x (=%s)", code, getResponseMessage(code).c_str());
 	}
 
-	//depending on cmd interpret packet
+	//depending on previously send cmd interpret the packet
+	//s3g cmd info: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
 	switch (cmd) {
 		case 2: { bufferSpace_ = read32(buf+1); break; }
 		case 10: { //Tool query: Query a tool for information
