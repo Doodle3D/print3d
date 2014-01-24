@@ -49,6 +49,7 @@ MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath
 {
 	gpx_clear_state();
 	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
+	gpx_setBuildName("    Doodle3D"); //NOTE: 4 spaces seem to fix some display offset issue on at least one r2x
 }
 
 static int lastCode = -1;
