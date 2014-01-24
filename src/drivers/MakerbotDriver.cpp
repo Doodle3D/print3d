@@ -45,7 +45,7 @@ const int MakerbotDriver::MAX_GPX_BUFFER_SIZE = 1024 * 50;
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0),
-  bufferSpace_(512), currentCmd_(0), totalCmds_(0), validResponseReceived_(false)
+  bufferSpace_(512), currentCmd_(0), totalCmds_(0), validResponseReceived_(false), firmwareVersion_(0)
 {
 	gpx_clear_state();
 	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
@@ -89,6 +89,10 @@ int MakerbotDriver::update() {
 	}
 
 	if (counter == 30) { // TODO: replace for time based timer?
+		if (!validResponseReceived_) {
+			unsigned int ver = getFirmwareVersion();
+			LOG(Logger::INFO, "Makerbot firmware version %.2f", ver / 100.0f);
+		}
 		updateTemperatures();
 		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, cmdbuf: %i/%i/%i, prbuf space: %i",
 				temperature_, targetTemperature_,
@@ -358,7 +362,7 @@ int MakerbotDriver::getFirmwareVersion() {
 	//00 - Get version: Query firmware for version information
 	uint8_t payload[] = { 0 };
 	sendPacket(payload,sizeof(payload), false);
-	return 0; //FIXME
+	return firmwareVersion_;
 }
 
 int MakerbotDriver::requestBufferSpace() {
@@ -453,6 +457,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	//depending on previously send cmd interpret the packet
 	//s3g cmd info: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
 	switch (cmd) {
+		case 0: firmwareVersion_ = read16(buf+1); break;
 		case 2: { bufferSpace_ = read32(buf+1); break; }
 		case 10: { //Tool query: Query a tool for information
 			uint16_t t = read16(buf+1);

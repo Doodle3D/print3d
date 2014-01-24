@@ -62,6 +62,8 @@ private:
 	size_t currentCmd_, totalCmds_;
 	bool validResponseReceived_;
 
+	unsigned int firmwareVersion_;
+
 	void processQueue();
 	uint8_t _crc_ibutton_update(uint8_t crc, uint8_t data);
 	std::string getResponseMessage(int code);
