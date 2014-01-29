@@ -377,6 +377,7 @@ void MakerbotDriver::playSong(uint8_t song) { ////151 - Queue Song
 	sendPacket(payload,sizeof(payload));
 }
 
+//NOTE: according to http://replicat.org/sanguino3g, command 03 is not used
 void MakerbotDriver::resetPrinterBuffer() { //03 - Clear buffer
 	//LOG(Logger::BULK, "not sending reset_print_buffer command to prevent serial port from being closed");
 //	uint8_t payload[] = { 3 };
@@ -471,8 +472,13 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 		case 7: break; //abort
 		case 136: break; //tool action command
 		case 155: break; //queue extended point
+		case 153: case 150: case 154: break; //ignore start/set/end build commands
+		case 149: case 151: break; //ignore display message and queue song commands
+		case 144: case 145: break; //ignore recall home pos. and set stepper pots
+		//en: set-ext.pos(140) / ena/dis steppers(137) / find axes mins(131) / find axes maxes(132)
+		//en: change tool(134) / wait for tool ready(135)
 		default:
-			LOG(Logger::WARNING, "other command: %i (toolcmd: %i)", cmd, toolcmd);
+			LOG(Logger::WARNING, "ingored response for cmd: %i (toolcmd: %i, len: %i)", cmd, toolcmd, len);
 			break;
 	}
 
