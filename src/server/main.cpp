@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
 #elif __LITTLE_ENDIAN__
 	printf("little endian");
 #else
-	printf("unknown endianness");
+	printf("unknown endianness (assuming big)");
 #endif
 	printf(", sizeof(short)=%zu, sizeof(int)=%zu, sizeof(long)=%zu, sizeof(float)=%zu\n", sizeof(short), sizeof(int), sizeof(long), sizeof(float));
 
