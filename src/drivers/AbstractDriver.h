@@ -67,10 +67,10 @@ public:
 	virtual void appendGCode(const std::string& gcode);
 	virtual void clearGCode();
 
-	virtual void startPrint(const std::string& gcode, STATE state = PRINTING);
-	virtual void stopPrint(const std::string& endcode);
-	virtual void startPrint(STATE state = PRINTING);
-	virtual void stopPrint();
+	virtual bool startPrint(const std::string& gcode, STATE state = PRINTING);
+	virtual bool stopPrint(const std::string& endcode);
+	virtual bool startPrint(STATE state = PRINTING);
+	virtual bool stopPrint();
 
 	void heatup(int temperature);
 
@@ -131,7 +131,7 @@ protected:
 	virtual void readResponseCode(std::string& code) = 0;
 
 	void printNextLine();
-	virtual void resetPrint();
+	virtual bool resetPrint();
 
 	void setState(STATE state);
 

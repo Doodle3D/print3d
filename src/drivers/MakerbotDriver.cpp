@@ -209,22 +209,22 @@ AbstractDriver* MakerbotDriver::create(Server& server, const std::string& serial
 	return new MakerbotDriver(server, serialPortPath, baudrate);
 }
 
-void MakerbotDriver::startPrint(const std::string& gcode, AbstractDriver::STATE state) {
+bool MakerbotDriver::startPrint(const std::string& gcode, AbstractDriver::STATE state) {
 	setGCode(gcode);
 
-	startPrint(state);
+	return startPrint(state);
 }
 
 //FIXME: for set/append/clear gcode and start/stop print functions: buffer management is very hacky
 //because of lack of distinction between abstract driver and implementations. The abstract stopprint
 //clear the gcode buffer, which doesn't matter for us....but it is ugly and should be rewritten.
-void MakerbotDriver::stopPrint(const std::string& endcode) {
+bool MakerbotDriver::stopPrint(const std::string& endcode) {
 	clearGCode();
 	setGCode(endcode);
-	AbstractDriver::stopPrint(endcode);
+	return AbstractDriver::stopPrint(endcode);
 }
 
-void MakerbotDriver::startPrint(STATE state) {
+bool MakerbotDriver::startPrint(STATE state) {
 //	FILE *queueDump = fopen("/tmp/queuedump.log", "w");
 //	LOG(Logger::VERBOSE, "dumping %i commands...", queue_.size());//TEMP
 //	int bytes = 0;
@@ -239,16 +239,17 @@ void MakerbotDriver::startPrint(STATE state) {
 //	LOG(Logger::VERBOSE, "dumped %i bytes...", bytes);//TEMP
 //	exit(11);
 
-	AbstractDriver::startPrint(state);
+	return AbstractDriver::startPrint(state);
 }
 
-void MakerbotDriver::stopPrint() {
-	stopPrint("");
+bool MakerbotDriver::stopPrint() {
+	return stopPrint("");
 }
 
-void MakerbotDriver::resetPrint() {
-	AbstractDriver::resetPrint();
+bool MakerbotDriver::resetPrint() {
+	if (!AbstractDriver::resetPrint()) return false;
 	currentCmd_ = 0;
+	return true;
 }
 
 void MakerbotDriver::sendCode(const std::string& code) {

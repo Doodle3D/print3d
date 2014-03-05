@@ -105,34 +105,35 @@ void AbstractDriver::heatup(int temperature) {
 /*
  * Print control
  */
-void AbstractDriver::startPrint(const std::string& gcode, STATE state) {
+bool AbstractDriver::startPrint(const std::string& gcode, STATE state) {
 	LOG(Logger::BULK, "startPrint(): %s",gcode.c_str());
 	if (gcode.length() > 0) setGCode(gcode);
-	startPrint(state);
+	return startPrint(state);
 }
 
-void AbstractDriver::stopPrint(const std::string& endcode) {
+bool AbstractDriver::stopPrint(const std::string& endcode) {
 	LOG(Logger::BULK, "stopPrint(): with %i bytes of end g-code", endcode.length());
 	resetPrint();
 	setGCode(endcode);
-	startPrint(STOPPING);
+	return startPrint(STOPPING);
 }
 
-void AbstractDriver::startPrint(STATE state) {
+bool AbstractDriver::startPrint(STATE state) {
 	STATE s = getState();
 	if (!isPrinterOnline()) {
 		LOG(Logger::BULK, "startPrint: printer not online (state==%s)", getStateString(s).c_str());
-		return;
+		return false;
 	}
 
 	LOG(Logger::BULK, "startPrint");
 	if (s != PRINTING && s != STOPPING) resetPrint();
 	setState(state);
 	//printNextLine();
+	return true;
 }
 
-void AbstractDriver::stopPrint() {
-	stopPrint("");
+bool AbstractDriver::stopPrint() {
+	return stopPrint("");
 }
 
 
@@ -191,15 +192,16 @@ void AbstractDriver::printNextLine() {
 	}
 }
 
-void AbstractDriver::resetPrint() {
+bool AbstractDriver::resetPrint() {
 	if (!isPrinterOnline()) {
 		LOG(Logger::BULK, "resetPrint: printer not online (state==%s)", getStateString(getState()).c_str());
-		return;
+		return false;
 	}
 
 	LOG(Logger::BULK, "resetPrint()");
 	setState(IDLE);
 	gcodeBuffer_.setCurrentLine(0);
+	return true;
 }
 
 void AbstractDriver::setState(STATE state) {
