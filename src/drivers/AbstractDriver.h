@@ -43,6 +43,7 @@ public:
 	typedef enum STATE{
 		UNKNOWN = 0,
 		DISCONNECTED = 1,
+		CONNECTING,
 		IDLE,
 		BUFFERING,
 		PRINTING, /* executing commands */
@@ -126,13 +127,15 @@ protected:
 	Logger& log_;
 	Server& server_;
 
-	void printNextLine();
-	virtual void resetPrint();
-
 	virtual void sendCode(const std::string& code) = 0;
 	virtual void readResponseCode(std::string& code) = 0;
 
+	void printNextLine();
+	virtual void resetPrint();
+
 	void setState(STATE state);
+
+	bool isPrinterOnline() const;
 
 	int readData();
 	void setBaudrate(uint32_t baudrate);
