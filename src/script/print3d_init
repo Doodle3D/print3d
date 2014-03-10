@@ -8,14 +8,29 @@
 START=99
 
 start() {
+	ps | grep 'print3d-manager.sh' | grep -v grep > /dev/null 2> /dev/null
+	if [ $? -eq 0 ]; then
+		echo "print3d manager already running"
+		exit 1
+	fi
+
+	logger -t print3d-mgr "Starting print3d manager"
+
+	/bin/print3d-manager.sh > /dev/null 2> /dev/null &
+
+	#Note: power cycling the USB port also causes inotifyd to detect an 'already connected' device
 	echo 0 > /sys/devices/virtual/gpio/gpio8/value
 	sleep 1
 	echo 1 > /sys/devices/virtual/gpio/gpio8/value
-
-	/bin/print3d-manager.sh > /dev/null 2> /dev/null &
 }
 
 stop() {
+	#Note: this method of stopping processes is too coarse, it should keep pid files or something similar
+	#and print3d-runner.sh should use an exit handler (`trap exit_handler TERM`) to make sure the socket is removed
+
+	logger -t print3d-mgr "Stopping print3d manager"
+	#P3D_MGR_PID=`pidof print3d-manager.sh`
 	killall print3d-manager.sh
+	killall inotifyd
 	killall print3d
 }
