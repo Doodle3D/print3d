@@ -20,7 +20,7 @@ using std::size_t;
 
 
 //STATIC
-const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "idle", "buffering", "printing", "stopping" };
+const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "connecting", "idle", "buffering", "printing", "stopping" };
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
@@ -105,45 +105,35 @@ void AbstractDriver::heatup(int temperature) {
 /*
  * Print control
  */
-void AbstractDriver::startPrint(const std::string& gcode, STATE state) {
+bool AbstractDriver::startPrint(const std::string& gcode, STATE state) {
 	LOG(Logger::BULK, "startPrint(): %s",gcode.c_str());
 	if (gcode.length() > 0) setGCode(gcode);
-	startPrint(state);
+	return startPrint(state);
 }
 
-void AbstractDriver::stopPrint(const std::string& endcode) {
+bool AbstractDriver::stopPrint(const std::string& endcode) {
 	LOG(Logger::BULK, "stopPrint(): with %i bytes of end g-code", endcode.length());
 	resetPrint();
 	setGCode(endcode);
-	startPrint(STOPPING);
+	return startPrint(STOPPING);
 }
 
-void AbstractDriver::startPrint(STATE state) {
+bool AbstractDriver::startPrint(STATE state) {
+	STATE s = getState();
+	if (!isPrinterOnline()) {
+		LOG(Logger::BULK, "startPrint: printer not online (state==%s)", getStateString(s).c_str());
+		return false;
+	}
+
 	LOG(Logger::BULK, "startPrint");
-	if (state != PRINTING && state != STOPPING) resetPrint();
+	if (s != PRINTING && s != STOPPING) resetPrint();
 	setState(state);
 	//printNextLine();
+	return true;
 }
 
-void AbstractDriver::stopPrint() {
-	stopPrint("");
-}
-
-void AbstractDriver::resetPrint() {
-	LOG(Logger::BULK, "resetPrint()");
-	setState(IDLE);
-	gcodeBuffer_.setCurrentLine(0);
-}
-
-void AbstractDriver::printNextLine() {
-	LOG(Logger::BULK, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getTotalLines());
-	string line;
-	if(gcodeBuffer_.getNextLine(line)) {
-		sendCode(line);
-		gcodeBuffer_.setCurrentLine(gcodeBuffer_.getCurrentLine() + 1);
-	} else { // print finished
-		resetPrint();
-	}
+bool AbstractDriver::stopPrint() {
+	return stopPrint("");
 }
 
 
@@ -181,13 +171,47 @@ int32_t AbstractDriver::getTotalLines() const {
 AbstractDriver::STATE AbstractDriver::getState() const {
 	return state_;
 }
+
+const std::string &AbstractDriver::getStateString(STATE state) {
+	return STATE_NAMES[state];
+}
+
+
+/***********************
+ * PROTECTED FUNCTIONS *
+ ***********************/
+
+void AbstractDriver::printNextLine() {
+	LOG(Logger::BULK, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getTotalLines());
+	string line;
+	if(gcodeBuffer_.getNextLine(line)) {
+		sendCode(line);
+		gcodeBuffer_.setCurrentLine(gcodeBuffer_.getCurrentLine() + 1);
+	} else { // print finished
+		resetPrint();
+	}
+}
+
+bool AbstractDriver::resetPrint() {
+	if (!isPrinterOnline()) {
+		LOG(Logger::BULK, "resetPrint: printer not online (state==%s)", getStateString(getState()).c_str());
+		return false;
+	}
+
+	LOG(Logger::BULK, "resetPrint()");
+	setState(IDLE);
+	gcodeBuffer_.setCurrentLine(0);
+	return true;
+}
+
 void AbstractDriver::setState(STATE state) {
 	LOG(Logger::VERBOSE, "setState(): %i:%s > %i:%s",state_,getStateString(state_).c_str(),state,getStateString(state).c_str());//TEMP was BULK
 	state_ = state;
 }
 
-const std::string &AbstractDriver::getStateString(STATE state) {
-	return STATE_NAMES[state];
+bool AbstractDriver::isPrinterOnline() const {
+	STATE s = getState();
+	return s != UNKNOWN && s != DISCONNECTED && s != CONNECTING;
 }
 
 int AbstractDriver::readData() {
@@ -218,7 +242,7 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 	baudrate_ = baudrate;
 	Serial::ESERIAL_SET_SPEED_RESULT ssr = serial_.setSpeed(baudrate_);
 	if(ssr == Serial::SSR_OK) {
-		setState(IDLE);
+		setState(CONNECTING);
 	} else {
 		LOG(Logger::ERROR,"  setting speed error");
 	}

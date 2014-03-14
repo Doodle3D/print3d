@@ -43,6 +43,7 @@ public:
 	typedef enum STATE{
 		UNKNOWN = 0,
 		DISCONNECTED = 1,
+		CONNECTING,
 		IDLE,
 		BUFFERING,
 		PRINTING, /* executing commands */
@@ -66,10 +67,10 @@ public:
 	virtual void appendGCode(const std::string& gcode);
 	virtual void clearGCode();
 
-	virtual void startPrint(const std::string& gcode, STATE state = PRINTING);
-	virtual void stopPrint(const std::string& endcode);
-	virtual void startPrint(STATE state = PRINTING);
-	virtual void stopPrint();
+	virtual bool startPrint(const std::string& gcode, STATE state = PRINTING);
+	virtual bool stopPrint(const std::string& endcode);
+	virtual bool startPrint(STATE state = PRINTING);
+	virtual bool stopPrint();
 
 	void heatup(int temperature);
 
@@ -126,13 +127,15 @@ protected:
 	Logger& log_;
 	Server& server_;
 
-	void printNextLine();
-	virtual void resetPrint();
-
 	virtual void sendCode(const std::string& code) = 0;
 	virtual void readResponseCode(std::string& code) = 0;
 
+	void printNextLine();
+	virtual bool resetPrint();
+
 	void setState(STATE state);
+
+	bool isPrinterOnline() const;
 
 	int readData();
 	void setBaudrate(uint32_t baudrate);

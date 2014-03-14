@@ -107,9 +107,10 @@ int MarlinDriver::update() {
 	return UPDATE_INTERVAL - timer_.getElapsedTimeInMilliSec();
 }
 
-void MarlinDriver::startPrint(STATE state) {
-	AbstractDriver::startPrint(state);
+bool MarlinDriver::startPrint(STATE state) {
+	if (!AbstractDriver::startPrint(state)) return false;
 	printNextLine();
+	return true;
 }
 
 void MarlinDriver::setGCode(const std::string& gcode) {
@@ -131,7 +132,10 @@ void MarlinDriver::readResponseCode(std::string& code) {
 
 		parseTemperatures(code);
 		//checkTemperatureAttempt_ = -1; //set to -1 to disable baud rate switching mechanism
-		checkConnection_ = false; // stop checking connection (and switching baud rate)
+		if (checkConnection_) {
+			checkConnection_ = false; // stop checking connection (and switching baud rate)
+			setState(IDLE);
+		}
 		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval

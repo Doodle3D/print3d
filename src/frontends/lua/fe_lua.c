@@ -8,16 +8,11 @@
 
 #define LUA_LIB
 
-//TODO:
-//write code such that printer IDs never have to be passed (always default to first (and probably only) printer found)
-//number getNumPrinters()
-//table getPrinterList()
-//table getPrinterDetails(id?)
-
 #include <errno.h>
 #include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include "lua_compat.h"
 #include "../../logger.h"
 #include "../communicator.h"
@@ -95,6 +90,27 @@ int l_lua_tostring(lua_State *L) {
 int l_lua_getId(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	lua_pushstring(L, ctx->deviceId);
+	return 1;
+}
+
+int l_lua_hasSocket(lua_State *L) {
+	int rv, hasSocket;
+	struct stat statbuf;
+	struct printerData_s *ctx = getContext(L);
+	char *socketPath = ipc_construct_socket_path(ctx->deviceId);
+
+	rv = stat(socketPath, &statbuf);
+	if (rv == -1 && errno != ENOENT) {
+		lua_pushnil(L);
+		lua_pushfstring(L, "could not stat ipc socket path '%s' (%s)", socketPath, strerror(errno));
+		free(socketPath);
+		return 2;
+	}
+	free(socketPath);
+
+	hasSocket = (rv == 0 && S_ISSOCK(statbuf.st_mode) != 0) ? 1 : 0;
+
+	lua_pushboolean(L, hasSocket);
 	return 1;
 }
 
@@ -317,6 +333,7 @@ static const struct luaL_Reg print3d_m[] = {
 		{"__gc", l_lua_gc},
 		{"__tostring", l_lua_tostring},
 		{"getId", l_lua_getId},
+		{"hasSocket", l_lua_hasSocket},
 		{"getTemperatures", l_getTemperatures},
 		{"clearGcode", l_clearGcode},
 		{"appendGcode", l_appendGcode},

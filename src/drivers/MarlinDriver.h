@@ -28,7 +28,7 @@ public:
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
 protected:
-	void startPrint(STATE state);
+	bool startPrint(STATE state);
 
 	void readResponseCode(std::string& code);
 	void parseTemperatures(std::string& code);

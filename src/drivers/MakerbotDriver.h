@@ -38,11 +38,11 @@ public:
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
 protected:
-	void startPrint(const std::string& gcode, STATE state = PRINTING);
-	void stopPrint(const std::string& endcode);
-	void startPrint(STATE state = PRINTING);
-	void stopPrint();
-	void resetPrint();
+	bool startPrint(const std::string& gcode, STATE state = PRINTING);
+	bool stopPrint(const std::string& endcode);
+	bool startPrint(STATE state = PRINTING);
+	bool stopPrint();
+	bool resetPrint();
 	void sendCode(const std::string& code);
 	void readResponseCode(std::string& code);
 
