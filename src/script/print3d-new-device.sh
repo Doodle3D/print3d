@@ -1,7 +1,12 @@
 #!/bin/sh
+# This file is part of the Doodle3D project (http://doodle3d.com).
+#
+# Copyright (c) 2013, Doodle3D
+# This software is licensed under the terms of the GNU GPL v2 or later.
+# See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
 
 PRINT3D_RES_PATH=/tmp
-PRINT3D_RUNNER=/bin/print3d-runner.sh
+PRINT3D_RUNNER=/usr/libexec/print3d-runner.sh
 
 DEVBASE=`dmesg | tail -2 | sed -n -e 's/.*\(tty\w*\).*/\1/p'`
 SOCKET=$PRINT3D_RES_PATH/print3d-${DEVBASE}

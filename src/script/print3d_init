@@ -16,7 +16,7 @@ start() {
 
 	logger -t print3d-mgr "Starting print3d manager"
 
-	/bin/print3d-manager.sh > /dev/null 2> /dev/null &
+	/usr/libexec/print3d-manager.sh > /dev/null 2> /dev/null &
 
 	#Note: power cycling the USB port also causes inotifyd to detect an 'already connected' device
 	echo 0 > /sys/devices/virtual/gpio/gpio8/value

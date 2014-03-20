@@ -20,7 +20,7 @@ define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
-	DEPENDS:=+uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +libuci +@BUSYBOX_CONFIG_INOTIFYD
+	DEPENDS:=+uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +libuci +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
 endef
 
 define Package/print3d/description
@@ -34,6 +34,7 @@ endef
 
 define Package/print3d/install
 	$(INSTALL_DIR) $(1)/bin
+	$(INSTALL_DIR) $(1)/usr/libexec
 	$(INSTALL_DIR) $(1)/etc/init.d
 	$(INSTALL_DIR) $(1)/usr/lib/lua
 	
@@ -42,9 +43,9 @@ define Package/print3d/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/print3d.so $(1)/usr/lib/lua/
 	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d_init $(1)/etc/init.d/print3d
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-manager.sh $(1)/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-runner.sh $(1)/bin/
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-new-device.sh $(1)/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-manager.sh $(1)/usr/libexec/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-runner.sh $(1)/usr/libexec/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-new-device.sh $(1)/usr/libexec/
 endef
 
 define Package/print3d/postinst
