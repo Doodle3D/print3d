@@ -468,6 +468,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 			else if (toolcmd==32) targetTemperature_ = t;
 			else if (toolcmd==33) targetBedTemperature_ = t;
 			else LOG(Logger::WARNING, "parseResponse: unrecognized or missing tool command (%u)", toolcmd);
+			if(getState() == CONNECTING) setState(IDLE); // we have communication
 			break; }
 		case 3: break; //clear buffer
 		case 7: break; //abort
