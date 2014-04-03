@@ -18,10 +18,31 @@ class GCodeBuffer {
 public:
 	typedef std::deque<std::string*> deque_stringP;
 
+	typedef enum GCODE_SET_RESULT {
+		/* value 0 is intentionally left out */
+		GSR_OK = 1,
+		GSR_BUFFER_FULL,
+		GSR_SEQ_NUM_MISSING,
+		GSR_SEQ_NUM_MISMATCH,
+		GSR_SEQ_TTL_MISSING,
+		GSR_SEQ_TTL_MISMATCH,
+		GSR_SRC_MISSING,
+		GSR_SRC_MISMATCH
+	} GCODE_SET_RESULT;
+
+	struct MetaData {
+		MetaData() : seqNumber(-1), seqTotal(-1), source(0) {}
+
+		int32_t seqNumber;
+		int32_t seqTotal;
+		std::string *source;
+	};
+
+
 	GCodeBuffer();
 
-	void set(const std::string &gcode);
-	void append(const std::string &gcode);
+	GCODE_SET_RESULT set(const std::string &gcode, const MetaData *metaData = 0);
+	GCODE_SET_RESULT append(const std::string &gcode, const MetaData *metaData = 0);
 	void clear();
 
 	int32_t getCurrentLine() const;
@@ -36,15 +57,23 @@ public:
 	bool getNextLine(std::string &line, size_t amount = 1) const;
 	bool eraseLine(size_t amount = 1);
 
+	static const std::string &getGcodeSetResultText(GCODE_SET_RESULT gsr);
+
 private:
 	static const uint32_t MAX_BUCKET_SIZE;
 	static const uint32_t MAX_BUFFER_SIZE;
+
+	static const std::string GSR_NAMES[];
 
 	deque_stringP buckets_;
 	int32_t currentLine_;
 	int32_t bufferedLines_;
 	int32_t totalLines_;
 	int32_t bufferSize_;
+
+	int32_t sequenceLastSeen_;
+	int32_t sequenceTotal_;
+	std::string *source_;
 
 	Logger& log_;
 

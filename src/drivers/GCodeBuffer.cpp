@@ -18,18 +18,71 @@ using std::string;
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
 
+const string GCodeBuffer::GSR_NAMES[] = { "", "ok", "buffer_full", "seq_num_missing", "seq_num_mismatch", "seq_ttl_missing", "seq_ttl_mismatch", "seq_src_missing", "seq_src_mismatch" };
+
 GCodeBuffer::GCodeBuffer()
-: currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
+: currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0),
+  sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0), log_(Logger::getInstance())
 { /* empty */ }
 
-void GCodeBuffer::set(const string &gcode) {
+/**
+ * Sets given gcode by first calling clear(), then append(), returning its return value.
+ * See append() for documentation.
+ */
+GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaData *metaData) {
 	clear();
-	append(gcode);
+	return append(gcode, metaData);
 }
 
-//NOTE: currently this function will never split given gcode into parts for
-//separate buckets, so MAX_BUCKET_SIZE is not a strict limit
-void GCodeBuffer::append(const string &gcode) {
+/**
+ * Append given gcode to buffer, with optional consistency checks.
+ * @param seqNum Optional sequence number; once given, it should increment by 1 in
+ * 		each subsequent call until clear() is called.
+ * @param metaData data for consistency checking, see below.
+ *
+ * @return GSR_OK if all went well, a relevant error status otherwise.
+ *
+ * Meta data may be omitted, any individual fields may also be omitted. If at
+ * any point one of the fields is not -1/NULL, it should be passed in a consistent
+ * way with each subsequent append call until the buffer is cleared again.
+ * Consistent means for sequence numbers that they increment by exactly one and are
+ * not greater than the total parameter (if given). The total must not change, and
+ * the source must be the same text each time.
+ *
+ * NOTE: currently this function will never split given gcode into parts for
+ * separate buckets, so MAX_BUCKET_SIZE is not a strict limit
+ */
+GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const MetaData *metaData) {
+	if (sequenceLastSeen_ > -1) {
+		if (!metaData || metaData->seqNumber < 0) return GSR_SEQ_NUM_MISSING;
+		if (sequenceLastSeen_ + 1 != metaData->seqNumber) return GSR_SEQ_NUM_MISMATCH;
+	}
+
+	if (sequenceTotal_ > -1) {
+		if (!metaData || metaData->seqTotal < 0) return GSR_SEQ_TTL_MISSING;
+		if (sequenceTotal_ != metaData->seqTotal) return GSR_SEQ_TTL_MISMATCH;
+		if (metaData->seqNumber + 1 > metaData->seqTotal) return GSR_SEQ_NUM_MISMATCH;
+	}
+
+	if (source_) {
+		if (!metaData || !metaData->source) return GSR_SRC_MISSING;
+		if (*source_ != *metaData->source) return GSR_SRC_MISMATCH;
+	}
+
+	if (getBufferSize() + gcode.length() > MAX_BUFFER_SIZE) {
+		return GSR_BUFFER_FULL;
+	}
+
+	if (metaData) {
+		sequenceLastSeen_ = metaData->seqNumber;
+		sequenceTotal_ = metaData->seqTotal;
+		if (!source_ && metaData->source) {
+			source_ = new string(*metaData->source);
+		}
+	}
+
+
+	/* finally add the gcode */
 
 	if (buckets_.size() == 0) buckets_.push_back(new string());
 	string *b = buckets_.back();
@@ -39,10 +92,20 @@ void GCodeBuffer::append(const string &gcode) {
 	}
 
 	size_t pos = b->length();
+
+	//make sure the gcode to be appended is never appended to an existing line
+	if (pos > 0 && *(b->rbegin()) != '\n') {
+		b->append("\n");
+		pos++;
+		bufferSize_++;
+	}
+
 	b->append(gcode);
 	cleanupGCode(b, pos);
 	bufferSize_ += gcode.length();
 	updateStats(b, pos);
+
+	return GSR_OK;
 }
 
 void GCodeBuffer::clear() {
@@ -51,8 +114,16 @@ void GCodeBuffer::clear() {
 		delete b;
 		buckets_.pop_front();
 	}
+
 	currentLine_ = bufferedLines_ = totalLines_ = 0;
 	bufferSize_ = 0;
+
+	sequenceLastSeen_ = -1;
+	sequenceTotal_ = -1;
+	if (source_) {
+		delete source_;
+		source_ = 0;
+	}
 }
 
 int32_t GCodeBuffer::getCurrentLine() const {
@@ -100,6 +171,9 @@ bool GCodeBuffer::getNextLine(string &line, size_t amount) const {
 			posN = b->find('\n', posN + 1);
 			if (posN == string::npos) break;
 		}
+
+		//if we breaked out of the loop, return false _unless_ we only needed one more line,
+		//were at the end of the buffer and it was not terminated with a newline (i.e., we actually got this last line)
 		if (i > 0 && !(i == 1 && posN == string::npos && *(b->rbegin()) != '\n')) return false;
 	}
 
@@ -107,6 +181,7 @@ bool GCodeBuffer::getNextLine(string &line, size_t amount) const {
 	return (posN != string::npos || line.length() > 0);
 }
 
+//FIXME: this function does currently not operate across bucket boundaries
 bool GCodeBuffer::eraseLine(size_t amount) {
 	if (buckets_.size() == 0) return false;
 
@@ -119,7 +194,7 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 			pos = b->find('\n', pos + 1);
 			if (pos == string::npos) break;
 		}
-		if (i > 0 && !(i == 1 && pos == string::npos && *(b->rbegin()) != '\n')) return false;
+		if (i > 0 && !(i == 1 && pos == string::npos && *(b->rbegin()) != '\n')) return false; //see getNextLine for explanation
 	}
 
 	size_t len = b->length();
@@ -131,9 +206,14 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 		buckets_.pop_front();
 	}
 
-	bufferedLines_--;
+	bufferedLines_ -= amount;
 
 	return pos != string::npos;
+}
+
+//static
+const std::string &GCodeBuffer::getGcodeSetResultText(GCODE_SET_RESULT gsr) {
+	return GSR_NAMES[gsr];
 }
 
 /*********************
