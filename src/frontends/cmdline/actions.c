@@ -23,7 +23,7 @@ static int act_printTemperature() {
 	int16_t hotendTemperature = INT16_MIN, hotendTargetTemperature = INT16_MIN;
 	int16_t bedTemperature = INT16_MIN, bedTargetTemperature = INT16_MIN;
 
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND) < 0) {
 		fprintf(stderr, "could not read hotend temperature (%s)\n", comm_getError());
@@ -59,7 +59,7 @@ static int act_printTestResponse() {
 	int rv;
 	int result = 0;
 
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	rv = comm_testCommand(0, &answer);
 	if (rv > -1) {
@@ -86,13 +86,22 @@ static int act_printTestResponse() {
 	return result;
 }
 
+//Note: this function is special in that the actual test function opens multiple sockets itself, so we don't do that here.
+static int act_testTransactions() {
+	char *resultText = NULL;
+	int rv = comm_testTransactions(deviceId, &resultText);
+	printf("transaction tester returned: %s\n", resultText);
+	free(resultText);
+	return rv == 0 ? 0 : 1;
+}
+
 static int act_sendGcodeFile(const char *file) {
 	if (!isAbsolutePath(file)) {
 		fprintf(stderr, "please supply an absolute path for the file to print\n");
 		return 1;
 	}
 
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_clearGcode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
@@ -116,7 +125,7 @@ static int act_sendGcodeFile(const char *file) {
 }
 
 static int act_sendGcodeFromStdin() {
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_clearGcode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
@@ -161,7 +170,7 @@ static int act_sendGcodeFromStdin() {
 }
 
 static int act_sendGcode(const char *gcode) {
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_clearGcode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
@@ -187,7 +196,7 @@ static int act_sendGcode(const char *gcode) {
 static int act_printProgress() {
 	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines) < 0) {
 		fprintf(stderr, "could not get printing progress (%s)\n", comm_getError());
@@ -206,7 +215,7 @@ static int act_printProgress() {
 static int act_printState() {
 	char *state;
 
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 
 	if (comm_getState(&state) < 0) {
 		fprintf(stderr, "could not get printer state (%s)\n", comm_getError());
@@ -222,7 +231,7 @@ static int act_printState() {
 }
 
 static int act_doHeatup(int temperature) {
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 	int rv = comm_heatup(temperature);
 	comm_closeSocket();
 
@@ -236,7 +245,7 @@ static int act_doHeatup(int temperature) {
 }
 
 static int act_stopPrint(const char *endCode) {
-	comm_openSocketForDeviceId(deviceId);
+	comm_openSocket(deviceId);
 	int rv = comm_stopPrintGcode(endCode);
 	comm_closeSocket();
 
@@ -272,7 +281,7 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
 		printf("\t-v,--verbose\t\tPrint verbose output\t\n");
-		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|progress)\n");
+		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|trxtest|progress)\n");
 		printf("\t-t,--temperature\tRetrieve the printer temperature\n");
 		printf("\t-p,--progress\t\tRetrieve printing progress\n");
 		printf("\t-s,--state\t\tQuery the printer state\n");
@@ -290,6 +299,8 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		return act_printTemperature();
 	case AT_GET_TEST:
 		return act_printTestResponse();
+	case AT_GET_TRX_TEST:
+		return act_testTransactions();
 	case AT_GET_PROGRESS:
 		return act_printProgress();
 	case AT_GET_STATE:

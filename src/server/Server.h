@@ -32,6 +32,8 @@ public:
 	bool registerFileDescriptor(int fd);
 	bool unregisterFileDescriptor(int fd);
 
+	void cancelAllTransactions();
+
 	AbstractDriver* getDriver();
 	const AbstractDriver* getDriver() const;
 

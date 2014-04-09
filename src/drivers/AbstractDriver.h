@@ -74,43 +74,17 @@ public:
 
 	void heatup(int temperature);
 
-	/*
-	 * Get cached extruder temperature
-	 */
 	uint16_t getTemperature() const;
-
-	/*
-	 * Get cached extruder target temperature
-	 */
 	uint16_t getTargetTemperature() const;
-
-	/*
-	 * Get cached bed temperature
-	 */
 	uint16_t getBedTemperature() const;
-
-	/*
-	 * Get cached bed target temperature
-	 */
 	uint16_t getTargetBedTemperature() const;
 
-	/*
-	 * Get the line number which is currently being printed (current/total*100 yields progress percentage)
-	 */
 	virtual int32_t getCurrentLine() const;
-
-	/*
-	 * Get the number of lines currently in the buffer
-	 */
 	virtual int32_t getBufferedLines() const;
-
-	/*
-	 * Get the total number of lines which were appended to the buffer after the last clear or set
-	 */
 	virtual int32_t getTotalLines() const;
 
 	STATE getState() const;
-	const std::string &getStateString(STATE state);
+	static const std::string &getStateString(STATE state);
 
 protected:
 	static const bool REQUEST_EXIT_ON_PORT_FAIL;

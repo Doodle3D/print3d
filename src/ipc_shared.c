@@ -39,7 +39,11 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_TEST, "test", "*", "*" }, //NOTE: echoes anything it receives?
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" }, //NOTE: accepts 'which' selector
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
-		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "x", "" },
+
+		//NOTE: signature is 'xwWWs', x is gcode, all other arguments are optional
+		//w is a IPC_GCODE_TRANSACTION_BITS mask (optional, collected in CommandHandler, cleared when first_bit is set and passed to driver when last_bit is set), WWs is curr_seq/ttl_seq/src (optional)
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" },
+
 		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "x", "" }, //NOTE: accepts absolute path to file
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
 		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "x", "" }, //NOTE: accepts end g-code (ignored if 0 length)
@@ -49,8 +53,10 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
-		{ IPC_CMDR_ERROR, "error", "is", NULL },
-		{ IPC_CMDR_NOT_IMPLEMENTED, "not_implemented", "", NULL },
+		{ IPC_CMDR_ERROR, "error", "x", NULL },
+		{ IPC_CMDR_NOT_IMPLEMENTED, "not_implemented", "*", NULL },
+		{ IPC_CMDR_RETRY_LATER, "retry_later", "*", NULL }, //NOTE: returned when trying to append a file while a transaction is already in progress
+		{ IPC_CMDR_TRX_CANCELLED, "trx_cancelled", "*", NULL }, //NOTE: if a stop is requested, all connected clients have their are blocked to append further gcode
 
 		{ 0, NULL, NULL, NULL } /* sentinel */
 };
@@ -415,11 +421,12 @@ int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf) 
 				int slen = strlen(s);
 
 				if (slen <= STRINGIFY_MAX_TEXT_DISPLAY_CHARS) {
-					outlen += slen + 2;
+					outlen += slen + 3;
 					*outbuf = (char*)realloc(*outbuf, outlen);
 					if (!*outbuf) return -1;
 					strcat(*outbuf, ":\"");
 					strcat(*outbuf, s);
+					strcat(*outbuf, "\"");
 				} else {
 					outlen += number_length(slen) + 2;
 					*outbuf = (char*)realloc(*outbuf, outlen);

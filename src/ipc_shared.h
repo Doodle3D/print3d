@@ -43,6 +43,8 @@ typedef enum IPC_COMMAND_CODE {
 	IPC_CMDR_OK = 0xE0,
 	IPC_CMDR_ERROR = 0xE1,
 	IPC_CMDR_NOT_IMPLEMENTED = 0xE2,
+	IPC_CMDR_RETRY_LATER = 0xE3,
+	IPC_CMDR_TRX_CANCELLED = 0xE4
 } IPC_COMMAND_CODE;
 
 typedef enum IPC_TEMPERATURE_PARAMETER {
@@ -77,6 +79,14 @@ typedef struct ipc_cmd_name_s {
 /** Definitions of names for available IPC commands.
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];
+
+/** Transaction bits for use with the IPC_CMDQ_GCODE_APPEND command.
+ * Only use bits 0-14 (must fit in int16_t).
+ */
+typedef enum IPC_GCODE_TRANSACTION_BITS {
+	TRX_FIRST_CHUNK_BIT = 0x1,
+	TRX_LAST_CHUNK_BIT = 0x2
+} IPC_GCODE_TRANSACTION_BITS;
 
 extern const char *IPC_SOCKET_PATH_PREFIX;
 extern const char *IPC_DEFAULT_DEVICE_ID;

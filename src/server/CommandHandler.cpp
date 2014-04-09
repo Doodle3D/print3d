@@ -118,53 +118,88 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 //static
 void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
 	LOG(Logger::VERBOSE, "received clear gcode command");
-	AbstractDriver* driver = client.getServer().getDriver();
-	driver->clearGCode();
+	Server &server = client.getServer();
+	server.cancelAllTransactions();
+	server.getDriver()->clearGCode();
 	client.sendOk();
 }
 
 //static
 void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen) {
-	if (ipc_cmd_num_args(buf, buflen) > 0) {
-		char* data = 0;
-		ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-		LOG(Logger::VERBOSE, "received append gcode command with argument length %i", strlen(data));
-		AbstractDriver* driver = client.getServer().getDriver();
-		string s(data);
-		free(data);
-		driver->appendGCode(s);
-		client.sendOk();
-	} else {
+	Server &server = client.getServer();
+	Client::Transaction &transaction = client.getTransaction();
+
+	int numArgs = ipc_cmd_num_args(buf, buflen);
+	if (numArgs == 0) {
 		LOG(Logger::ERROR, "received append gcode command without argument");
 		client.sendError("missing argument");
+		return;
 	}
+
+	if (transaction.cancelled) {
+		string msg = "transaction cancelled";
+		client.sendReply(IPC_CMDR_TRX_CANCELLED, &msg);
+	}
+
+	int16_t transactionFlags = TRX_FIRST_CHUNK_BIT | TRX_LAST_CHUNK_BIT; //default to treating each chunk as a separate transaction
+	if (numArgs >= 2) {
+		ipc_cmd_get_short_arg(buf, buflen, 1, &transactionFlags);
+	}
+
+	if (transactionFlags & TRX_FIRST_CHUNK_BIT) {
+		LOG(Logger::BULK, "clearing gcode transaction buffer");
+		transaction.buffer.clear();
+		transaction.active = true;
+	}
+
+
+	char* data = 0;
+	ipc_cmd_get_string_arg(buf, buflen, 0, &data);
+	LOG(Logger::BULK, "received append gcode command with argument length %i", strlen(data));
+	transaction.buffer.append(data);
+	free(data);
+
+	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
+		LOG(Logger::BULK, "appending and clearing gcode transaction buffer");
+		AbstractDriver* driver = server.getDriver();
+		driver->appendGCode(transaction.buffer);
+		transaction.buffer.clear();
+		transaction.active = false;
+	}
+	client.sendOk();
 }
 
 //static
+//TODO: check that given file path is absolute
 void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int buflen) {
-	if (ipc_cmd_num_args(buf, buflen) > 0) {
-		char* filename = 0;
-		ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
-		LOG(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
-
-		int filesize;
-		char *data = readFileContents(filename, &filesize);
-		if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
-			LOG(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
-			//LOG(Logger::BULK, "read gcode: '%s'", data);
-			AbstractDriver* driver = client.getServer().getDriver();
-			string s(data);
-			free(data);
-			driver->appendGCode(s);
-			client.sendOk();
-		} else {
-			client.sendError(errno > 0 ? strerror(errno) : "error reading file");
-		}
-		free(filename);
-	} else {
+	if (ipc_cmd_num_args(buf, buflen) == 0) {
 		LOG(Logger::ERROR, "received append gcode file command without argument");
 		client.sendError("missing argument");
 	}
+
+	if (client.getTransaction().active) {
+		string msg = "transaction in progress";
+		client.sendReply(IPC_CMDR_RETRY_LATER, &msg);
+		return;
+	}
+
+	char* filename = 0;
+	ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
+	LOG(Logger::VERBOSE, "received append gcode from file command with filename '%s'", filename);
+
+	int filesize;
+	char *data = readFileContents(filename, &filesize);
+	if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
+		LOG(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
+		//LOG(Logger::BULK, "read gcode: '%s'", data);
+		string s(data);
+		free(data);
+		client.getServer().getDriver()->appendGCode(s);
+		client.sendOk();
+	} else {
+		client.sendError(errno > 0 ? strerror(errno) : "error reading file");
+	}
+	free(filename);
 }
 
 //static
@@ -179,6 +214,9 @@ void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int bu
 void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
 	LOG(Logger::VERBOSE, "received stop print gcode command");
 	AbstractDriver* driver = client.getServer().getDriver();
+
+	//make sure no other gcode transfers continue after sending stop gcode
+	client.getServer().cancelAllTransactions();
 
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		char *argText = 0;
@@ -227,7 +265,7 @@ void CommandHandler::hnd_getState(Client& client, const char* buf, int buflen) {
 	LOG(Logger::VERBOSE, "received get state command");
 	AbstractDriver* driver = client.getServer().getDriver();
 
-	const string& state = driver->getStateString(driver->getState());
+	const string& state = AbstractDriver::getStateString(driver->getState());
 
 	int cmdlen;
 	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "x", state.c_str(), state.length());

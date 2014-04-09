@@ -18,7 +18,6 @@ using std::size_t;
 //NOTE: see Server.cpp for comments on this macro
 #define LOG(lvl, fmt, ...) log_.log(lvl, "[ABD] " fmt, ##__VA_ARGS__)
 
-
 //STATIC
 const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "connecting", "idle", "buffering", "printing", "stopping" };
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
@@ -140,30 +139,52 @@ bool AbstractDriver::stopPrint() {
 /*
  * Getters and setters
  */
+
+/*
+ * Get cached extruder temperature
+ */
 uint16_t AbstractDriver::getTemperature() const {
 	return temperature_;
 }
 
+/*
+ * Get cached extruder target temperature
+ */
 uint16_t AbstractDriver::getTargetTemperature() const {
 	return targetTemperature_;
 }
 
+/*
+ * Get cached bed temperature
+ */
 uint16_t AbstractDriver::getBedTemperature() const {
 	return bedTemperature_;
 }
 
+/*
+ * Get cached bed target temperature
+ */
 uint16_t AbstractDriver::getTargetBedTemperature() const {
 	return targetBedTemperature_;
 }
 
+/*
+ * Get the line number which is currently being printed (current/total*100 yields progress percentage)
+ */
 int32_t AbstractDriver::getCurrentLine() const {
 	return gcodeBuffer_.getCurrentLine();
 }
 
+/*
+ * Get the number of lines currently in the buffer
+ */
 int32_t AbstractDriver::getBufferedLines() const {
 	return gcodeBuffer_.getBufferedLines();
 }
 
+/*
+ * Get the total number of lines which were appended to the buffer after the last clear or set
+ */
 int32_t AbstractDriver::getTotalLines() const {
 	return gcodeBuffer_.getTotalLines();
 }

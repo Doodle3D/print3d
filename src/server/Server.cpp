@@ -184,6 +184,7 @@ int Server::start(bool fork) {
 	return 0;
 }
 
+
 bool Server::registerFileDescriptor(int fd) {
 	std::pair<set_int::iterator, bool> rv = registeredFds_.insert(fd);
 	return rv.second;
@@ -193,6 +194,14 @@ bool Server::unregisterFileDescriptor(int fd) {
 	return (registeredFds_.erase(fd) == 1);
 }
 
+
+void Server::cancelAllTransactions() {
+	for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); it++) {
+		Client::Transaction &trx = (*it)->getTransaction();
+		trx.cancelled = true;
+	}
+}
+
 AbstractDriver* Server::getDriver() {
 	return printerDriver_;
 }
@@ -200,6 +209,7 @@ AbstractDriver* Server::getDriver() {
 const AbstractDriver* Server::getDriver() const {
 	return printerDriver_;
 }
+
 
 bool Server::requestExit(int rv) {
 	LOG(Logger::INFO, "server exiting (rv=%i)", rv);

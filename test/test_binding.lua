@@ -2,7 +2,7 @@ package.cpath = package.cpath .. ';build/Debug/frontends/lua/?.so;../build/Debug
 
 local p3d = require("print3d")
 
-local printer = p3d.getPrinter("xyz")
+local printer = p3d.getPrinter("tty.usbmodem1a21")
 
 local rv,msg
 

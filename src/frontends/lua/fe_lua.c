@@ -60,7 +60,7 @@ int initContext(lua_State* L) {
 		return -1;
 	}
 
-	if (comm_openSocketForDeviceId(ctx->deviceId) < 0) {
+	if (comm_openSocket(ctx->deviceId) < 0) {
 		lua_pushnil(L);
 		lua_pushfstring(L, "could not open IPC socket (%s)", strerror(errno));
 		return -1;
@@ -175,7 +175,7 @@ static int l_getTemperatures(lua_State *L) {
 		return 1;
 	} else {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 }
@@ -188,7 +188,7 @@ static int l_clearGcode(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -204,7 +204,7 @@ static int l_appendGcode(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -220,7 +220,7 @@ static int l_appendFileContents(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -236,7 +236,7 @@ static int l_startPrint(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -258,7 +258,7 @@ static int l_stopPrint(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -275,7 +275,7 @@ static int l_heatup(lua_State *L) {
 
 	if (rv < -1) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 
@@ -299,7 +299,7 @@ static int l_getProgress(lua_State *L) {
 		return 3;
 	} else {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 }
@@ -317,7 +317,7 @@ static int l_getState(lua_State *L) {
 		return 1;
 	} else {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error comunicating with server (%s)", comm_getError());
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
 		return 2;
 	}
 }
