@@ -12,24 +12,28 @@
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "[GCB] " fmt, ##__VA_ARGS__)
 
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
 
 const string GCodeBuffer::GSR_NAMES[] = { "", "ok", "buffer_full", "seq_num_missing", "seq_num_mismatch", "seq_ttl_missing", "seq_ttl_mismatch", "seq_src_missing", "seq_src_mismatch" };
+const size_t GCodeBuffer::GCODE_EXCERPT_LENGTH = 10;
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0),
   sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0), log_(Logger::getInstance())
-{ /* empty */ }
+{
+	LOG(Logger::BULK, "init - max_bucket_size: %lu, max_buffer_size: %lu", MAX_BUCKET_SIZE, MAX_BUFFER_SIZE);
+}
 
 /**
  * Sets given gcode by first calling clear(), then append(), returning its return value.
  * See append() for documentation.
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaData *metaData) {
+	LOG(Logger::BULK, "set (i.e. clear+append)");
 	clear();
 	return append(gcode, metaData);
 }
@@ -53,6 +57,10 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
  * separate buckets, so MAX_BUCKET_SIZE is not a strict limit
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const MetaData *metaData) {
+	if (!metaData) LOG(Logger::BULK, "append - len: %zu, excerpt: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str());
+	else LOG(Logger::BULK, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
+			metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)");
+
 	if (sequenceLastSeen_ > -1) {
 		if (!metaData || metaData->seqNumber < 0) return GSR_SEQ_NUM_MISSING;
 		if (sequenceLastSeen_ + 1 != metaData->seqNumber) return GSR_SEQ_NUM_MISMATCH;
@@ -109,6 +117,8 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const Met
 }
 
 void GCodeBuffer::clear() {
+	LOG(Logger::BULK, "clear");
+
 	while (buckets_.size() > 0) {
 		string *b = buckets_.front();
 		delete b;

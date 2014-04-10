@@ -25,6 +25,10 @@
 
 static const ELOG_LEVEL logLevel = LLVL_VERBOSE;
 
+static const char *GCODE_MD_SEQ_NUMBER = "seq_number";
+static const char *GCODE_MD_SEQ_TOTAL = "seq_total";
+static const char *GCODE_MD_SOURCE = "source";
+
 struct printerData_s {
 		char *deviceId;
 };
@@ -197,9 +201,34 @@ static int l_clearGcode(lua_State *L) {
 }
 
 
+//requires gcode as first argument, accepts table as second argument with keys (all optional):
+//seq_number, seq_total, source (see GCodeBuffer for details)
 static int l_appendGcode(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int rv = comm_sendGcodeData(luaL_checkstring(L, 2));
+	int nargs = lua_gettop(L);
+	ipc_gcode_metadata_s metadata = { -1, -1, NULL };
+
+	if (nargs < 2) {
+		lua_pushnil(L);
+		lua_pushstring(L, "missing argument");
+		return 2;
+	}
+
+	if (nargs > 2) {
+		lua_getfield(L, 3, GCODE_MD_SEQ_NUMBER);
+		if (!lua_isnoneornil(L, -1)) metadata.seq_number = luaL_checkinteger(L, -1);
+		lua_pop(L, 1);
+
+		lua_getfield(L, 3, GCODE_MD_SEQ_TOTAL);
+		if (!lua_isnoneornil(L, -1)) metadata.seq_total = luaL_checkinteger(L, -1);
+		lua_pop(L, 1);
+
+		lua_getfield(L, 3, GCODE_MD_SOURCE);
+		if (!lua_isnoneornil(L, -1)) metadata.source = luaL_checkstring(L, -1);
+		lua_pop(L, 1);
+	}
+
+	int rv = comm_sendGcodeData(luaL_checkstring(L, 2), &metadata);
 	comm_closeSocket();
 
 	if (rv < -1) {

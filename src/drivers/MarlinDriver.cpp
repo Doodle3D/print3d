@@ -113,14 +113,16 @@ bool MarlinDriver::startPrint(STATE state) {
 	return true;
 }
 
-void MarlinDriver::setGCode(const std::string& gcode) {
-	AbstractDriver::setGCode(gcode);
-	extractGCodeInfo(gcode);
+GCodeBuffer::GCODE_SET_RESULT MarlinDriver::setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::setGCode(gcode, metaData);
+	if (gsr == GCodeBuffer::GSR_OK) extractGCodeInfo(gcode);
+	return gsr;
 }
 
-void MarlinDriver::appendGCode(const std::string& gcode) {
-	AbstractDriver::appendGCode(gcode);
-	extractGCodeInfo(gcode);
+GCodeBuffer::GCODE_SET_RESULT MarlinDriver::appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::appendGCode(gcode, metaData);
+	if (gsr == GCodeBuffer::GSR_OK) extractGCodeInfo(gcode);
+	return gsr;
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {

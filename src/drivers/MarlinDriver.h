@@ -22,8 +22,8 @@ public:
 	virtual int update();
 
 	//overrides
-	void setGCode(const std::string& gcode);
-	void appendGCode(const std::string& gcode);
+	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
+	GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
 
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 

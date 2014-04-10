@@ -142,18 +142,24 @@ size_t MakerbotDriver::convertGcode(const string &gcode) {
 	return cvtBufLen;
 }
 
-void MakerbotDriver::setGCode(const string &gcode) {
+//Note: ignores metaData and always returns GSR_OK
+GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
 	currentCmd_ = totalCmds_ = 0;
 	clearGpxBuffer();
 	int rv = convertGcode(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
+
+	return GCodeBuffer::GSR_OK;
 }
 
-void MakerbotDriver::appendGCode(const string &gcode) {
+//Note: ignores metaData and always returns GSR_OK
+GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::appendGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
 	int rv = convertGcode(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
 	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
+
+	return GCodeBuffer::GSR_OK;
 }
 
 //FIXME: clear/set/append gcode and start/stop print functions need a big overhaul. it's unreadable and unmaintainable atm

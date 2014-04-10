@@ -72,17 +72,18 @@ bool AbstractDriver::isConnected() const {
 /*
  * Set (replace) the GCode buffer
  */
-void AbstractDriver::setGCode(const std::string& gcode) {
-	gcodeBuffer_.set(gcode);
-	if (getState() == IDLE) setState(BUFFERING);
+GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.set(gcode, metaData);
+	if (gsr == GCodeBuffer::GSR_OK && getState() == IDLE) setState(BUFFERING);
+	return gsr;
 }
 /*
  * Append GCode to GCode buffer
  */
-void AbstractDriver::appendGCode(const std::string& gcode) {
-	//gcodeBuffer_.set(gcode);
-	gcodeBuffer_.append(gcode);
-	if (getState() == IDLE) setState(BUFFERING);
+GCodeBuffer::GCODE_SET_RESULT AbstractDriver::appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.append(gcode, metaData);
+	if (gsr == GCodeBuffer::GSR_OK && getState() == IDLE) setState(BUFFERING);
+	return gsr;
 }
 
 /*

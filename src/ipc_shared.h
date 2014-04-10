@@ -76,6 +76,20 @@ typedef struct ipc_cmd_name_s {
 	const char* reply_fmt;	/// printf-like argument requirements for response
 } ipc_cmd_name_s;
 
+/** Structure to pass around consistency data for GCode chunks.
+ *
+ * Each chunk has a sequence number which must increment by one each time until a buffer clear request has been made.
+ * The total must stay the same until a buffer clear request has been made.
+ * The source must must also be the same text each time until a clear request.
+ * Note that all fields may be set to -1/NULL to have them ignored, but if one is
+ * used once, it must be used consistently until a clear request.
+ */
+typedef struct ipc_gcode_metadata_s {
+	int16_t seq_number;
+	int16_t seq_total;
+	const char *source;
+} ipc_gcode_metadata_s;
+
 /** Definitions of names for available IPC commands.
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];

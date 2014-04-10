@@ -18,8 +18,8 @@
 #ifdef USE_LIB_UCI
 static struct uci_context *ctx = NULL;
 #else
-//static const char *dummy_response = "ultimaker";
-static const char *dummy_response = "makerbot_generic";
+static const char *dummy_response = "ultimaker";
+//static const char *dummy_response = "makerbot_generic";
 #endif
 
 

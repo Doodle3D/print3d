@@ -152,20 +152,37 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 		transaction.active = true;
 	}
 
+	GCodeBuffer::MetaData metaData;
+
+	if (numArgs >= 3) ipc_cmd_get_long_arg(buf, buflen, 2, &metaData.seqNumber);
+	if (numArgs >= 4) ipc_cmd_get_long_arg(buf, buflen, 3, &metaData.seqTotal);
+	if (numArgs >= 5) {
+		char *srcArg = 0;
+		ipc_cmd_get_string_arg(buf, buflen, 4, &srcArg);
+		metaData.source = new string(srcArg);
+		free(srcArg);
+	}
 
 	char* data = 0;
 	ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-	LOG(Logger::BULK, "received append gcode command with argument length %i", strlen(data));
+	LOG(Logger::BULK, "received append gcode command with argument length %i (%i args) [seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
+			numArgs, metaData.seqNumber, metaData.seqTotal, metaData.source ? metaData.source->c_str() : "(null)");
 	transaction.buffer.append(data);
 	free(data);
 
 	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
 		LOG(Logger::BULK, "appending and clearing gcode transaction buffer");
 		AbstractDriver* driver = server.getDriver();
-		driver->appendGCode(transaction.buffer);
+		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, &metaData);
 		transaction.buffer.clear();
 		transaction.active = false;
+		if (gsr != GCodeBuffer::GSR_OK) {
+			if (metaData.source) delete metaData.source;
+			client.sendError(GCodeBuffer::getGcodeSetResultText(gsr));
+			return;
+		}
 	}
+	if (metaData.source) delete metaData.source;
 	client.sendOk();
 }
 

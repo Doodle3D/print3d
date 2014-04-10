@@ -27,8 +27,8 @@ public:
 	void clearGpxBuffer();
 	size_t convertGcode(const std::string &gcode);//TEMP
 	//overrides
-	void setGCode(const std::string& gcode);
-	void appendGCode(const std::string& gcode);
+	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
+	GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
 	void clearGCode();
 
 	int32_t getCurrentLine() const;

@@ -64,6 +64,7 @@ private:
 	static const uint32_t MAX_BUFFER_SIZE;
 
 	static const std::string GSR_NAMES[];
+	static const size_t GCODE_EXCERPT_LENGTH;
 
 	deque_stringP buckets_;
 	int32_t currentLine_;

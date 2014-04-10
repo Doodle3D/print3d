@@ -362,9 +362,13 @@ int comm_sendGcodeFile(const char *file) {
 	return rv;
 }
 
-int comm_sendGcodeData(const char *gcode) {
+//metadata may be NULL
+int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 	uint32_t startTime = getMillis();
 	clearError();
+
+	int16_t seq_num = metadata ? metadata->seq_number : -1;
+	int16_t seq_ttl = metadata ? metadata->seq_total : -1;
 
 	int rv = 0;
 	const char *startP = gcode, *endP;
@@ -408,7 +412,8 @@ int comm_sendGcodeData(const char *gcode) {
 		if (endP == lastPos) trx_bits |= TRX_LAST_CHUNK_BIT;
 
 		char *scmd = 0;
-		scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xw", startP, endP - startP + 1, trx_bits);
+		if (!metadata || !metadata->source) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWW", startP, endP - startP + 1, trx_bits, seq_num, seq_ttl);
+		else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWWs", startP, endP - startP + 1, trx_bits, seq_num, seq_ttl, metadata->source);
 
 		char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
@@ -429,7 +434,7 @@ int comm_sendGcodeData(const char *gcode) {
 		packetNum++;
 	}
 	uint32_t endTime = getMillis();
-	log_message(LLVL_INFO, "gcode data sent in %i packets (%ul msecs)", packetNum, endTime - startTime);
+	log_message(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
 
 	return rv;
 }

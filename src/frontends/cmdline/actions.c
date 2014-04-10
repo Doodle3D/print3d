@@ -152,7 +152,7 @@ static int act_sendGcodeFromStdin() {
 		read_len += rv;
 	}
 
-	if (comm_sendGcodeData(gcode) < 0) {
+	if (comm_sendGcodeData(gcode, NULL) < 0) {
 		fprintf(stderr, "could not send gcode data (%s)\n", comm_getError());
 		return 1;
 	}
@@ -177,7 +177,7 @@ static int act_sendGcode(const char *gcode) {
 		return 1;
 	}
 
-	if (comm_sendGcodeData(gcode) < 0) {
+	if (comm_sendGcodeData(gcode, NULL) < 0) {
 		fprintf(stderr, "could not send gcode (%s)\n", comm_getError());
 		return 1;
 	}
