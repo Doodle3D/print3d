@@ -18,12 +18,13 @@
 class Logger {
 public:
 	typedef enum ELOG_LEVEL {
-		QUIET = -1,
-		ERROR = 0,
-		WARNING = 1,
-		INFO = 2,
-		VERBOSE = 3,
-		BULK = 4
+		INVALID = 0, //marker to detect uninitialized instances of this enum
+		QUIET = 1, //not used for logging, only for setting levels
+		ERROR = 2,
+		WARNING = 3,
+		INFO = 4,
+		VERBOSE = 5,
+		BULK = 6
 	} ELOG_LEVEL;
 
 	static Logger& getInstance();

@@ -54,8 +54,12 @@ void parseOptions(int argc, char **argv) {
 	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
-		case 'q': verbosity = -1; break;
-		case 'v': verbosity = 1; break;
+		case 'q':
+			verbosity = -1; break;
+		case 'v':
+			if (verbosity < 1) verbosity = 1;
+			else verbosity++;
+			break;
 		case 'g':
 			if (strcmp(optarg, "temperature") == 0) {
 				action = AT_GET_TEMPERATURE;
@@ -130,10 +134,13 @@ int main(int argc, char **argv) {
 	parseOptions(argc, argv);
 
 	if (action == AT_ERROR) {
+		fprintf(stderr, "Try the '-h' parameter for more information.\n");
 		exit(2);
 	}
 
-	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 0) ? " (verbose mode)" : "");
+	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 1)
+			? " (bulk mode)"
+			: (verbosity > 0 ? " (verbose mode)" : ""));
 
 	char **devlist = NULL;
 	if (deviceIdRequired && !deviceId) {

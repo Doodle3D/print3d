@@ -17,12 +17,13 @@
 #endif
 
 typedef enum ELOG_LEVEL {
-	LLVL_QUIET = -1,
-	LLVL_ERROR = 0,
-	LLVL_WARNING = 1,
-	LLVL_INFO = 2,
-	LLVL_VERBOSE = 3,
-	LLVL_BULK = 4
+	LLVL_INVALID = 0, //marker to detect uninitialized instances of this enum
+	LLVL_QUIET = 1, //not used for logging, only for setting levels
+	LLVL_ERROR = 2,
+	LLVL_WARNING = 3,
+	LLVL_INFO = 4,
+	LLVL_VERBOSE = 5,
+	LLVL_BULK = 6
 } ELOG_LEVEL;
 
 int log_open_stream(FILE* stream, ELOG_LEVEL level);

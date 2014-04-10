@@ -261,26 +261,33 @@ static int act_stopPrint(const char *endCode) {
 
 
 int handleAction(int argc, char **argv, ACTION_TYPE action) {
+	int rv = 2;
+
+	if (verbosity < -1) verbosity = -1;
+	else if (verbosity > 2) verbosity = 2;
+
 	switch(verbosity) {
-	case -1:
-		log_open_stream(stderr, LLVL_QUIET); break;
-	case 1:
-		log_open_stream(stderr, LLVL_VERBOSE); break;
-	case 0: default:
-		log_open_stream(stderr, LLVL_WARNING); break;
+	case -1: log_open_stream(stderr, LLVL_QUIET); break;
+	case 1: log_open_stream(stderr, LLVL_VERBOSE); break;
+	case 2: log_open_stream(stderr, LLVL_BULK); break;
+	case 0: default: log_open_stream(stderr, LLVL_WARNING); break;
 	}
 
 	switch (action) {
 	case AT_ERROR:
 		fprintf(stderr, "Action handler called with 'error' action, this should not happen.\n");
-		return 2;
+		//leave rv at 2
 		break;
-	case AT_NONE: case AT_SHOW_HELP:
+
+	case AT_NONE:
+		printf("Error: nothing to do, please specify an operation to run\n\n");
+		/* fall-through to help */
+	case AT_SHOW_HELP:
 		printf("Basic usage: '%s [<options>]'.\n", argv[0]);
 		printf("The following options are available:\n");
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
-		printf("\t-v,--verbose\t\tPrint verbose output\t\n");
+		printf("\t-v,--verbose\t\tPrint verbose output (repeat to increase verbosity)\n");
 		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|trxtest|progress)\n");
 		printf("\t-t,--temperature\tRetrieve the printer temperature\n");
 		printf("\t-p,--progress\t\tRetrieve printing progress\n");
@@ -294,40 +301,38 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-r,--stdin\t\tPrint g-code read from stdin (end interactive input with C-d)\n");
 		printf("\t-k,--stop\t\tStop printing\n");
 		printf("\t-K,--stop-with-code <gcode> Stop printing, with specified end code\n");
-		return 0;
-	case AT_GET_TEMPERATURE:
-		return act_printTemperature();
-	case AT_GET_TEST:
-		return act_printTestResponse();
-	case AT_GET_TRX_TEST:
-		return act_testTransactions();
-	case AT_GET_PROGRESS:
-		return act_printProgress();
-	case AT_GET_STATE:
-		return act_printState();
+		rv = 2;
+		break;
+
+	case AT_GET_TEMPERATURE: rv = act_printTemperature(); break;
+	case AT_GET_TEST: rv = act_printTestResponse(); break;
+	case AT_GET_TRX_TEST: rv = act_testTransactions(); break;
+	case AT_GET_PROGRESS: rv = act_printProgress(); break;
+	case AT_GET_STATE: rv = act_printState(); break;
 	case AT_GET_SUPPORTED:
 		printf("[dummy] get supported\n");
-		return 5;
-	case AT_HEATUP:
-		return act_doHeatup(heatupTemperature);
+		rv = 5;
+		break;
+
+	case AT_HEATUP: rv = act_doHeatup(heatupTemperature); break;
 	case AT_PRINT_FILE:
 		if (!printFile) {
 			fprintf(stderr, "error: missing filename to print\n");
-			return 1;
+			rv = 1;
 		}
 
 		return act_sendGcodeFile(printFile);
+
 	case AT_SEND_CODE:
 		if (!sendGcode) {
 			fprintf(stderr, "error: missing g-code to print\n");
 			return 1;
 		}
 		return act_sendGcode(sendGcode);
-	case AT_SEND_STDIN:
-		return act_sendGcodeFromStdin();
-	case AT_STOP_PRINT:
-		return act_stopPrint(endGcode);
+
+	case AT_SEND_STDIN: rv = act_sendGcodeFromStdin(); break;
+	case AT_STOP_PRINT: rv = act_stopPrint(endGcode); break;
 	}
 
-	return 2;
+	return rv;
 }
