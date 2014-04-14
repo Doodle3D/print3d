@@ -62,8 +62,10 @@ void parseOptions(int argc, char **argv) {
 				deviceIdRequired = 1;
 			} else if (strcmp(optarg, "test") == 0) {
 				action = AT_GET_TEST;
+				deviceIdRequired = 1;
 			} else if (strcmp(optarg, "progress") == 0) {
 				action = AT_GET_PROGRESS;
+				deviceIdRequired = 1;
 			}
 			break;
 		case 't':
