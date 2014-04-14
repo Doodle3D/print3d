@@ -7,6 +7,7 @@
  */
 
 #include "GCodeBuffer.h"
+#include <algorithm>
 #include <stdlib.h>
 #include <string.h>
 using std::string;
