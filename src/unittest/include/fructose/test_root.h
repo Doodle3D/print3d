@@ -510,7 +510,7 @@ protected:
 private:
     void split(std::vector<std::string> &tokens, const std::string& text, char sep)
     {
-        int start = 0, end = 0;
+        unsigned int start = 0, end = 0;
         while ((end = text.find(sep, start)) != std::string::npos) {
             tokens.push_back(text.substr(start, end - start));
             start = end + 1;
@@ -773,7 +773,7 @@ test_root::do_get_suite(const test_root::suite& available_tests,
     test_info current_test_info;
     bool include_all = false;
 
-    for (size_t i = 1; i < argc; i++)
+    for (int i = 1; i < argc; i++)
     {
         if (found_tests)
         {
