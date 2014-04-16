@@ -19,6 +19,7 @@ using std::size_t;
 #define LOG(lvl, fmt, ...) log_.log(lvl, "[ABD] " fmt, ##__VA_ARGS__)
 
 //STATIC
+//Note: the state names are used all the way on the other end in javascript, consider this when changing them.
 const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "connecting", "idle", "buffering", "printing", "stopping" };
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
 

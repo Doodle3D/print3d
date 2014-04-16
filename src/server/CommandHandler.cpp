@@ -178,7 +178,7 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 		transaction.active = false;
 		if (gsr != GCodeBuffer::GSR_OK) {
 			if (metaData.source) delete metaData.source;
-			client.sendError(GCodeBuffer::getGcodeSetResultText(gsr));
+			client.sendReply(IPC_CMDR_GCODE_ADD_FAILED, &GCodeBuffer::getGcodeSetResultString(gsr));
 			return;
 		}
 	}

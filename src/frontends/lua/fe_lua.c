@@ -73,6 +73,27 @@ static int initContext(lua_State* L) {
 	return 0;
 }
 
+/*
+ * Initializes the stack based on the result parameter, with:
+ * true on success,
+ * nil+msg on error (message obtained from comm_getError()) or
+ * false+status on fail (status obtained from comm_getError()).
+ */
+static int initStackWithReturnStatus(lua_State *L, int result) {
+	if (result == -1) {
+		lua_pushnil(L);
+		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
+		return 2;
+	} else if (result < -1) {
+		lua_pushboolean(L, 0);
+		lua_pushstring(L, comm_getError());
+		return 2;
+	}
+
+	lua_pushboolean(L, 1);
+	return 1;
+}
+
 
 static int l_lua_gc(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
@@ -171,7 +192,10 @@ static int l_getTemperatures(lua_State *L) {
 	if (rv >= 0) rv = comm_getTemperature(&tBt, IPC_TEMP_BED_TGT);
 	comm_closeSocket();
 
-	if (rv > -1) {
+	//note: ugly hack ahead
+	int numElems = initStackWithReturnStatus(L, rv); //this works fine for error/fail but not for success
+	if (rv >= 0) {
+		lua_pop(L, numElems); //so we pop the boolean to reset the stack, and push a table...
 		lua_newtable(L);
 		lua_pushnumber(L, tH); lua_setfield(L, -2, "hotend");
 		lua_pushnumber(L, tHt); lua_setfield(L, -2, "hotend_target");
@@ -179,9 +203,7 @@ static int l_getTemperatures(lua_State *L) {
 		lua_pushnumber(L, tBt); lua_setfield(L, -2, "bed_target");
 		return 1;
 	} else {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
+		return numElems; //otherwise return whatever the initStack function did...
 	}
 }
 
@@ -191,14 +213,7 @@ static int l_clearGcode(lua_State *L) {
 	int rv = comm_clearGcode();
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
 
 
@@ -232,14 +247,7 @@ static int l_appendGcode(lua_State *L) {
 	int rv = comm_sendGcodeData(luaL_checkstring(L, 2), &metadata);
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
 
 
@@ -248,30 +256,15 @@ static int l_appendFileContents(lua_State *L) {
 	int rv = comm_sendGcodeFile(luaL_checkstring(L, 2));
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
-
 
 static int l_startPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 	int rv = comm_startPrintGcode();
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
 
 
@@ -286,14 +279,7 @@ static int l_stopPrint(lua_State *L) {
 	int rv = comm_stopPrintGcode(endCode);
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
 
 
@@ -303,14 +289,7 @@ static int l_heatup(lua_State *L) {
 	int rv = comm_heatup(luaL_checkinteger(L, 2));
 	comm_closeSocket();
 
-	if (rv < -1) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
-	}
-
-	lua_pushboolean(L, 1);
-	return 1;
+	return initStackWithReturnStatus(L, rv);
 }
 
 
@@ -322,15 +301,16 @@ static int l_getProgress(lua_State *L) {
 	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines);
 	comm_closeSocket();
 
-	if (rv > -1) {
+	//to the south is another hack
+	int numElems = initStackWithReturnStatus(L, rv);
+	if (rv >= 0) {
+		lua_pop(L, numElems);
 		lua_pushnumber(L, currentLine);
 		lua_pushnumber(L, bufferedLines);
 		lua_pushnumber(L, totalLines);
 		return 3;
 	} else {
-		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
-		return 2;
+		return numElems;
 	}
 }
 
@@ -342,10 +322,16 @@ static int l_getState(lua_State *L) {
 	int rv = comm_getState(&state);
 	comm_closeSocket();
 
-	if (rv > -1) {
+	//mind the hack below
+	int numElems = initStackWithReturnStatus(L, rv);
+	if (rv >= 0) {
+		lua_pop(L, numElems);
 		lua_pushstring(L, state);
 		return 1;
 	} else {
+		return numElems;
+	}
+}
 
 //does not do communication. it sets the log level of the client side, not the server side
 static int l_setLocalLogLevel(lua_State *L) {

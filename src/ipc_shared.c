@@ -55,6 +55,7 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDR_OK, "ok", "*", NULL },
 		{ IPC_CMDR_ERROR, "error", "x", NULL },
 		{ IPC_CMDR_NOT_IMPLEMENTED, "not_implemented", "*", NULL },
+		{ IPC_CMDR_GCODE_ADD_FAILED, "gcode_add_failed", "x", NULL }, //NOTE: returns formal error message (for interpretation by lua/js)
 		{ IPC_CMDR_RETRY_LATER, "retry_later", "*", NULL }, //NOTE: returned when trying to append a file while a transaction is already in progress
 		{ IPC_CMDR_TRX_CANCELLED, "trx_cancelled", "*", NULL }, //NOTE: if a stop is requested, all connected clients have their are blocked to append further gcode
 

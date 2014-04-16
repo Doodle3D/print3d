@@ -8,6 +8,7 @@
 
 #include <fcntl.h>
 #include <signal.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -20,7 +21,6 @@
 
 #define DEBUG_GCODE_FRAGMENTATION /** Uncomment to enable line counting while sending gcode data. */
 
-
 /***********
  * STATICS *
  ***********/
@@ -28,14 +28,28 @@
 static const int IPC_WAIT_TIMEOUT = 60 * 1000; ///How long to poll for input when we expect data (60*1000 = 1 minute).
 static const int MAX_PACKET_SIZE = 1024 - 8; ///Largest packet which can make it through the ipc pipe (minus 8 bytes for cmdId+argNum+arg0Len).
 
+//Note: these names are used all the way on the other end in javascript, consider this when changing them.
+static const char *TRANSACTION_CANCELLED_STRING = "transaction_cancelled";
+static const char *RETRY_LATER_STRING = "retry_later";
+
 static int socketFd = -1;
-static const char *error = NULL;
-const char *comm_getError() { return error; }
-static void clearError() { error = NULL; }
-static void setError(const char *e) { error = e; }
+static char *error = NULL;
 
 
-int comm_openSocketInternal(const char *deviceId) {
+static void clearError() {
+	free(error);
+	error = NULL;
+}
+
+static void setError(const char *format, ...) {
+	if (error) clearError();
+	va_list args;
+	va_start(args, format);
+	vasprintf(&error, format, args);
+	va_end(args);
+}
+
+static int openSocketInternal(const char *deviceId) {
 	struct sockaddr_un remote;
 	int len;
 	int fd;
@@ -107,7 +121,8 @@ static char* sendAndReceiveData(const char *sbuf, int sbuflen, int *rbuflen) {
 	return sendAndReceiveDataWithFd(socketFd, sbuf, sbuflen, rbuflen);
 }
 
-//returns 0 on success, -1 on error, -2 if transaction was cancelled, -3 on retryable error
+//returns 0 on success, -1 on error, -2 if appending gcode failed, -3 if transaction was cancelled, -4 on retryable error
+//NOTE: the -2 case contains a formal error message which is set; -3 and -4 cases also have a formal error set (which is defined locally)
 static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen, int expectedArgCount) {
 	if (!rcmd) return -1; //NOTE: do not log anything, this is already in sendAndReceiveData()
 
@@ -128,19 +143,27 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 			char *errmsg = 0;
 			ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
 			//log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
-			setError("server returned error");
+			setError("server returned error (%s)", errmsg);
 			free(errmsg);
 			rv = -1;
 			break;
 		}
-		case IPC_CMDR_TRX_CANCELLED: {
-			setError("ipc transaction was cancelled");
+		case IPC_CMDR_GCODE_ADD_FAILED: {
+			char *errmsg = 0;
+			ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
+			setError(errmsg);
+			free(errmsg);
 			rv = -2;
 			break;
 		}
-		case IPC_CMDR_RETRY_LATER: {
-			setError("ipc command failed (retryable)");
+		case IPC_CMDR_TRX_CANCELLED: {
+			setError(TRANSACTION_CANCELLED_STRING);
 			rv = -3;
+			break;
+		}
+		case IPC_CMDR_RETRY_LATER: {
+			setError(RETRY_LATER_TEXT);
+			rv = -4;
 			break;
 		}
 		default:
@@ -161,7 +184,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 int comm_openSocket(const char *deviceId) {
 	if (socketFd >= 0) return socketFd;
 
-	socketFd = comm_openSocketInternal(deviceId);
+	socketFd = openSocketInternal(deviceId);
 	return socketFd;
 }
 
@@ -169,6 +192,10 @@ int comm_closeSocket() {
 	int rv = closeSocketInternal(socketFd);
 	socketFd = -1;
 	return rv;
+}
+
+const char *comm_getError() {
+	return error;
 }
 
 
@@ -184,10 +211,11 @@ int comm_testCommand(const char *question, char **answer) {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1);
+	if (result >= 0) {
 		rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, answer);
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -208,8 +236,8 @@ int comm_testTransactions(const char *deviceId, char **outputText) {
 	*outputText = (char*)malloc(NUM_TESTS * 2 + 1);
 	strcpy(*outputText, "");
 
-	int fd1 = comm_openSocketInternal(deviceId);
-	int fd2 = comm_openSocketInternal(deviceId);
+	int fd1 = openSocketInternal(deviceId);
+	int fd2 = openSocketInternal(deviceId);
 
 	//send first three characters as first chunk using fd1 (expect ok)
 	trx_bits = TRX_FIRST_CHUNK_BIT;
@@ -286,10 +314,11 @@ int comm_clearGcode() {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
+	if (result >= 0) {
 		log_message(LLVL_INFO, "gcode cleared");
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -306,10 +335,11 @@ int comm_startPrintGcode() {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
+	if (result >= 0) {
 		log_message(LLVL_VERBOSE, "gcode print started");
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -331,10 +361,11 @@ int comm_stopPrintGcode(const char *endCode) {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
+	if (result >= 0) {
 		log_message(LLVL_VERBOSE, "gcode print stopped");
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -349,12 +380,12 @@ int comm_sendGcodeFile(const char *file) {
 	char *scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND_FILE, "x", file, strlen(file));
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
-	//Note: this can return a retry later error, but we treat it as a regular error
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
+	if (result >= 0) {
 		log_message(LLVL_VERBOSE, "gcode appended from file '%s'", file);
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -416,11 +447,11 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 		else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWWs", startP, endP - startP + 1, trx_bits, seq_num, seq_ttl, metadata->source);
 
 		char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
-
-		if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0) >= 0) {
+		int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
+		if (result >= 0) {
 			log_message(LLVL_BULK, "gcode packet #%i transmitted in transaction (%i bytes)", packetNum, endP - startP + 1);
 		} else {
-			rv = -1;
+			rv = result;
 		}
 
 		free(rcmd);
@@ -448,10 +479,11 @@ int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which) {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1);
+	if (result >= 0) {
 		rv = ipc_cmd_get_short_arg(rcmd, rcmdlen, 0, temperature);
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -481,12 +513,13 @@ int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *tota
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 3) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 3);
+	if (result >= 0) {
 		rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 0, currentLine);
 		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 1, bufferedLines);
 		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 2, totalLines);
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);
@@ -503,10 +536,11 @@ int comm_getState(char **state) {
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	if (handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1) >= 0) {
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 1);
+	if (result >= 0) {
 		rv = ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, state);
 	} else {
-		rv = -1;
+		rv = result;
 	}
 
 	free(rcmd);

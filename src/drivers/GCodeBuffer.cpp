@@ -18,6 +18,7 @@ using std::string;
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
 
+//Note: the GcodeSetResult texts are used all the way on the other end in javascript, consider this when changing them.
 const string GCodeBuffer::GSR_NAMES[] = { "", "ok", "buffer_full", "seq_num_missing", "seq_num_mismatch", "seq_ttl_missing", "seq_ttl_mismatch", "seq_src_missing", "seq_src_mismatch" };
 const size_t GCodeBuffer::GCODE_EXCERPT_LENGTH = 10;
 
@@ -222,7 +223,7 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 }
 
 //static
-const std::string &GCodeBuffer::getGcodeSetResultText(GCODE_SET_RESULT gsr) {
+const std::string &GCodeBuffer::getGcodeSetResultString(GCODE_SET_RESULT gsr) {
 	return GSR_NAMES[gsr];
 }
 

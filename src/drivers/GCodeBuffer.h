@@ -57,7 +57,7 @@ public:
 	bool getNextLine(std::string &line, size_t amount = 1) const;
 	bool eraseLine(size_t amount = 1);
 
-	static const std::string &getGcodeSetResultText(GCODE_SET_RESULT gsr);
+	static const std::string &getGcodeSetResultString(GCODE_SET_RESULT gsr);
 
 private:
 	static const uint32_t MAX_BUCKET_SIZE;
