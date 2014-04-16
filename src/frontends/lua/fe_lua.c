@@ -349,7 +349,7 @@ static int l_setLocalLogLevel(lua_State *L) {
 		lua_pushnil(L);
 		lua_pushstring(L, "invalid log level name");
 		return 2;
-}
+	}
 
 	ctx->logLevel = level;
 

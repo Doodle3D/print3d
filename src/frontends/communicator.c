@@ -162,7 +162,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 			break;
 		}
 		case IPC_CMDR_RETRY_LATER: {
-			setError(RETRY_LATER_TEXT);
+			setError(RETRY_LATER_STRING);
 			rv = -4;
 			break;
 		}
