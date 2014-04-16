@@ -17,6 +17,7 @@
 #include "logger.h"
 
 
+static const char *LOG_LEVEL_NAMES[] = { "_invalid_", "quiet", "error", "warning", "info", "verbose", "bulk", NULL };
 
 static ELOG_LEVEL level_ = LLVL_BULK;
 static FILE* stream_ = NULL;
@@ -121,4 +122,18 @@ void log_ipc_cmd(ELOG_LEVEL level, const char *buf, int buflen, int is_reply) {
 	log_message(level, "[IPC] command: %s", cmd_text);
 
 	free(cmd_text);
+}
+
+const char *log_get_level_name(ELOG_LEVEL level) {
+	if (level < 1 || level >= (sizeof(LOG_LEVEL_NAMES) / sizeof(LOG_LEVEL_NAMES[0]) - 1)) return NULL; //TODO: test this (would be easy by allowing binding to accept numbers...)
+	return LOG_LEVEL_NAMES[level];
+}
+
+ELOG_LEVEL log_get_level_number(const char *name) {
+	int i = 1; //start at 1, skip invalid level
+	while (LOG_LEVEL_NAMES[i] != NULL) {
+		if (strcmp(name, LOG_LEVEL_NAMES[i]) == 0) return (ELOG_LEVEL)i;
+		i++;
+	}
+	return LLVL_INVALID;
 }

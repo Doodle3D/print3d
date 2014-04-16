@@ -23,7 +23,6 @@
 #define PRINTER_META_KEY LIB_META_NAME
 
 
-static const ELOG_LEVEL logLevel = LLVL_VERBOSE;
 
 static const char *GCODE_MD_SEQ_NUMBER = "seq_number";
 static const char *GCODE_MD_SEQ_TOTAL = "seq_total";
@@ -31,6 +30,7 @@ static const char *GCODE_MD_SOURCE = "source";
 
 struct printerData_s {
 		char *deviceId;
+		ELOG_LEVEL logLevel;
 };
 
 
@@ -49,16 +49,16 @@ static struct printerData_s *getContext(lua_State *L) {
 
 //fetches context from stack, inits log and opens IPC socket. returns 0 on success or -1 on system error
 //in the former case, nothing will be pushed on the stack, otherwise nil+errmsg will be pushed
-int initContext(lua_State* L) {
+static int initContext(lua_State* L) {
 	struct printerData_s* ctx = getContext(L);
 
 	if (!ctx) {
 		lua_pushnil(L);
-		lua_pushstring(L, "could not allocate printer context");
+		lua_pushstring(L, "could not get printer context");
 		return -1;
 	}
 
-	if (log_open_stream(stderr, logLevel) < 0) {
+	if (log_open_stream(stderr, ctx->logLevel) < 0) {
 		lua_pushnil(L);
 		lua_pushfstring(L, "could not open log stream (%s)", strerror(errno));
 		return -1;
@@ -153,6 +153,7 @@ static int l_getPrinter(lua_State *L) {
 	*pd = (struct printerData_s*)malloc(sizeof(struct printerData_s));
 
 	(*pd)->deviceId = strdup(dev);
+	(*pd)->logLevel = LLVL_VERBOSE;
 
 	ipc_free_device_list(devlist);
 	luaL_setmetatable(L, LIB_META_NAME);
@@ -345,12 +346,30 @@ static int l_getState(lua_State *L) {
 		lua_pushstring(L, state);
 		return 1;
 	} else {
+
+//does not do communication. it sets the log level of the client side, not the server side
+static int l_setLocalLogLevel(lua_State *L) {
+	struct printerData_s *ctx = getContext(L);
+
+	if (lua_gettop(L) < 2) {
 		lua_pushnil(L);
-		lua_pushfstring(L, "error communicating with server (%s)", comm_getError());
+		lua_pushstring(L, "missing level name");
 		return 2;
 	}
+
+	const char *level_name = luaL_checkstring(L, 2);
+	ELOG_LEVEL level = log_get_level_number(level_name);
+	if (level == LLVL_INVALID) {
+		lua_pushnil(L);
+		lua_pushstring(L, "invalid log level name");
+		return 2;
 }
 
+	ctx->logLevel = level;
+
+	lua_pushboolean(L, 1);
+	return 1;
+}
 
 
 static const struct luaL_Reg print3d_f[] = {
@@ -372,6 +391,7 @@ static const struct luaL_Reg print3d_m[] = {
 		{"heatup", l_heatup},
 		{"getProgress", l_getProgress},
 		{"getState", l_getState},
+		{"setLocalLogLevel", l_setLocalLogLevel},
 		{NULL, NULL}
 };
 
