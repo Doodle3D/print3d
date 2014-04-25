@@ -26,6 +26,8 @@ typedef enum ELOG_LEVEL {
 	LLVL_BULK = 6
 } ELOG_LEVEL;
 
+extern const int NUM_LOG_LEVELS;
+
 int log_open_stream(FILE* stream, ELOG_LEVEL level);
 int log_open_file(const char* file, ELOG_LEVEL level);
 int log_close();
@@ -34,11 +36,11 @@ int log_is_open();
 ELOG_LEVEL log_get_level();
 void log_set_level(ELOG_LEVEL level);
 
-void log_message(ELOG_LEVEL level, const char* format, ...);
-int log_check_error(int rv, const char* format, ...);
+void log_message(ELOG_LEVEL level, const char *module, const char *format, ...);
+int log_check_error(int rv, const char *module, const char *format, ...);
 
-void log_va_message(ELOG_LEVEL level, const char* format, va_list args);
-int log_va_check_error(int rv, const char* format, va_list args);
+void log_va_message(ELOG_LEVEL level, const char *module, const char *format, va_list args);
+int log_va_check_error(int rv, const char *module, const char *format, va_list args);
 
 void log_ipc_cmd(ELOG_LEVEL level, const char *buf, int buflen, int is_reply);
 

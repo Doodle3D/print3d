@@ -66,16 +66,16 @@ void Logger::setLevel(ELOG_LEVEL level) {
 	level_ = level;
 }
 
-void Logger::log(ELOG_LEVEL level, const char* format, ...) const {
+void Logger::log(ELOG_LEVEL level, const char *module, const char *format, ...) const {
 	va_list args;
 	va_start(args, format);
-	vaLog(level, format, args);
+	vaLog(level, module, format, args);
 	va_end(args);
 }
 
-void Logger::vaLog(ELOG_LEVEL level, const char* format, va_list args) const {
+void Logger::vaLog(ELOG_LEVEL level, const char *module, const char *format, va_list args) const {
 	time_t ltime;
-	struct tm* now;
+	struct tm *now;
 
 	if (!stream_ || level > level_) return;
 
@@ -84,28 +84,28 @@ void Logger::vaLog(ELOG_LEVEL level, const char* format, va_list args) const {
 
 	ltime = time(NULL);
 	now = localtime(&ltime);
-	fprintf(stream_, "%02i-%02i %02i:%02i:%02i  %s\n",
-			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, buf);
+	fprintf(stream_, "%02i-%02i %02i:%02i:%02i [%s] (%s): %s\n",
+			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, module, LOG_LEVEL_NAMES[level], buf);
 	free(buf);
 }
 
-bool Logger::checkError(int rv, const char* format, ...) const {
+bool Logger::checkError(int rv, const char *module, const char *format, ...) const {
 	va_list args;
 	va_start(args, format);
-	bool result = vaCheckError(rv, format, args);
+	bool result = vaCheckError(rv, module, format, args);
 	va_end(args);
 	return result;
 }
 
-bool Logger::vaCheckError(int rv, const char* format, va_list args) const {
+bool Logger::vaCheckError(int rv, const char *module, const char *format, va_list args) const {
 	if (rv != -1) return false; //treat _only_ -1 as error (since we can only handle system errors)
 
 	int savedErrno = errno;
-	char* buf = 0;
+	char *buf = 0;
 
 	vasprintf(&buf, format, args);
 
-	log(ERROR, "%s (%s)", buf, strerror(savedErrno));
+	log(ERROR, module, "%s (%s)", buf, strerror(savedErrno));
 	free(buf);
 
 	return true;
@@ -117,7 +117,7 @@ void Logger::logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isRep
 	char *cmd_text = 0;
 	ipc_stringify_cmd(buf, buflen, isReply ? 1 : 0, &cmd_text);
 
-	log(level, "[IPC] command: %s", cmd_text);
+	log(level, "IPC ", "command: %s", cmd_text);
 
 	free(cmd_text);
 }

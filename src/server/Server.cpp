@@ -26,7 +26,7 @@ using std::string;
 
 //NOTE: the '##__VA_ARGS__' hack is gnu-specific...no comment on the language *cough*
 //FIXME: a better alternative should be created for this
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[SRV] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "SRV ", fmt, ##__VA_ARGS__)
 
 const bool Server::FORK_BY_DEFAULT = false;
 const int Server::SOCKET_MAX_BACKLOG = 5; //private
@@ -64,8 +64,7 @@ int Server::start(bool fork) {
 		return 0; //TODO: do we need a better return value in this case?
 	}
 
-	LOG(Logger::INFO, "starting printserver with socket path '%s'",
-			socketPath_.c_str());
+	LOG(Logger::INFO, "starting printserver with socket path '%s'", socketPath_.c_str());
 	//LOG(Logger::INFO, LOGMSG("starting printserver with socket path '%s'"), socketPath_.c_str());
 	if (!openSocket())
 		return false;
@@ -108,7 +107,7 @@ int Server::start(bool fork) {
 		if (log_.checkError(
 				::select(maxFd + 1, &readFds, NULL, NULL,
 						timeoutEnabled ? &timeout : NULL), /* use FD_SETSIZE instead of keeping maxfd? */
-				"error in select()")) {
+				"SRV ", "error in select()")) {
 			//TODO: handle error (close down server <- needs function... and return with proper error value)
 		}
 		::gettimeofday(&endTime, NULL);
@@ -127,11 +126,9 @@ int Server::start(bool fork) {
 			int connFd = ::accept(socketFd_, (struct sockaddr*) &peerAddr,
 					&len);
 			int flags = ::fcntl(connFd, F_GETFL, 0);
-			log_.checkError(flags, "could not obtain flags for socket with fd ",
-					connFd);
-			log_.checkError(::fcntl(connFd, F_SETFL, (flags | O_NONBLOCK)),
-					"could not enable non-blocking mode on socket with fd ",
-					connFd);
+			log_.checkError(flags, "SRV ", "could not obtain flags for socket with fd ", connFd);
+			log_.checkError(::fcntl(connFd, F_SETFL, (flags | O_NONBLOCK)), "SRV ",
+					"could not enable non-blocking mode on socket with fd ", connFd);
 
 			clients_.push_back(new Client(*this, connFd));
 			//LOG(Logger::BULK, "new client with fd %i", connFd);
@@ -144,7 +141,7 @@ int Server::start(bool fork) {
 		/* increment inside loop */) {
 			Client* client = *it;
 			int rv = client->readData();
-			log_.checkError(rv, "cannot read from client");
+			log_.checkError(rv, "SRV ", "cannot read from client");
 
 			if (rv >= 0 || (rv == -2 && client->getBufferSize() > 0)) {
 				if (rv >= 0)
@@ -153,8 +150,7 @@ int Server::start(bool fork) {
 				else
 					LOG(Logger::BULK,
 							"client with fd %i closed connection, still %i bytes available",
-							client->getFileDescriptor(),
-							client->getBufferSize());
+							client->getFileDescriptor(), client->getBufferSize());
 
 				client->runCommands();
 			}
@@ -229,27 +225,27 @@ bool Server::openSocket() {
 	strncpy(addr.sun_path, socketPath_.c_str(), sizeof(addr.sun_path));
 
 	socketFd_ = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (log_.checkError(socketFd_, "could not create domain socket"))
+	if (log_.checkError(socketFd_, "SRV ", "could not create domain socket"))
 		return false;
 
 	rv = unlink(addr.sun_path); //FIXME (corner case): this does look a bit dangerous in case of funky paths, check if it is a socket first?
 	if (rv == -1 && errno != ENOENT && errno != ENOTDIR) /* ignore errors indicating the socket file did not exist */
-		if (log_.checkError(rv, "could not unlink domain socket file"))
+		if (log_.checkError(rv, "SRV ", "could not unlink domain socket file"))
 			return false;
 
 	rv = bind(socketFd_, (struct sockaddr*) &addr, sizeof(sockaddr_un)); //what is up with the address_len parameter value? and SUN_LEN()?
-	if (log_.checkError(rv, "could not bind domain socket"))
+	if (log_.checkError(rv, "SRV ", "could not bind domain socket"))
 		return false;
 
 	rv = listen(socketFd_, SOCKET_MAX_BACKLOG);
-	if (log_.checkError(rv, "could not listen on domain socket"))
+	if (log_.checkError(rv, "SRV ", "could not listen on domain socket"))
 		return false;
 
 	return true;
 }
 
 bool Server::closeSocket() {
-	if (log_.checkError(close(socketFd_), "could not close domain socket"))
+	if (log_.checkError(close(socketFd_), "SRV ", "could not close domain socket"))
 		return -1;
 	socketFd_ = -1;
 
@@ -263,22 +259,20 @@ int Server::forkProcess() {
 	int child_pid = fork();
 	switch (child_pid) {
 	case -1:	//this is an error (no child created at all)
-		log_.checkError(child_pid, "could not fork server");
+		log_.checkError(child_pid, "SRV ", "could not fork server");
 		return -1;
 		break;
 	case 0:	//this is the child
 		//TODO: setsid() should probably disabled if the server also spawns its own sub-servers
 		rv = setsid();
 		if (rv == -1) { //try to create a new session for the child so it's not a child anymore
-			log_.checkError(rv,
-					"could not create new session for forked process");
+			log_.checkError(rv, "SRV ", "could not create new session for forked process");
 			return -1;
 		}
 		return 0;
 		break;
 	default: //this is the parent with child_pid being the pid of the new child
-		LOG(Logger::INFO, "printserver forked to background. pid=%i\n",
-				child_pid);
+		LOG(Logger::INFO, "printserver forked to background. pid=%i\n", child_pid);
 		return child_pid;
 	}
 }

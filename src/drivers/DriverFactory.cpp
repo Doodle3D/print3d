@@ -11,7 +11,7 @@
 #include "DriverFactory.h"
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[DFC] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "DFCT", fmt, ##__VA_ARGS__)
 
 
 AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {

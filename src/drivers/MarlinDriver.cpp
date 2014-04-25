@@ -13,7 +13,7 @@
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "MLND", fmt, ##__VA_ARGS__)
 
 const int MarlinDriver::UPDATE_INTERVAL = 200;
 

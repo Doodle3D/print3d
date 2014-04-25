@@ -10,12 +10,25 @@
 
 #include <errno.h>
 #include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include "lua_compat.h"
 #include "../../logger.h"
 #include "../communicator.h"
+
+/* from lauxlib.h, openwrt refuses to include that here */
+#ifndef LUA_FILEHANDLE
+
+#define LUA_FILEHANDLE "FILE*"
+
+typedef struct luaL_Stream {
+  FILE *f;  /* stream (NULL for incompletely created streams) */
+  lua_CFunction closef;  /* to close stream (NULL for closed streams) */
+} luaL_Stream;
+
+#endif
 
 
 #define LIB_MOD_NAME "print3d"
@@ -30,7 +43,9 @@ static const char *GCODE_MD_SOURCE = "source";
 
 struct printerData_s {
 		char *deviceId;
+		int initialized;
 		ELOG_LEVEL logLevel;
+		FILE *logStream;
 };
 
 
@@ -58,7 +73,9 @@ static int initContext(lua_State* L) {
 		return -1;
 	}
 
-	if (log_open_stream(stderr, ctx->logLevel) < 0) {
+	if (ctx->initialized) return 0;
+
+	if (log_open_stream(ctx->logStream, ctx->logLevel) < 0) {
 		lua_pushnil(L);
 		lua_pushfstring(L, "could not open log stream (%s)", strerror(errno));
 		return -1;
@@ -69,6 +86,8 @@ static int initContext(lua_State* L) {
 		lua_pushfstring(L, "could not open IPC socket (%s)", strerror(errno));
 		return -1;
 	}
+
+	ctx->initialized = 1;
 
 	return 0;
 }
@@ -174,7 +193,9 @@ static int l_getPrinter(lua_State *L) {
 	*pd = (struct printerData_s*)malloc(sizeof(struct printerData_s));
 
 	(*pd)->deviceId = strdup(dev);
+	(*pd)->initialized = 0;
 	(*pd)->logLevel = LLVL_VERBOSE;
+	(*pd)->logStream = stderr;
 
 	ipc_free_device_list(devlist);
 	luaL_setmetatable(L, LIB_META_NAME);
@@ -333,6 +354,26 @@ static int l_getState(lua_State *L) {
 	}
 }
 
+//does not do communication. it sets the log stream of the client side, not the server side
+static int l_setLocalLogStream(lua_State *L) {
+	struct printerData_s *ctx = getContext(L);
+
+	if (lua_gettop(L) < 2) {
+		lua_pushnil(L);
+		lua_pushstring(L, "missing stream");
+		return 2;
+	}
+
+	//Note: this basically mimics tofile() from Lua's liolib.c
+	luaL_Stream* ls = (luaL_Stream*)luaL_checkudata(L, 2, LUA_FILEHANDLE);
+	FILE *stream = ls->f;
+
+	ctx->logStream = stream;
+
+	lua_pushboolean(L, 1);
+	return 1;
+}
+
 //does not do communication. it sets the log level of the client side, not the server side
 static int l_setLocalLogLevel(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
@@ -343,12 +384,22 @@ static int l_setLocalLogLevel(lua_State *L) {
 		return 2;
 	}
 
-	const char *level_name = luaL_checkstring(L, 2);
-	ELOG_LEVEL level = log_get_level_number(level_name);
-	if (level == LLVL_INVALID) {
-		lua_pushnil(L);
-		lua_pushstring(L, "invalid log level name");
-		return 2;
+	ELOG_LEVEL level = LLVL_INVALID;
+
+	if (lua_isnumber(L, 2)) {
+		level = luaL_checkinteger(L, 2);
+		if (level < 1 || level > NUM_LOG_LEVELS) {
+			lua_pushnil(L);
+			lua_pushstring(L, "invalid log level number");
+		}
+	} else {
+		const char *level_name = luaL_checkstring(L, 2);
+		level = log_get_level_number(level_name);
+		if (level == LLVL_INVALID) {
+			lua_pushnil(L);
+			lua_pushstring(L, "invalid log level name");
+			return 2;
+		}
 	}
 
 	ctx->logLevel = level;
@@ -377,6 +428,7 @@ static const struct luaL_Reg print3d_m[] = {
 		{"heatup", l_heatup},
 		{"getProgress", l_getProgress},
 		{"getState", l_getState},
+		{"setLocalLogStream", l_setLocalLogStream},
 		{"setLocalLogLevel", l_setLocalLogLevel},
 		{NULL, NULL}
 };

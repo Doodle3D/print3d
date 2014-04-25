@@ -37,7 +37,7 @@ bool Client::sendData(const char* buf, int buflen) {
 
 	int rv = ::send(fd_, buf, buflen, 0);
 
-	logger_.checkError(rv, "could not send data in client with fd %i", getFileDescriptor());
+	logger_.checkError(rv, "CLI ", "could not send data in client with fd %i", getFileDescriptor());
 
 	return (rv == buflen);
 }

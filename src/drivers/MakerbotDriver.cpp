@@ -35,7 +35,7 @@ using std::vector;
 
 //NOTE: see Server.cpp for comments on this macro
 #ifndef LOG
-# define LOG(lvl, fmt, ...) log_.log(lvl, "[MBD] " fmt, ##__VA_ARGS__)
+# define LOG(lvl, fmt, ...) log_.log(lvl, "MBTD", fmt, ##__VA_ARGS__)
 #endif
 
 //NOTE: this should an amount that fits in one GcodeBuffer's bucket because getNextLine() cannot cross bucket boundaries
@@ -557,14 +557,14 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 
 int MakerbotDriver::readAndCheckError(int timeout) {
 	int rv = serial_.readByteDirect(timeout);
-	log_.checkError(rv, "cannot read from device");
+	log_.checkError(rv, "MBTD", "cannot read from device");
 	if (rv < 0) handleReadError(rv);
 	return rv;
 }
 
 int MakerbotDriver::readAndCheckError(unsigned char *buf, size_t buflen, int timeout) {
 	int rv = serial_.readBytesDirect(buf, buflen, timeout);
-	log_.checkError(rv, "cannot read from device");
+	log_.checkError(rv, "MBTD", "cannot read from device");
 	if (rv < 0) handleReadError(rv);
 	return rv;
 }

@@ -30,6 +30,8 @@ extern char *strdup (__const char *__s);
 extern "C" {
 #endif
 
+const char *LOG_LEVEL_NAMES[] = { "_invalid_", "quiet", "error", "warning", "info", "verbose", "bulk", NULL };
+
 const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* special codes (not sent or received) */
 		{ IPC_CMDS_INVALID, "invalid", "-", "" },
@@ -153,12 +155,12 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 	const char* fmtp = format;
 
 	if (!fmtp) {
-		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
+		log_message(LLVL_BULK, "IPC ", "construct_cmd: NULL format specifier, assuming no arguments");
 		fmtp = "";
 	}
 
 	if (!equal(description->arg_fmt, "*") && !equal(description->arg_fmt, fmtp)) {
-		log_message(LLVL_WARNING, "[IPC] construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
+		log_message(LLVL_WARNING, "IPC ", "construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
 	}
 
 	char* cmd = 0;
@@ -194,7 +196,7 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 			break;
 		}
 		default:
-			log_message(LLVL_WARNING, "[IPC] illegal format specifier in construct_cmd (%c)", argtype);
+			log_message(LLVL_WARNING, "IPC ", "illegal format specifier in construct_cmd (%c)", argtype);
 			//TODO: free unfinished command and return, instead of ignoring this
 			break;
 		}

@@ -18,7 +18,7 @@
 using std::string;
 
 //NOTE: see Server.cpp for comments on these macros
-#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[CDH] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "CMDH", fmt, ##__VA_ARGS__)
 
 
 //private static
@@ -206,7 +206,7 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 
 	int filesize;
 	char *data = readFileContents(filename, &filesize);
-	if (!Logger::getInstance().checkError(data ? 0 : -1, "could not read contents of file '%s'", filename)) {
+	if (!Logger::getInstance().checkError(data ? 0 : -1, "CMDH", "could not read contents of file '%s'", filename)) {
 		LOG(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
 		//LOG(Logger::BULK, "read gcode: '%s'", data);
 		string s(data);

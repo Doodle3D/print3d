@@ -36,10 +36,10 @@ public:
 	bool isOpen() const;
 	ELOG_LEVEL getLevel() const;
 	void setLevel(ELOG_LEVEL level);
-	void log(ELOG_LEVEL level, const char* format, ...) const;
-	void vaLog(ELOG_LEVEL level, const char* format, va_list args) const;
-	bool checkError(int rv, const char* format, ...) const;
-	bool vaCheckError(int rv, const char* format, va_list args) const;
+	void log(ELOG_LEVEL level, const char *module, const char *format, ...) const;
+	void vaLog(ELOG_LEVEL level, const char *module, const char *format, va_list args) const;
+	bool checkError(int rv, const char *module, const char *format, ...) const;
+	bool vaCheckError(int rv, const char *module, const char *format, va_list args) const;
 	void logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isReply = false);
 
 private:

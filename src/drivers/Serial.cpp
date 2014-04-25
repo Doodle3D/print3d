@@ -55,7 +55,7 @@ int	tcflush(int fildes, int action);
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[SER] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "SER ", fmt, ##__VA_ARGS__)
 
 
 const int Serial::READ_BUF_SIZE = 1024;
@@ -71,7 +71,7 @@ int Serial::open(const char* file) {
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
 	//LOG(Logger::VERBOSE,"  serial opened %i",portFd_);
 	if (portFd_ < 0) {
-		LOG(Logger::ERROR,"Could not open port %s (%s)\n", file, strerror(errno));
+		LOG(Logger::ERROR, "Could not open port %s (%s)\n", file, strerror(errno));
 		return portFd_;
 	}
 
@@ -96,7 +96,7 @@ bool Serial::isOpen() const {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
-	LOG(Logger::VERBOSE,"setSpeed(): %i",speed);
+	LOG(Logger::VERBOSE, "setSpeed(): %i", speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -182,7 +182,7 @@ bool Serial::write(const unsigned char b) {
 
 int Serial::readData(int timeout, bool onlyOnce) {
   //Logger& log = Logger::getInstance();
-	//log.log(Logger::VERBOSE,"Serial::readData");
+	//log.log(Logger::VERBOSE, "SER ", "Serial::readData");
 
 
   int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, timeout, onlyOnce ? 1 : 0);

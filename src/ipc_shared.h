@@ -91,6 +91,10 @@ typedef struct ipc_gcode_metadata_s {
 	const char *source;
 } ipc_gcode_metadata_s;
 
+/** Defintions of log level names (levels are defined in both C and C++ logger.h files).
+ */
+extern const char *LOG_LEVEL_NAMES[];
+
 /** Definitions of names for available IPC commands.
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];

@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
 		}
 
 		if (devlist[0] == NULL && forceStart == 0) { //no devices found, and no force-run
-			fprintf(stderr, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'\n");
+			fprintf(stderr, "no devices found, please connect a printer and start a server for it, or re-run with '-F'\n");
 			exit(1);
 		} else if (devlist[0] == NULL) { //no devices, but force-run requested
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed

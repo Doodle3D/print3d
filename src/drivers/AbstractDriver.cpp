@@ -16,7 +16,7 @@ using std::string;
 using std::size_t;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[ABD] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "ABSD", fmt, ##__VA_ARGS__)
 
 //STATIC
 //Note: the state names are used all the way on the other end in javascript, consider this when changing them.
@@ -242,7 +242,7 @@ int AbstractDriver::readData() {
 	//LOG(Logger::BULK, "readData()");
 
 	int rv = serial_.readData();
-	log_.checkError(rv, "cannot read from device");
+	log_.checkError(rv, "ABSD", "cannot read from device");
 	if (rv == -2) {
 		LOG(Logger::ERROR, "remote end closed connection, closing port");
 		closeConnection();

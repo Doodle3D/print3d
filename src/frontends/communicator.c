@@ -19,6 +19,9 @@
 #include "../logger.h"
 #include "../utils.h"
 
+//NOTE: see Server.cpp for comments on these macros
+#define LOG(lvl, fmt, ...) log_message(lvl, "COMM", fmt, ##__VA_ARGS__)
+
 #define DEBUG_GCODE_FRAGMENTATION /** Uncomment to enable line counting while sending gcode data. */
 
 /***********
@@ -55,20 +58,20 @@ static int openSocketInternal(const char *deviceId) {
 	int fd;
 
 	if (!deviceId) {
-		log_message(LLVL_ERROR, "missing device ID");
+		LOG(LLVL_ERROR, "missing device ID");
 		return -1;
 	}
 
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	if (log_check_error(fd, "could not create domain socket")) return -1;
+	if (log_check_error(fd, "COMM", "could not create domain socket")) return -1;
 
 	char *path = ipc_construct_socket_path(deviceId);
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
 
-	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "could not connect domain socket with path '%s'", path)) {
+	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "COMM", "could not connect domain socket with path '%s'", path)) {
 		close(fd);
 		free(path);
 		fd = -1;
@@ -77,8 +80,8 @@ static int openSocketInternal(const char *deviceId) {
 	free(path);
 
 	int flags = fcntl(fd, F_GETFL, 0);
-	log_check_error(flags, "could not obtain flags for domain socket");
-	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "could not enable non-blocking mode on domain socket");
+	log_check_error(flags, "COMM", "could not obtain flags for domain socket");
+	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "COMM", "could not enable non-blocking mode on domain socket");
 
 	signal(SIGPIPE, SIG_IGN);
 
@@ -93,7 +96,7 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 	if (fd < 0) return NULL;
 
 	if (!sbuf) {
-		log_message(LLVL_ERROR, "ipc command send buffer empty (construction failed?)");
+		LOG(LLVL_ERROR, "ipc command send buffer empty (construction failed?)");
 		setError("ipc command construction failed");
 		return NULL;
 	}
@@ -101,18 +104,18 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 	log_ipc_cmd(LLVL_VERBOSE, sbuf, sbuflen, 0);
 	int rv = send(fd, sbuf, sbuflen, 0); //this should block until all data has been sent
 
-	if (log_check_error(rv, "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
+	if (log_check_error(rv, "COMM", "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
 		setError("could not send ipc command");
 		return NULL;
 	} else if (rv < sbuflen) {
-		log_message(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
+		LOG(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
 		setError("could not send complete ipc command");
 	}
 
 	char *rbuf = 0;
 	*rbuflen = 0;
 	//read only once to avoid unneccessary timeout but still allow for the timeout to happen
-	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "error reading data from domain socket");
+	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "COMM", "error reading data from domain socket");
 
 	return rbuf;
 }
@@ -131,10 +134,10 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 
 	switch(ipc_cmd_get(rcmd, rcmdlen)) {
 		case IPC_CMDR_OK: {
-			//log_message(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
+			//LOG(LLVL_VERBOSE, "received ipc reply 'OK' (%i bytes) in response to 0x%x", rcmdlen, ipc_cmd_get(scmd, scmdlen));
 			int numArgs = ipc_cmd_num_args(rcmd, rcmdlen);
 			if (numArgs != expectedArgCount) {
-				log_message(LLVL_ERROR, "received ipc response with %i arguments (expected %i)", numArgs, expectedArgCount);
+				LOG(LLVL_ERROR, "received ipc response with %i arguments (expected %i)", numArgs, expectedArgCount);
 				rv = -1;
 			}
 			break;
@@ -142,7 +145,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 		case IPC_CMDR_ERROR: {
 			char *errmsg = 0;
 			ipc_cmd_get_string_arg(rcmd, rcmdlen, 0, &errmsg);
-			//log_message(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
+			//LOG(LLVL_VERBOSE, "received ipc reply 'ERROR' (%i bytes) in response to 0x%x (%s)", rcmdlen, ipc_cmd_get(scmd, scmdlen), errmsg);
 			setError("server returned error (%s)", errmsg);
 			free(errmsg);
 			rv = -1;
@@ -167,7 +170,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 			break;
 		}
 		default:
-			log_message(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
+			LOG(LLVL_WARNING, "received unexpected IPC reply 0x%x for command 0x%x", ipc_cmd_get(rcmd, rcmdlen), ipc_cmd_get(scmd, scmdlen));
 			setError("server returned unexpected response");
 			rv = -1;
 			break;
@@ -316,7 +319,7 @@ int comm_clearGcode() {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		log_message(LLVL_INFO, "gcode cleared");
+		LOG(LLVL_INFO, "gcode cleared");
 	} else {
 		rv = result;
 	}
@@ -337,7 +340,7 @@ int comm_startPrintGcode() {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		log_message(LLVL_VERBOSE, "gcode print started");
+		LOG(LLVL_VERBOSE, "gcode print started");
 	} else {
 		rv = result;
 	}
@@ -363,7 +366,7 @@ int comm_stopPrintGcode(const char *endCode) {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		log_message(LLVL_VERBOSE, "gcode print stopped");
+		LOG(LLVL_VERBOSE, "gcode print stopped");
 	} else {
 		rv = result;
 	}
@@ -383,7 +386,7 @@ int comm_sendGcodeFile(const char *file) {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		log_message(LLVL_VERBOSE, "gcode appended from file '%s'", file);
+		LOG(LLVL_VERBOSE, "gcode appended from file '%s'", file);
 	} else {
 		rv = result;
 	}
@@ -410,7 +413,7 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 	int packetNum = 0;
 #endif
 
-	log_message(LLVL_INFO, "starting transmit of %i bytes of gcode data, maximum packet size is %i", strlen(gcode), MAX_PACKET_SIZE);
+	LOG(LLVL_INFO, "starting transmit of %i bytes of gcode data, maximum packet size is %i", strlen(gcode), MAX_PACKET_SIZE);
 	for (;;) {
 		if (startP > lastPos) break;
 
@@ -423,10 +426,10 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 
 		if (endP < startP) { //line appears to be longer than MAX_PACKET_SIZE...
 #ifdef DEBUG_GCODE_FRAGMENTATION
-			log_message(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, approx. line num: %i, packet #%i)",
+			LOG(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, approx. line num: %i, packet #%i)",
 					MAX_PACKET_SIZE, startP - gcode, lineNum, packetNum);
 #else
-			log_message(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, packet #%i)",
+			LOG(LLVL_ERROR, "comm_sendGcodeData: could not find line break within max packet boundary of %i bytes (offset: %i, packet #%i)",
 					MAX_PACKET_SIZE, startP - gcode, packetNum);
 #endif
 			rv = -1;
@@ -449,7 +452,7 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 		char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 		int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 		if (result >= 0) {
-			log_message(LLVL_BULK, "gcode packet #%i transmitted in transaction (%i bytes)", packetNum, endP - startP + 1);
+			LOG(LLVL_BULK, "gcode packet #%i transmitted in transaction (%i bytes)", packetNum, endP - startP + 1);
 		} else {
 			rv = result;
 		}
@@ -465,7 +468,7 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 		packetNum++;
 	}
 	uint32_t endTime = getMillis();
-	log_message(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
+	LOG(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
 
 	return rv;
 }
