@@ -50,7 +50,7 @@ static ACTION_TYPE action = AT_NONE;
 
 
 void parseOptions(int argc, char **argv) {
-	char ch;
+	int ch;
 	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;

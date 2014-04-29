@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
 	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
-	char ch;
+	int ch;
 
 	while ((ch = getopt_long(argc, argv, "hQqvVfFSd:p:", long_options, NULL)) != -1) {
 		switch (ch) {
