@@ -29,18 +29,20 @@ static struct option long_options[] = {
 		{"no-fork", no_argument, NULL, 'F'},
 		{"force", no_argument, NULL, 'S'},
 		{"device", required_argument, NULL, 'd'},
+		{"printer", required_argument, NULL, 'p'},
 		{NULL, 0, NULL, 0}
 };
 
 
 int main(int argc, char** argv) {
 	string serialDevice = "";
+	string printerName = "";
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
 	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
-	char ch;
+	int ch;
 
-	while ((ch = getopt_long(argc, argv, "hQqvVfFSd:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hQqvVfFSd:p:", long_options, NULL)) != -1) {
 		switch (ch) {
 			case 'h': showHelp = true; break;
 			case 'Q': logLevel = Logger::QUIET; break;
@@ -51,6 +53,7 @@ int main(int argc, char** argv) {
 			case 'F': doFork = -1; break;
 			case 'S': forceStart = true; break;
 			case 'd': serialDevice = optarg; break;
+			case 'p': printerName = optarg; break;
 		}
 	}
 
@@ -78,6 +81,7 @@ int main(int argc, char** argv) {
 		printf("\t-F,--no-fork\t\tDo not fork the server process\n");
 		printf("\t-S,--force\t\tForce starting the server with a default device if none could be found\n");
 		printf("\t-d,--device\t\tThe printer serial device to use (any prefix path will be cut off)\n");
+		printf("\t-p,--printer\t\tThe 3D printer driver to use (use help to get more information)\n");
 		::exit(0);
 	}
 
@@ -111,13 +115,17 @@ int main(int argc, char** argv) {
 		size_t lastSlash = serialDevice.rfind('/');
 		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
 	}
-
 	std::cout << "Using printer device: '" << serialDevice << "'" << endl;
+
+	std::cout << "printer type: '" << printerName << "'" << endl;
+	if (printerName.compare("help") == 0) {
+		// TODO: print list of available printers.
+	}
 
 	Logger& log = Logger::getInstance();
 	log.open(stderr, logLevel);
 
-	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
+	Server s(printerName, "/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
 
 	int rv;
 
