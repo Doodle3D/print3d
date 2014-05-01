@@ -32,13 +32,19 @@ const bool Server::FORK_BY_DEFAULT = false;
 const int Server::SOCKET_MAX_BACKLOG = 5; //private
 const int Server::SELECT_LOG_FAST_LOOP = -1;
 
-Server::Server(const string& serialPortPath, const string& socketPath) :
+Server::Server(const string& serialPortPath, const string& socketPath, const string& printerName) :
 		socketPath_(socketPath), log_(Logger::getInstance()), socketFd_(-1), printerDriver_(0)
 {
 	if (!settings_init()) LOG(Logger::ERROR, "could not initialize uci settings context");
 
 	const char *uci_key = "wifibox.general.printer_type";
-	const char *printerType = settings_get(uci_key);
+	const char *printerType;
+
+	if (printerName.empty())
+		printerType = settings_get(uci_key);
+	else
+		printerType = printerName.c_str();
+
 	if (printerType) {
 		LOG(Logger::INFO, "printer type from settings: '%s'", printerType);
 		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 115200);

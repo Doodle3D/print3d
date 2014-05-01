@@ -196,7 +196,7 @@ static int act_printProgress() {
 
 	comm_closeSocket();
 
-	printf("print progress: %zi of %zi lines (%zi buffered)", currentLine, totalLines, bufferedLines);
+	printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
 	if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
 	printf("\n");
 
