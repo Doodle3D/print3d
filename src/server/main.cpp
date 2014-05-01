@@ -12,10 +12,12 @@
 #include <iostream>
 #include <string>
 #include "../ipc_shared.h"
+#include "../drivers/DriverFactory.h"
 #include "Logger.h"
 #include "Server.h"
 
 using std::string;
+using std::cout;
 using std::cerr;
 using std::endl;
 
@@ -54,6 +56,9 @@ int main(int argc, char** argv) {
 			case 'S': forceStart = true; break;
 			case 'd': serialDevice = optarg; break;
 			case 'p': printerName = optarg; break;
+
+			case ':': case '?':
+				::exit(1);
 		}
 	}
 
@@ -85,21 +90,41 @@ int main(int argc, char** argv) {
 		::exit(0);
 	}
 
+	//handle the '-p help' case before looking for devices
+	if (printerName.compare("help") == 0) {
+		DriverFactory::vec_DriverInfoP infos = DriverFactory::getDriverInfo();
+		cout << "Listing supported printer drivers and device models they support." << endl;
+
+		for (DriverFactory::vec_DriverInfoP::const_iterator d_it = infos.begin();
+				d_it != infos.end(); ++d_it) {
+			const AbstractDriver::DriverInfo* di = *d_it;
+			cout << "* Models supported by driver '" << di->name << "':";
+
+			for (AbstractDriver::vec_FirmwareDescription::const_iterator m_it = di->supportedFirmware.begin();
+					m_it != di->supportedFirmware.end(); ++m_it) {
+				cout << " " << (*m_it).name;
+			}
+			cout << "." << endl;
+		}
+
+		::exit(0);
+	}
+
 	if (serialDevice.empty()) {
 		char **devlist = ipc_find_devices();
 
 		if (!devlist) { //no list
-			cerr << "error retrieving device list (" << strerror(errno) << ")" << endl;
+			cerr << "Error: could not retrieve device list (" << strerror(errno) << ")." << endl;
 			exit(1);
 		}
 
 		if (!devlist[0] && !forceStart) { //no devices and no force-start
-			cerr << "no devices found, please connect a printer or re-run with '-S'" << endl;
+			cerr << "Error: no devices found, please connect a printer or re-run with '-S'." << endl;
 			::exit(1);
 		} else if (!devlist[0]) { //no devices but force-start requested
 			serialDevice = IPC_DEFAULT_DEVICE_ID;
 		} else if (devlist[1] != 0) { //more than one device
-			cerr << "more than one device found (listed below), please specify one of the following:" << endl;
+			cerr << "Error: more than one device found (listed below), please specify one of the following:" << endl;
 			for (int i = 0; devlist[i] != 0; i++) {
 				const char *item = devlist[i];
 				cerr << " '" << item << "'";
@@ -115,23 +140,28 @@ int main(int argc, char** argv) {
 		size_t lastSlash = serialDevice.rfind('/');
 		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
 	}
-	std::cout << "Using printer device: '" << serialDevice << "'" << endl;
+	cout << "Using printer device: '" << serialDevice << "'." << endl;
 
-	std::cout << "printer type: '" << printerName << "'" << endl;
-	if (printerName.compare("help") == 0) {
-		// TODO: print list of available printers.
-	}
+	if (!printerName.empty())
+		cout << "Using printer type: '" << printerName << "'." << endl;
+	else
+		cout << "Using printer type from UCI configuration." << endl;
 
 	Logger& log = Logger::getInstance();
 	log.open(stderr, logLevel);
 
-	Server s(printerName, "/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()));
+	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()), printerName);
+
+	if (!s.getDriver()) {
+		cerr << "Error: could not create printer driver." << endl;
+		::exit(1);
+	}
 
 	int rv;
 
 	if (doFork == 0) rv = s.start();
 	else rv = s.start((doFork == 1) ? true : false);
 
-	if (rv >= 0) exit(0);
-	else exit(1);
+	if (rv >= 0) ::exit(0);
+	else ::exit(1);
 }

@@ -193,6 +193,8 @@ const AbstractDriver::DriverInfo& MakerbotDriver::getDriverInfo() {
 	static AbstractDriver::DriverInfo info;
 
 	if (supportedFirmware.empty()) {
+		info.name = "Makerbot";
+
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_replicator2") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_replicator2x") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_thingomatic") );

@@ -15,37 +15,41 @@
 
 
 AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
-  static vec_DriverInfoP driverInfos;
+	const vec_DriverInfoP& driverInfos = getDriverInfo();
 
-  //LOG(Logger::VERBOSE, "createDriver()");
+	//LOG(Logger::VERBOSE, "createDriver()");
+	LOG(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
 
-  // list all printer drivers (their driver info)
-  if(driverInfos.empty()) {
-    driverInfos.push_back( &MarlinDriver::getDriverInfo() );
-    driverInfos.push_back(&MakerbotDriver::getDriverInfo());
-    LOG(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
-  }
+	// loop trough driver info's
+	vec_DriverInfoP::const_iterator d;
+	for (d = driverInfos.begin(); d != driverInfos.end(); ++d) {
+		const AbstractDriver::DriverInfo& di = **d;
 
-  // loop trough driver info's
-  vec_DriverInfoP::iterator d;
-  for (d = driverInfos.begin();
-       d != driverInfos.end();
-       ++d) {
-    const AbstractDriver::DriverInfo& di = **d;
+		// loop trough driver info's supported firmware
+		AbstractDriver::vec_FirmwareDescription::const_iterator f;
+		for (f = di.supportedFirmware.begin();
+				f != di.supportedFirmware.end();
+				++f) {
 
-    // loop trough driver info's supported firmware
-    AbstractDriver::vec_FirmwareDescription::const_iterator f;
-    for (f = di.supportedFirmware.begin();
-         f != di.supportedFirmware.end();
-         ++f) {
+			//LOG(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
+			// if match create driver instance
+			if((*f).name == driverName) {
+				LOG(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
+				return di.creator(server, serialPortPath, baudrate);
+			}
+		}
+	}
 
-      //LOG(Logger::VERBOSE, "    firmware name: %s",(*f).name.c_str());
-      // if match create driver instance
-      if((*f).name == driverName) {
-        LOG(Logger::INFO, "Created firmware: %s",(*f).name.c_str());
-        return di.creator(server, serialPortPath,baudrate);
-      }
-    }
-  }
- return 0;
+	return 0;
+}
+
+const DriverFactory::vec_DriverInfoP& DriverFactory::getDriverInfo() {
+	static vec_DriverInfoP driverInfos;
+
+	if(driverInfos.empty()) {
+		driverInfos.push_back( &MarlinDriver::getDriverInfo());
+		driverInfos.push_back(&MakerbotDriver::getDriverInfo());
+	}
+
+	return driverInfos;
 }

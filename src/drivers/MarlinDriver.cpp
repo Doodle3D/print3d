@@ -234,6 +234,8 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 	static AbstractDriver::DriverInfo info;
 
 	if (supportedFirmware.empty()) {
+		info.name = "Marlin";
+
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("rigidbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2") );

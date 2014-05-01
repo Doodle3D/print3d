@@ -510,7 +510,7 @@ protected:
 private:
     void split(std::vector<std::string> &tokens, const std::string& text, char sep)
     {
-        unsigned int start = 0, end = 0;
+        std::string::size_type start = 0, end = 0;
         while ((end = text.find(sep, start)) != std::string::npos) {
             tokens.push_back(text.substr(start, end - start));
             start = end + 1;

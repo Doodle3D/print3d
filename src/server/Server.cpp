@@ -40,19 +40,22 @@ Server::Server(const string& serialPortPath, const string& socketPath, const str
 	const char *uci_key = "wifibox.general.printer_type";
 	const char *printerType;
 
-	if (printerName.empty())
+	if (printerName.empty()) {
 		printerType = settings_get(uci_key);
-	else
+		if (printerType)
+			LOG(Logger::INFO, "printer type from settings: '%s'", printerType);
+		else
+			LOG(Logger::ERROR, "could not retrieve printer type from settings");
+	} else {
 		printerType = printerName.c_str();
+		LOG(Logger::INFO, "printer type from command line: '%s'", printerType);
+	}
 
 	if (printerType) {
-		LOG(Logger::INFO, "printer type from settings: '%s'", printerType);
 		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 115200);
-		if (printerDriver_ == 0) {
+
+		if (!printerDriver_)
 			LOG(Logger::ERROR, "no printer driver found for type '%s'", printerType);
-		}
-	} else {
-		LOG(Logger::ERROR, "could not retrieve printer type from settings");
 	}
 
 	driverDelay = 0;
