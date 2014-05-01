@@ -32,7 +32,7 @@ public:
 	bool registerFileDescriptor(int fd);
 	bool unregisterFileDescriptor(int fd);
 
-	void cancelAllTransactions();
+	void cancelAllTransactions(const Client *exclude = 0);
 
 	AbstractDriver* getDriver();
 	const AbstractDriver* getDriver() const;

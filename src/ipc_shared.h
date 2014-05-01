@@ -53,7 +53,7 @@ typedef enum IPC_TEMPERATURE_PARAMETER {
 	IPC_TEMP_HOTEND = 1,
 	IPC_TEMP_HOTEND_TGT,
 	IPC_TEMP_BED,
-	IPC_TEMP_BED_TGT,
+	IPC_TEMP_BED_TGT
 } IPC_TEMPERATURE_PATAMETER;
 
 /** Structure to associate an IPC command code with metadata.

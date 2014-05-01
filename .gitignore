@@ -3,3 +3,4 @@ src/print3d
 src/Testing
 build
 *.swp
+*~

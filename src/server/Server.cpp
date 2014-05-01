@@ -191,8 +191,12 @@ bool Server::unregisterFileDescriptor(int fd) {
 }
 
 
-void Server::cancelAllTransactions() {
+void Server::cancelAllTransactions(const Client *exclude) {
+	if (exclude) LOG(Logger::VERBOSE, "cancelling all transactions except for fd %i (#clients: %i)", exclude->getFileDescriptor(), clients_.size());
+	else LOG(Logger::VERBOSE, "cancelling all transactions (#clients: %i)", clients_.size());
+
 	for (vec_ClientP::iterator it = clients_.begin(); it != clients_.end(); it++) {
+		if (exclude == *it) continue;
 		Client::Transaction &trx = (*it)->getTransaction();
 		trx.cancelled = true;
 	}

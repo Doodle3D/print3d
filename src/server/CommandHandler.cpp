@@ -119,7 +119,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
 	LOG(Logger::VERBOSE, "received clear gcode command");
 	Server &server = client.getServer();
-	server.cancelAllTransactions();
+	server.cancelAllTransactions(&client);
 	server.getDriver()->clearGCode();
 	client.sendOk();
 }
@@ -233,7 +233,7 @@ void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buf
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	//make sure no other gcode transfers continue after sending stop gcode
-	client.getServer().cancelAllTransactions();
+	client.getServer().cancelAllTransactions(&client);
 
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		char *argText = 0;
