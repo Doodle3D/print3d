@@ -87,7 +87,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 		int16_t arg;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &arg);
 		IPC_TEMPERATURE_PARAMETER which = (IPC_TEMPERATURE_PARAMETER)arg;
-		LOG(Logger::BULK, "received get temperature command with arg %i", which);
+		LOG(Logger::VERBOSE, "received get temperature command with arg %i", which);
 		int temp = 0;
 		switch(which) {
 		case IPC_TEMP_HOTEND: temp = driver->getTemperature(); break;
@@ -147,7 +147,7 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 	}
 
 	if (transactionFlags & TRX_FIRST_CHUNK_BIT) {
-		LOG(Logger::BULK, "clearing gcode transaction buffer");
+		LOG(Logger::VERBOSE, "hnd_gcodeAppend(): clearing gcode transaction buffer");
 		transaction.buffer.clear();
 		transaction.active = true;
 	}
@@ -165,13 +165,13 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 
 	char* data = 0;
 	ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-	LOG(Logger::BULK, "received append gcode command with argument length %i (%i args) [seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
+	LOG(Logger::VERBOSE, "hnd_gcodeAppend(): received append gcode command with argument length %i (%i args) [seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
 			numArgs, metaData.seqNumber, metaData.seqTotal, metaData.source ? metaData.source->c_str() : "(null)");
 	transaction.buffer.append(data);
 	free(data);
 
 	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
-		LOG(Logger::BULK, "appending and clearing gcode transaction buffer");
+		LOG(Logger::VERBOSE, "hnd_gcodeAppend():  appending and clearing gcode transaction buffer");
 		AbstractDriver* driver = server.getDriver();
 		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, &metaData);
 		transaction.buffer.clear();
@@ -207,7 +207,7 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 	int filesize;
 	char *data = readFileContents(filename, &filesize);
 	if (!Logger::getInstance().checkError(data ? 0 : -1, "CMDH", "could not read contents of file '%s'", filename)) {
-		LOG(Logger::VERBOSE, "read %i bytes of gcode", strlen(data));
+		LOG(Logger::VERBOSE, "  read %i bytes of gcode", strlen(data));
 		//LOG(Logger::BULK, "read gcode: '%s'", data);
 		string s(data);
 		free(data);

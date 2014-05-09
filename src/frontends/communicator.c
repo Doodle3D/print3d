@@ -58,7 +58,7 @@ static int openSocketInternal(const char *deviceId) {
 	int fd;
 
 	if (!deviceId) {
-		LOG(LLVL_ERROR, "missing device ID");
+		LOG(LLVL_ERROR, "openSocketInternal(): missing device ID");
 		return -1;
 	}
 
@@ -108,7 +108,7 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 		setError("could not send ipc command");
 		return NULL;
 	} else if (rv < sbuflen) {
-		LOG(LLVL_WARNING, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
+		LOG(LLVL_ERROR, "could not send complete ipc command 0x%i (%i bytes written)", ipc_cmd_get(sbuf, sbuflen), rv);
 		setError("could not send complete ipc command");
 	}
 
@@ -340,7 +340,7 @@ int comm_startPrintGcode() {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		LOG(LLVL_VERBOSE, "gcode print started");
+		LOG(LLVL_INFO, "gcode print started");
 	} else {
 		rv = result;
 	}
@@ -366,7 +366,7 @@ int comm_stopPrintGcode(const char *endCode) {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		LOG(LLVL_VERBOSE, "gcode print stopped");
+		LOG(LLVL_INFO, "gcode print stopped");
 	} else {
 		rv = result;
 	}
@@ -386,7 +386,7 @@ int comm_sendGcodeFile(const char *file) {
 	int rv = 0;
 	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
 	if (result >= 0) {
-		LOG(LLVL_VERBOSE, "gcode appended from file '%s'", file);
+		LOG(LLVL_INFO, "gcode appended from file '%s'", file);
 	} else {
 		rv = result;
 	}

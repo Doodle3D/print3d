@@ -66,10 +66,10 @@ Serial::Serial()
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-  LOG(Logger::VERBOSE,"open(): %s",file);
+  LOG(Logger::INFO,"open(): %s",file);
 
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
-	//LOG(Logger::VERBOSE,"  serial opened %i",portFd_);
+	//LOG(Logger::VERBOSE,"  serial open returned %i", portFd_);
 	if (portFd_ < 0) {
 		LOG(Logger::ERROR, "Could not open port %s (%s)\n", file, strerror(errno));
 		return portFd_;
@@ -96,7 +96,7 @@ bool Serial::isOpen() const {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
-	LOG(Logger::VERBOSE, "setSpeed(): %i", speed);
+	LOG(Logger::INFO, "setSpeed(): %i", speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -153,7 +153,7 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
-  //LOG(Logger::VERBOSE,"Serial::send(): %s",code);
+  //LOG(Logger::VERBOSE,"Serial::send(): %s", code);
 	if (portFd_ >= 0) {
 		::write(portFd_, code, strlen(code));
 		return true;

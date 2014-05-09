@@ -16,7 +16,7 @@
 #include "../server/Logger.h"
 
 #ifndef LOG
-# define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[MBD] " fmt, ##__VA_ARGS__)
+# define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "MBTD ", fmt, ##__VA_ARGS__)
 #endif
 
 using namespace std; //FIXME: do not do this in header
@@ -35,36 +35,36 @@ public:
 	S3GParser()
 	: bufferPos(0), bufferSize(0), lineNumber(0), buffer(0)
 	{
-		commandTable[129] = (Command) { "<iiiI", "\t[129] Absolute move to (%i,%i,%i) at DDA %i" };
-		commandTable[130] = (Command) { "<iii","\t[130] Machine position set as (%i,%i,%i)" };
-		commandTable[131] = (Command) { "<BIH","\t[131] Home minimum on %X, feedrate %i, timeout %i s" };
-		commandTable[132] = (Command) { "<BIH","\t[132] Home maximum on %X, feedrate %i, timeout %i s" };
-		commandTable[133] = (Command) { "<I","\t[133] Delay of %i us" };
-		commandTable[134] = (Command) { "<B","\t[134] Change extruder %i" };
-		commandTable[135] = (Command) { "<BHH","\t[135] Wait until extruder %i ready (%i ms between polls, %i s timeout" };
-		commandTable[136] = (Command) { "", "printToolAction"};
-		commandTable[137] = (Command) { "<B", "\t[137] Enable/disable steppers %X" };
-		commandTable[138] = (Command) { "<H", "\t[138] User block on ID %i" };
-		commandTable[139] = (Command) { "<iiiiiI","\t[139] Absolute move to (%i,%i,%i,%i,%i) at DDA %i" };
-		commandTable[140] = (Command) { "<iiiii","\t[140] Set extended position as (%i,%i,%i,%i,%i)" };
-		commandTable[141] = (Command) { "<BHH","\t[141] Wait for platform %i (%i ms between polls, %i s timeout)" };
-		commandTable[142] = (Command) { "<iiiiiIB","\t[142] Move to (%i,%i,%i,%i,%i) in %i us (relative: %X)" };
-		commandTable[143] = (Command) { "<b","\t[143] Store home position for axes %d" };
-		commandTable[144] = (Command) { "<b","\t[144] Recall home position for axes %d" };
-		commandTable[145] = (Command) { "<BB","\t[145] Set pot axis %i to %i" };
-		commandTable[146] = (Command) { "<BBBBB","\t[146] Set RGB led red %i, green %i, blue %i, blink rate %i, effect %i" };
-		commandTable[147] = (Command) { "<HHB","\t[147] Set beep, frequency %i, length %i, effect %i" };
-		commandTable[148] = (Command) { "<BHB","\t[148] Pause for button 0x%X, timeout %i s, timeout_bevavior %i" };
-		commandTable[149] = (Command) { "", "\t[149] Display message, options 0x%X at %i,%i timeout %i\n '%s'" };
-		commandTable[150] = (Command) { "<BB","\t[150] Set build percent %i%%, ignore %i" };
-		commandTable[151] = (Command) { "<B","\t[151] Queue song %i" };
-		commandTable[152] = (Command) { "<B","\t[152] Reset to factory, options 0x%X" };
-		commandTable[153] = (Command) { "", "\t[153] Start build, steps %i: %s" };
-		commandTable[154] = (Command) { "<B","\t[154] End build, flags 0x%X" };
-		commandTable[155] = (Command) { "<iiiiiIBfh","\t[155] Move to (%i,%i,%i,%i,%i) dda_rate: %i (relative: %X) distance: %f feedrateX64: %i" };
-		commandTable[156] = (Command) { "<B","\t[156] Set acceleration to %i" };
-		commandTable[157] = (Command) { "<BBBIHHIIB","\t[157] Stream version %i.%i (%i %i %i %i %i %i %i)" };
-		commandTable[158] = (Command) { "<f","\t[158] Pause @ zPos %f" };
+		commandTable[129] = (Command) { "<iiiI",	"\t[129] Absolute move to (%i,%i,%i) at DDA %i" };
+		commandTable[130] = (Command) { "<iii",		"\t[130] Machine position set as (%i,%i,%i)" };
+		commandTable[131] = (Command) { "<BIH",		"\t[131] Home minimum on %X, feedrate %i, timeout %i s" };
+		commandTable[132] = (Command) { "<BIH",		"\t[132] Home maximum on %X, feedrate %i, timeout %i s" };
+		commandTable[133] = (Command) { "<I",		"\t[133] Delay of %i us" };
+		commandTable[134] = (Command) { "<B",		"\t[134] Change extruder %i" };
+		commandTable[135] = (Command) { "<BHH",		"\t[135] Wait until extruder %i ready (%i ms between polls, %i s timeout" };
+		commandTable[136] = (Command) { "",			"printToolAction"};
+		commandTable[137] = (Command) { "<B",		"\t[137] Enable/disable steppers %X" };
+		commandTable[138] = (Command) { "<H",		"\t[138] User block on ID %i" };
+		commandTable[139] = (Command) { "<iiiiiI",	"\t[139] Absolute move to (%i,%i,%i,%i,%i) at DDA %i" };
+		commandTable[140] = (Command) { "<iiiii",	"\t[140] Set extended position as (%i,%i,%i,%i,%i)" };
+		commandTable[141] = (Command) { "<BHH",		"\t[141] Wait for platform %i (%i ms between polls, %i s timeout)" };
+		commandTable[142] = (Command) { "<iiiiiIB",	"\t[142] Move to (%i,%i,%i,%i,%i) in %i us (relative: %X)" };
+		commandTable[143] = (Command) { "<b",		"\t[143] Store home position for axes %d" };
+		commandTable[144] = (Command) { "<b",		"\t[144] Recall home position for axes %d" };
+		commandTable[145] = (Command) { "<BB",		"\t[145] Set pot axis %i to %i" };
+		commandTable[146] = (Command) { "<BBBBB",	"\t[146] Set RGB led red %i, green %i, blue %i, blink rate %i, effect %i" };
+		commandTable[147] = (Command) { "<HHB",		"\t[147] Set beep, frequency %i, length %i, effect %i" };
+		commandTable[148] = (Command) { "<BHB",		"\t[148] Pause for button 0x%X, timeout %i s, timeout_bevavior %i" };
+		commandTable[149] = (Command) { "",			"\t[149] Display message, options 0x%X at %i,%i timeout %i\n '%s'" };
+		commandTable[150] = (Command) { "<BB",		"\t[150] Set build percent %i%%, ignore %i" };
+		commandTable[151] = (Command) { "<B",		"\t[151] Queue song %i" };
+		commandTable[152] = (Command) { "<B",		"\t[152] Reset to factory, options 0x%X" };
+		commandTable[153] = (Command) { "",			"\t[153] Start build, steps %i: %s" };
+		commandTable[154] = (Command) { "<B",		"\t[154] End build, flags 0x%X" };
+		commandTable[155] = (Command) { "<iiiiiIBfh", "\t[155] Move to (%i,%i,%i,%i,%i) dda_rate: %i (relative: %X) distance: %f feedrateX64: %i" };
+		commandTable[156] = (Command) { "<B",		"\t[156] Set acceleration to %i" };
+		commandTable[157] = (Command) { "<BBBIHHIIB", "\t[157] Stream version %i.%i (%i %i %i %i %i %i %i)" };
+		commandTable[158] = (Command) { "<f",		"\t[158] Pause @ zPos %f" };
 	}
 
 	int calcsize(char c) { //http://docs.python.org/2/library/struct.html
@@ -124,11 +124,11 @@ public:
 
 	bool parseNextCommand() {
 		if (bufferPos>=bufferSize) {
-			//LOG(Logger::VERBOSE, "parseNextCommand: nothing to do; buffer: %i/%i", bufferPos, bufferSize);
+			//LOG(Logger::VERBOSE, "parseNextCommand(): nothing to do; bufferPos: %i/%i", bufferPos, bufferSize);
 			return false;
 		}
 		uint8_t command = buffer[bufferPos++];
-		//LOG(Logger::VERBOSE, "parseNextCommand %3i; buffer: %i/%i", command, bufferPos, bufferSize);
+		//LOG(Logger::VERBOSE, "parseNextCommand(): %3i; buffer: %i/%i", command, bufferPos, bufferSize);
 
 		if (command==136) parseToolAction();
 		else if (command==149) parseDisplayMessageAction();

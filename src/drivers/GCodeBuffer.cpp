@@ -26,7 +26,7 @@ GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0),
   sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0), log_(Logger::getInstance())
 {
-	LOG(Logger::BULK, "init - max_bucket_size: %lu, max_buffer_size: %lu", MAX_BUCKET_SIZE, MAX_BUFFER_SIZE);
+	LOG(Logger::VERBOSE, "init - max_bucket_size: %lu, max_buffer_size: %lu", MAX_BUCKET_SIZE, MAX_BUFFER_SIZE);
 }
 
 /**
@@ -34,7 +34,7 @@ GCodeBuffer::GCodeBuffer()
  * See append() for documentation.
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaData *metaData) {
-	LOG(Logger::BULK, "set (i.e. clear+append)");
+	//LOG(Logger::VERBOSE, "set (i.e. clear+append)");
 	clear();
 	return append(gcode, metaData);
 }
@@ -58,8 +58,8 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
  * separate buckets, so MAX_BUCKET_SIZE is not a strict limit
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const MetaData *metaData) {
-	if (!metaData) LOG(Logger::BULK, "append - len: %zu, excerpt: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str());
-	else LOG(Logger::BULK, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
+	if (!metaData) LOG(Logger::VERBOSE, "append - len: %zu, excerpt: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str());
+	else LOG(Logger::VERBOSE, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
 			metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)");
 
 	if (sequenceLastSeen_ > -1) {
@@ -118,7 +118,7 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const Met
 }
 
 void GCodeBuffer::clear() {
-	LOG(Logger::BULK, "clear");
+	LOG(Logger::VERBOSE, "clear");
 
 	while (buckets_.size() > 0) {
 		string *b = buckets_.front();
@@ -240,9 +240,9 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
-	//LOG(Logger::BULK, "  cleanupGCode");
-	//LOG(Logger::BULK, "  buffer: ");
-	//LOG(Logger::BULK, "  %s",buffer->c_str());
+	//LOG(Logger::VERBOSE, "  cleanupGCode");
+	//LOG(Logger::VERBOSE, "  buffer: ");
+	//LOG(Logger::VERBOSE, "  %s",buffer->c_str());
 
 	size_t buflen = buffer->length();
 

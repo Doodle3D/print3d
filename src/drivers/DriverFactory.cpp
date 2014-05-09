@@ -17,13 +17,13 @@
 AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
   static vec_DriverInfoP driverInfos;
 
-  //LOG(Logger::VERBOSE, "createDriver()");
+  //LOG(Logger::INFO, "createDriver()");
 
   // list all printer drivers (their driver info)
   if(driverInfos.empty()) {
     driverInfos.push_back( &MarlinDriver::getDriverInfo() );
     driverInfos.push_back(&MakerbotDriver::getDriverInfo());
-    LOG(Logger::VERBOSE, "  num drivers: %i",driverInfos.size());
+    LOG(Logger::INFO, "  num drivers: %i",driverInfos.size());
   }
 
   // loop trough driver info's

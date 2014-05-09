@@ -148,7 +148,7 @@ GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, GCod
 	clearGpxBuffer();
 	int rv = convertGcode(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
-	LOG(Logger::VERBOSE, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
+	LOG(Logger::INFO, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 
 	return GCodeBuffer::GSR_OK;
 }
@@ -157,7 +157,7 @@ GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, GCod
 GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::appendGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
 	int rv = convertGcode(gcode);
 	if (getState() == IDLE) setState(BUFFERING);
-	LOG(Logger::VERBOSE, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
+	LOG(Logger::INFO, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
 
 	return GCodeBuffer::GSR_OK;
 }
@@ -259,7 +259,7 @@ bool MakerbotDriver::resetPrint() {
 }
 
 void MakerbotDriver::sendCode(const std::string& code) {
-//	LOG(Logger::BULK, "sendCode(): %s",code.c_str());
+//	LOG(Logger::VERBOSE, "sendCode(): %s",code.c_str());
 //	if (isConnected()) {
 //		extractGCodeInfo(code);
 //		serial_.send((code+"\n").c_str());
@@ -297,7 +297,7 @@ void MakerbotDriver::processQueue() {
 		}
 	} else {
 		setState(IDLE);
-		LOG(Logger::VERBOSE, "Print queue empty. Done!");
+		LOG(Logger::INFO, "Print queue empty. Done!");
 	}
 }
 
@@ -386,13 +386,13 @@ void MakerbotDriver::playSong(uint8_t song) { ////151 - Queue Song
 
 //NOTE: according to http://replicat.org/sanguino3g, command 03 is not used
 void MakerbotDriver::resetPrinterBuffer() { //03 - Clear buffer
-	//LOG(Logger::BULK, "not sending reset_print_buffer command to prevent serial port from being closed");
+	LOG(Logger::VERBOSE, "not sending reset_print_buffer command to prevent serial port from being closed");
 //	uint8_t payload[] = { 3 };
 //	sendPacket(payload,sizeof(payload));
 }
 
 void MakerbotDriver::abort() {
-	//LOG(Logger::BULK, "not sending abort command to prevent serial port from being closed");
+	LOG(Logger::VERBOSE, "not sending abort command to prevent serial port from being closed");
 //	//07 - Abort immediately: Stop machine, shut down job permanently
 //	uint8_t payload[] = { 7 };
 //	sendPacket(payload,sizeof(payload));
@@ -459,7 +459,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 	//read response code from packet. 0x81 is success
 	int code = buf[0];
 	if (code!=0x81) {
-		LOG(Logger::INFO, "response message 0x%x (=%s)", code, getResponseMessage(code).c_str());
+		LOG(Logger::INFO, "response message to cmd 0x%x/0x%x: 0x%x (=%s)", cmd, toolcmd, code, getResponseMessage(code).c_str());
 	}
 
 	//depending on previously send cmd interpret the packet
@@ -536,7 +536,7 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 		rv = parseResponse(cmd, cmd == 10 ? payload[2] : -1);
 		switch (rv) {
 			case 0:
-				if (!validResponseReceived_) LOG(Logger::VERBOSE, "hello makerbot!");
+				if (!validResponseReceived_) LOG(Logger::INFO, "hello makerbot! (received valid response packet)");
 				validResponseReceived_ = true;
 				//LOG(Logger::VERBOSE, "ok");
 				break;
