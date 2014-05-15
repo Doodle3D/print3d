@@ -53,28 +53,28 @@ assessResult(rv, msg, nil, "append_no_gcode")
 rv,msg = printer:appendGcode("M104 S01")
 assessResult(rv, msg, true, "append_no_metadata")
 
-rv,msg = printer:appendGcode("M104 S02", { seq_number  = 0, seq_total = 3 })
+rv,msg = printer:appendGcode("M104 S02", { seq_number = 0, seq_total = 3 })
 assessResult(rv, msg, true, "append_0_of_3_missing")
 
-rv,msg = printer:appendGcode("M104 S03", { seq_number  = 1, seq_total = 3, source = "there" })
+rv,msg = printer:appendGcode("M104 S03", { seq_number = 1, seq_total = 3, source = "there" })
 assessResult(rv, msg, true, "append_1_of_3_src1")
 
-rv,msg = printer:appendGcode("M104 S04", { seq_number  = -1, seq_total = 3, source = "there" })
+rv,msg = printer:appendGcode("M104 S04", { seq_number = -1, seq_total = 3, source = "there" })
 assessResult(rv, msg, false, "append_missing_of_3_src1")
 
-rv,msg = printer:appendGcode("M104 S05", { seq_number  = 2, seq_total = -1, source = "there" })
+rv,msg = printer:appendGcode("M104 S05", { seq_number = 2, seq_total = -1, source = "there" })
 assessResult(rv, msg, false, "append_2_of_missing_src1")
 
-rv,msg = printer:appendGcode("M104 S06", { seq_number  = 2, seq_total = 3, source = "here" })
+rv,msg = printer:appendGcode("M104 S06", { seq_number = 2, seq_total = 3, source = "here" })
 assessResult(rv, msg, false, "append_2_of_3_src2")
 
-rv,msg = printer:appendGcode("M104 S07", { seq_number  = 3, seq_total = 3, source = "there" })
+rv,msg = printer:appendGcode("M104 S07", { seq_number = 3, seq_total = 3, source = "there" })
 assessResult(rv, msg, false, "append_3_of_3_src1")
 
 rv,msg = printer:clearGcode()
 assessResult(rv, msg, true, "clear_gcode")
 
-rv,msg = printer:appendGcode("M105 S01", { seq_number  = 0, seq_total = 5 })
+rv,msg = printer:appendGcode("M105 S01", { seq_number = 0, seq_total = 5 })
 assessResult(rv, msg, true, "append_0_of_5_missing")
 
 

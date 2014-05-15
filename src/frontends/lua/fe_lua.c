@@ -37,6 +37,7 @@ typedef struct luaL_Stream {
 
 
 
+//names of metadata fields for appendGcode
 static const char *GCODE_MD_SEQ_NUMBER = "seq_number";
 static const char *GCODE_MD_SEQ_TOTAL = "seq_total";
 static const char *GCODE_MD_SOURCE = "source";

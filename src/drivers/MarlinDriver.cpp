@@ -70,14 +70,14 @@ int MarlinDriver::update() {
 	if (!isConnected()) return -1;
 
 	if(checkTemperatureInterval_ != -1 && temperatureTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
-		LOG(Logger::VERBOSE, "update temperature()");
+		//LOG(Logger::VERBOSE, "update temperature()");
 		temperatureTimer_.start(); // restart timer
 
 		// We check the temperature
 		// during startup we use this to check for a valid connection, when it's established we stop checking
 		if(checkConnection_) {
 			if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
-				LOG(Logger::VERBOSE, "  check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
+				LOG(Logger::VERBOSE, "(checking connection) check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
 				checkTemperature();
 				checkTemperatureAttempt_++;
 			} else {
@@ -85,7 +85,7 @@ int MarlinDriver::update() {
 				checkTemperatureAttempt_ = 0;
 			}
 		} else {
-			LOG(Logger::VERBOSE, "  check temperature");
+			//LOG(Logger::VERBOSE, "  check temperature");
 			checkTemperature();
 		}
 	}
@@ -145,7 +145,7 @@ void MarlinDriver::readResponseCode(std::string& code) {
 		if(state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
 		else checkTemperatureInterval_ = 1500; // normal
 
-		LOG(Logger::VERBOSE, "  checkTemperatureInterval_: '%i'",checkTemperatureInterval_);
+		//LOG(Logger::VERBOSE, "  checkTemperatureInterval_: '%i'",checkTemperatureInterval_);
 	} else if(code.find("ok") == 0) { // confirmation that code is received okay
 
 		//sendCode("M105"); // temp
@@ -175,7 +175,7 @@ void MarlinDriver::parseTemperatures(string& code) {
 	//   T:19.51 B:-1.00 @:0
 	//   T:19.5 E:0 W:?
 
-	LOG(Logger::VERBOSE, "parseTemperatures(): '%s'",code.c_str());
+	//LOG(Logger::VERBOSE, "parseTemperatures(): '%s'",code.c_str());
 	// temperature hotend
 	std::size_t posT = code.find("T:");
 	temperature_ = findValue(code,posT+2);
@@ -286,7 +286,7 @@ AbstractDriver* MarlinDriver::create(Server& server, const std::string& serialPo
  *********************/
 
 void MarlinDriver::extractGCodeInfo(const string& gcode) {
-	LOG(Logger::VERBOSE, "extractGCodeInfo()");
+	//LOG(Logger::VERBOSE, "extractGCodeInfo()");
 	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
 
 	// check for a heat command (M109 S... / M109 R...)
