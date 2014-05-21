@@ -150,13 +150,10 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
-	LOG(Logger::BULK, "cleanupGCode");
-	LOG(Logger::BULK, "  pos: %i",pos);
-	//if(pos >= 34957 && pos <= 35926) {
-	if(pos == 0) {
-		LOG(Logger::BULK, "  ////////// buffer: ");
-		LOG(Logger::BULK, "  \n%s\n////////// end buffer",buffer->c_str());
-	}
+//	LOG(Logger::BULK, "cleanupGCode");
+//	LOG(Logger::BULK, "  pos: %i",pos);
+//	LOG(Logger::BULK, "  ////////// buffer: ");
+//	LOG(Logger::BULK, "  \n%s\n////////// end buffer",buffer->c_str());
 	size_t buflen = buffer->length();
 
 	//replace \r with \n
@@ -165,36 +162,25 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	//remove all comments (;...)
 	std::size_t posComment = 0;
 	while((posComment = buffer->find(';', pos)) != string::npos) {
-		LOG(Logger::BULK, "  posComment: %i",posComment);
+//		LOG(Logger::BULK, "  posComment: %i",posComment);
 		size_t posCommentEnd = buffer->find('\n', posComment);
-		LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
+//		LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
 		if(posCommentEnd == string::npos) {
 			buffer->erase(posComment);
-			LOG(Logger::BULK, " erase until npos");
+//			LOG(Logger::BULK, " erase until npos");
 		} else {
 			buffer->erase(posComment, posCommentEnd - posComment);
-			LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
+//			LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
 		}
-	}
-//	if(pos >= 34957 && pos <= 37926) {
-	if(pos == 0) {
-		LOG(Logger::BULK, "  ////////// >buffer: ");
-		LOG(Logger::BULK, "  \n%s\n////////// end >buffer",buffer->c_str());
 	}
 
 	//replace \n\n with \n
 	std::size_t posDoubleNewline = pos;
 	// -1 to make sure we also check the first line of the part we're checking
 	if(posDoubleNewline > 0) posDoubleNewline--;
-	LOG(Logger::BULK, "  posDoubleNewline: %i",posDoubleNewline);
 	while((posDoubleNewline = buffer->find("\n\n", posDoubleNewline)) != string::npos) {
-		LOG(Logger::BULK, " erase double lines: %i",posDoubleNewline);
+//		LOG(Logger::BULK, " erase double lines: %i",posDoubleNewline);
 		buffer->replace(posDoubleNewline, 2, "\n");
-	}
-//	if(pos >= 34957 && pos <= 37926) {
-	if(pos == 0) {
-		LOG(Logger::BULK, "  ////////// >>buffer: ");
-		LOG(Logger::BULK, "  \n%s\n////////// end >>buffer",buffer->c_str());
 	}
 
 	// remove empty first line
@@ -202,12 +188,15 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 		buffer->erase(0, 1);
 		LOG(Logger::BULK, " erase first empty line");
 	}
-	// ToDo: remove last empty line?
 
-//	if(pos >= 34957 && pos <= 37926) {
-		LOG(Logger::BULK, "  ////////// >>>buffer: ");
-		LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
-//	}
+	// Make sure we end with an empty line
+	char& lastChar = buffer->at(buffer->length()-1);
+	if(lastChar != '\n') {
+		buffer->append("\n");
+//		LOG(Logger::BULK, " add empty line at end");
+	}
+//	LOG(Logger::BULK, "  ////////// >>>buffer: ");
+//	LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
 
 	bufferSize_ -= (buflen - buffer->length());
 }
