@@ -134,8 +134,8 @@ public:
 		else if (command==149) parseDisplayMessageAction();
 		else if (command==153) parseBuildStartNotificationAction();
 		else {
-			string packetFormat = commandTable[command].format;
-			string packetDescription = commandTable[command].description;
+			const string &packetFormat = commandTable[command].format;
+			//const string &packetDescription = commandTable[command].description;
 			int packetLen = calcsize(packetFormat);
 			string packetData;
 			packetData.append(&buffer[bufferPos],packetLen);

@@ -8,6 +8,7 @@
 
 /*
  * TODO:
+ * - In convertGCode: instead of separating the conversion buffer into separate commands again (with the parser), it would be better to adapt gpx to emit() these commands one by one (or something similar)...
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
  *   -> also read baud rate to allow setting it to a fixed value? (i.e., disable auto-switching in marlindriver)
@@ -41,11 +42,15 @@ using std::vector;
 //NOTE: this should an amount that fits in one GcodeBuffer's bucket because getNextLine() cannot cross bucket boundaries
 //const int MakerbotDriver::WAIT_GCODE_LINES = 1000; //approximation: 1000 lines * 35 chars < 1024 bytes * 50
 const int MakerbotDriver::MAX_GPX_BUFFER_SIZE = 1024 * 50;
+const int MakerbotDriver::PRINTER_BUFFER_SIZE = 512;
+const size_t MakerbotDriver::QUEUE_MIN_SIZE = 1024;
+const size_t MakerbotDriver::QUEUE_FILL_SIZE = 3 * 1024;
+const int MakerbotDriver::GCODE_CVT_LINES = 25;
 
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
-: AbstractDriver(server, serialPortPath, baudrate), gpxBuffer_(0), gpxBufferSize_(0),
-  bufferSpace_(512), currentCmd_(0), totalCmds_(0), validResponseReceived_(false), firmwareVersion_(0)
+: AbstractDriver(server, serialPortPath, baudrate), bufferSpace_(PRINTER_BUFFER_SIZE),
+  cmdToLineRatio_(0.0f), validResponseReceived_(false), firmwareVersion_(0)
 {
 	gpx_clear_state();
 	gpx_setSuppressEpilogue(1); // prevent commands like build is complete. only necessary once
@@ -55,32 +60,26 @@ MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath
 static int lastCode = -1;
 
 int MakerbotDriver::update() {
-	static int counter = 0;//TEMP
+	static int counter = 0; //TEMP
 
 	if (!isConnected()) return -1;
 
-	//Notes on using the gcodeBuffer (and why it is currently unused in this driver):
-	//1) it would require getNextLine and eraseLine to process as many lines as possible of the requested amount
-	//2) similarly, WAIT_GCODE_LINES should not be strict (or the end of the gcode would never be processed)
-	//3) a trick would have to be devised to report progress accurately (instead of 'progressing' WAIT_GCODE_LINES lines at a time)
-//	if (gcodeBuffer_.getBufferedLines() >= WAIT_GCODE_LINES && gpxBufferSize_ < MAX_GPX_BUFFER_SIZE) {
-//		string gcode;
-//		if (!gcodeBuffer_.getNextLine(gcode, WAIT_GCODE_LINES)) {
-//			LOG(Logger::ERROR, "could not extract %i lines from gcode buffer while it claims to have them", WAIT_GCODE_LINES);
-//		} else {
-//			gcodeBuffer_.eraseLine(WAIT_GCODE_LINES);
-//			convertGcode(gcode);
-//		}
-//	}
+	if (queue_.size() < QUEUE_MIN_SIZE) {
+		bool success = true;
+		while (success && queue_.size() < QUEUE_FILL_SIZE) {
+			string lines;
+			success = gcodeBuffer_.getNextLine(lines, GCODE_CVT_LINES);
+			int cmds = convertGCode(lines);
 
-	// if data in gpx buffer, parse and seperate in packages
-	//use parser as one-shot converter from command stream to separate commands and add them to our queue
-	// TODO: move to appendGCode?
-	parser_.setBuffer((char*)gpxBuffer_, gpxBufferSize_);
-	while(parser_.parseNextCommand());
-	clearGpxBuffer();
-	queueCommands(parser_.commands);
-	parser_.commands.clear();
+			if (success) {
+				//update approximation of s3g commands per line
+				float newRatio = (float)GCODE_CVT_LINES / cmds;
+				float weight = cmds > 0 ? (float)cmds / queue_.size() : 0.0f;
+				cmdToLineRatio_ = cmdToLineRatio_ * (1.0f - weight) + newRatio * weight;
+			}
+		}
+	}
+
 
 	STATE s = getState();
 	if (s == PRINTING || s == STOPPING) {
@@ -88,16 +87,15 @@ int MakerbotDriver::update() {
 		//TODO: setState(IDLE) if all code has been processed
 	}
 
-	if (counter == 30) { // TODO: replace for time based timer?
+	if (counter == 30) { // TODO: replace with time based timer?
 		if (!validResponseReceived_) {
 			unsigned int ver = getFirmwareVersion();
 			LOG(Logger::INFO, "Makerbot firmware version %.2f", ver / 100.0f);
 		}
 		updateTemperatures();
-		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, cmdbuf: %i/%i/%i, prbuf space: %i",
-				temperature_, targetTemperature_,
-				bedTemperature_, targetBedTemperature_,
-				currentCmd_, queue_.size(), totalCmds_, bufferSpace_);
+		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, queue: %i, c2l ratio: %.2f, prbuf space: %i",
+				temperature_, targetTemperature_, bedTemperature_, targetBedTemperature_,
+				queue_.size(), cmdToLineRatio_, bufferSpace_);
 
 		requestBufferSpace();
 
@@ -108,88 +106,46 @@ int MakerbotDriver::update() {
 	return 1000 / 30; //the of test also runs at 30fps...
 }
 
-void MakerbotDriver::clearGpxBuffer() {
-	free(gpxBuffer_); gpxBuffer_ = 0; gpxBufferSize_ = 0;
-}
+size_t MakerbotDriver::convertGCode(const string &gcode) {
+	size_t oldQueueSize = queue_.size();
 
-size_t MakerbotDriver::convertGcode(const string &gcode) {
-	if (gcode.size()==0) return 0;
+	if (gcode.size() == 0) return 0;
 
-	// create convert buffer
 	unsigned char *cvtBuf = 0;
 	long cvtBufLen = 0;
 	gpx_convert(gcode.c_str(), gcode.size(), &cvtBuf, &cvtBufLen);
 
-//	//TEMP (give this file dump code a permanent place - it's useful. and move to startPrint so we can also debug chunked data transfers)
-//	LOG(Logger::VERBOSE, "got back %i bytes, cvtBuf=%p", cvtBufLen, cvtBuf);
-////	fprintf(stderr, "conversion result:");
-////	for (int i = 0; i < cvtBufLen; i++) { //this loop is only useful when sending single or few commands
-////		fprintf(stderr, " %02X", cvtBuf[i]);
-////	}
-//	fprintf(stderr, " (dumped to /tmp/gpxdump.log)\n");
-//	FILE *dump = fopen("/tmp/gpxdump.log", "w");
-//	if (fwrite(cvtBuf, cvtBufLen, 1, dump) == 0) perror("could not write data");
-//	fclose(dump);
-//	exit(13);
+	parser_.setBuffer((char*)cvtBuf, cvtBufLen);
+	while(parser_.parseNextCommand());
+	queueCommands(parser_.commands);
+	parser_.commands.clear();
 
-	// add converted gpx code to gpxbuffer
-	// this is seperate into commands in update method
-	gpxBuffer_ = (unsigned char*)realloc(gpxBuffer_, gpxBufferSize_ + cvtBufLen);
-	memcpy(gpxBuffer_ + gpxBufferSize_, cvtBuf, cvtBufLen);
-	free(cvtBuf); //cvtBuf = 0; cvtBufLen = 0;
-	gpxBufferSize_ += cvtBufLen;
-
-	return cvtBufLen;
+	free(cvtBuf);
+	return queue_.size() - oldQueueSize;
 }
 
-//Note: ignores metaData and always returns GSR_OK
 GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
-	currentCmd_ = totalCmds_ = 0;
-	clearGpxBuffer();
-	int rv = convertGcode(gcode);
-	if (getState() == IDLE) setState(BUFFERING);
-	LOG(Logger::INFO, "set %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
-
-	return GCodeBuffer::GSR_OK;
+	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::setGCode(gcode, metaData);
+	fullStop();
+	return gsr;
 }
 
-//Note: ignores metaData and always returns GSR_OK
-GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::appendGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
-	int rv = convertGcode(gcode);
-	if (getState() == IDLE) setState(BUFFERING);
-	LOG(Logger::INFO, "appended %i bytes of gpx data (bufsize now %i)", rv, gpxBufferSize_);
-
-	return GCodeBuffer::GSR_OK;
-}
-
-//FIXME: clear/set/append gcode and start/stop print functions need a big overhaul. it's unreadable and unmaintainable atm
 void MakerbotDriver::clearGCode() {
-	STATE s = getState();
-	if (s == BUFFERING || s == PRINTING || s == STOPPING) setState(IDLE);
-
-	currentCmd_ = totalCmds_ = 0;
-	clearGpxBuffer();
-	queue_.clear();
-	gpx_clear_state(); //FIXME: this should probably also be called on init
-
-	if(isConnected()) {
-		resetPrinterBuffer();
-		abort();
-	}
+	AbstractDriver::clearGCode();
+	fullStop();
 }
 
 
-//FIXME: having the makerbot printer buffer is very nice, but it does make this value slightly inaccurate (esp. when starting/stopping)
 int32_t MakerbotDriver::getCurrentLine() const {
-	return currentCmd_;
+	int32_t cl = gcodeBuffer_.getCurrentLine();
+//	cl -= (queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_;
+	return cl;
 }
 
 int32_t MakerbotDriver::getBufferedLines() const {
-	return queue_.size();
-}
-
-int32_t MakerbotDriver::getTotalLines() const {
-	return totalCmds_;
+	int32_t cl = gcodeBuffer_.getBufferedLines();
+//	cl += (queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_;
+	return cl;
 }
 
 
@@ -254,7 +210,6 @@ bool MakerbotDriver::stopPrint() {
 
 bool MakerbotDriver::resetPrint() {
 	if (!AbstractDriver::resetPrint()) return false;
-	currentCmd_ = 0;
 	return true;
 }
 
@@ -269,26 +224,37 @@ void MakerbotDriver::sendCode(const std::string& code) {
 void MakerbotDriver::readResponseCode(std::string& code) {
 }
 
+//clean out all buffers and try to abort currently active printing
+void MakerbotDriver::fullStop() {
+	queue_.clear();
+	gpx_clear_state();
+
+	if(isConnected()) {
+		resetPrinterBuffer();
+		abort();
+	}
+}
+
+
 /*********************
  * PRIVATE FUNCTIONS *
  *********************/
 
 void MakerbotDriver::processQueue() {
 	if (!queue_.empty()) {
-		int oldQSize = queue_.size(), oldBSpace = bufferSpace_;//TEMP
+		int oldQSize = queue_.size(), oldBSpace = bufferSpace_; //TEMP
 		// refill the printer buffer when there is enough space
-		if (requestBufferSpace() > 480) {
+		if (requestBufferSpace() > 480) { //TODO: rewrite 480 into a factor of PRINTER_BUFFER_SIZE
 			while (true) {
 				if (queue_.empty()) break;
 				string command = queue_.front();
-				// check if their is space for this command (which vary in length)
+				// check if there is space for this command (which vary in length)
 				if (command.size() > bufferSpace_ - 5) break;
 
 				queue_.pop_front();
 				int len = command.size();
 				uint8_t *payload = (uint8_t*)command.c_str();
 				sendPacket(payload,len);
-				currentCmd_++;
 			}
 		}
 		if (oldQSize - queue_.size()) {
@@ -306,12 +272,9 @@ void MakerbotDriver::processQueue() {
 uint8_t MakerbotDriver::_crc_ibutton_update(uint8_t crc, uint8_t data) {
 	uint8_t i;
 	crc = crc ^ data;
-	for (i = 0; i < 8; i++)
-	{
-		if (crc & 0x01)
-			crc = (crc >> 1) ^ 0x8C;
-		else
-			crc >>= 1;
+	for (i = 0; i < 8; i++) {
+		if (crc & 0x01) crc = (crc >> 1) ^ 0x8C;
+		else crc >>= 1;
 	}
 	return crc;
 }
@@ -343,7 +306,6 @@ void MakerbotDriver::queueCommands(vector<string> commands) {
 	for (size_t i = 0; i < commands.size(); i++) {
 		queue_.push_back(commands.at(i));
 	}
-	totalCmds_ += commands.size();
 }
 
 bool MakerbotDriver::updateTemperatures() {

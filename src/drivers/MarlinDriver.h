@@ -21,10 +21,6 @@ public:
 	static const AbstractDriver::DriverInfo& getDriverInfo();
 	virtual int update();
 
-	//overrides
-	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
-	GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
-
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
 protected:
@@ -34,7 +30,6 @@ protected:
 	void parseTemperatures(std::string& code);
 	void checkTemperature();
 	void sendCode(const std::string& code);
-	int findValue(const std::string& code, std::size_t startPos);
 
 private:
 	static const int UPDATE_INTERVAL;
@@ -45,8 +40,6 @@ private:
 	bool checkConnection_;
 	int checkTemperatureAttempt_;
 	int maxCheckTemperatureAttempts_;
-
-	void extractGCodeInfo(const std::string& gcode);
 };
 
 #endif /* ! MARLIN_DRIVER_H_SEEN */

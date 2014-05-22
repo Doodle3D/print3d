@@ -107,22 +107,15 @@ int MarlinDriver::update() {
 	return UPDATE_INTERVAL - timer_.getElapsedTimeInMilliSec();
 }
 
+
+/***********************
+ * PROTECTED FUNCTIONS *
+ ***********************/
+
 bool MarlinDriver::startPrint(STATE state) {
 	if (!AbstractDriver::startPrint(state)) return false;
 	printNextLine();
 	return true;
-}
-
-GCodeBuffer::GCODE_SET_RESULT MarlinDriver::setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
-	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::setGCode(gcode, metaData);
-	if (gsr == GCodeBuffer::GSR_OK) extractGCodeInfo(gcode);
-	return gsr;
-}
-
-GCodeBuffer::GCODE_SET_RESULT MarlinDriver::appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
-	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::appendGCode(gcode, metaData);
-	if (gsr == GCodeBuffer::GSR_OK) extractGCodeInfo(gcode);
-	return gsr;
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {
@@ -178,42 +171,29 @@ void MarlinDriver::parseTemperatures(string& code) {
 	//LOG(Logger::VERBOSE, "parseTemperatures(): '%s'",code.c_str());
 	// temperature hotend
 	std::size_t posT = code.find("T:");
-	temperature_ = findValue(code,posT+2);
+	temperature_ = AbstractDriver::findNumber(code,posT+2);
 	//LOG(Logger::VERBOSE, "  temperature '%i'", temperature_);
 
 	// target temperature hotend
 	std::size_t posTT = code.find('/',posT);
 	if(posTT != std::string::npos) {
-		targetTemperature_ = findValue(code,posTT+1);
+		targetTemperature_ = AbstractDriver::findNumber(code,posTT+1);
 		//LOG(Logger::VERBOSE, "  targetTemperature '%i'", targetTemperature_);
 	}
 
 	// bed temperature
 	std::size_t posB = code.find("B:");
 	if(posB != std::string::npos) {
-		bedTemperature_ = findValue(code,posB+2);
+		bedTemperature_ = AbstractDriver::findNumber(code,posB+2);
 		//LOG(Logger::VERBOSE, "  bedTemperature '%i'", bedTemperature_);
 
 		// target bed temperature
 		std::size_t posTBT = code.find('/',posB);
 		if(posTBT != std::string::npos) {
-			targetBedTemperature_ = findValue(code,posTBT+1);
+			targetBedTemperature_ = AbstractDriver::findNumber(code,posTBT+1);
 			//LOG(Logger::VERBOSE, "  targetBedTemperature '%i'",targetBedTemperature_);
 		}
 	}
-}
-
-int MarlinDriver::findValue(const string& code, size_t startPos) {
-	//LOG(Logger::BULK, "  findValue()");
-	std::size_t posEnd = code.find('\n',startPos);
-	//LOG(Logger::BULK, "    posEnd: %i", posEnd);
-	if(posEnd == string::npos) {
-		posEnd = code.find(' ',startPos);
-		//LOG(Logger::BULK, "    posEnd>: %i", posEnd);
-	}
-	string valueStr = code.substr(startPos, posEnd-startPos);
-	//LOG(Logger::BULK, "    valueStr: %s", valueStr.c_str());
-	return ::atof(valueStr.c_str());
 }
 
 void MarlinDriver::checkTemperature() {
@@ -223,7 +203,7 @@ void MarlinDriver::checkTemperature() {
 void MarlinDriver::sendCode(const std::string& code) {
 	LOG(Logger::VERBOSE, "sendCode(): %s", code.c_str());
 	if (isConnected()) {
-		extractGCodeInfo(code);
+		AbstractDriver::extractGCodeInfo(code);
 		serial_.send((code+"\n").c_str());
 	}
 }
@@ -278,28 +258,4 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 
 AbstractDriver* MarlinDriver::create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {
 	return new MarlinDriver(server, serialPortPath, baudrate);
-}
-
-
-/*********************
- * PRIVATE FUNCTIONS *
- *********************/
-
-void MarlinDriver::extractGCodeInfo(const string& gcode) {
-	//LOG(Logger::VERBOSE, "extractGCodeInfo()");
-	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
-
-	// check for a heat command (M109 S... / M109 R...)
-	std::size_t posHeat = gcode.find("M109");
-	if(posHeat != std::string::npos) {
-		targetTemperature_ = findValue(gcode, posHeat + 6);
-		LOG(Logger::VERBOSE, "  targetTemperature_: %i", targetTemperature_);
-	}
-
-	// check for a bed heat command (M190 S... / M190 R...)
-	std::size_t posBedHeat = gcode.find("M190");
-	if(posHeat != std::string::npos) {
-		targetBedTemperature_ = findValue(gcode, posBedHeat + 6);
-		LOG(Logger::VERBOSE, "  targetBedTemperature_: %i", targetBedTemperature_);
-	}
 }

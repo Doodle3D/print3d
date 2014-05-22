@@ -115,6 +115,9 @@ protected:
 	void setBaudrate(uint32_t baudrate);
 	void switchBaudrate();
 
+	int findNumber(const std::string& code, std::size_t startPos) const;
+	void extractGCodeInfo(const std::string& gcode);
+
 private:
 	static const std::string STATE_NAMES[];
 

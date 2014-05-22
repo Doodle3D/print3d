@@ -8,6 +8,7 @@
 
 #include <errno.h>
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 #include "AbstractDriver.h"
 #include "../server/Server.h"
@@ -75,7 +76,12 @@ bool AbstractDriver::isConnected() const {
  */
 GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
 	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.set(gcode, metaData);
-	if (gsr == GCodeBuffer::GSR_OK && getState() == IDLE) setState(BUFFERING);
+
+	if (gsr == GCodeBuffer::GSR_OK) {
+		extractGCodeInfo(gcode);
+		if (getState() == IDLE) setState(BUFFERING);
+	}
+
 	return gsr;
 }
 /*
@@ -83,7 +89,10 @@ GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode,
  */
 GCodeBuffer::GCODE_SET_RESULT AbstractDriver::appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
 	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.append(gcode, metaData);
-	if (gsr == GCodeBuffer::GSR_OK && getState() == IDLE) setState(BUFFERING);
+	if (gsr == GCodeBuffer::GSR_OK) {
+		extractGCodeInfo(gcode);
+		if (getState() == IDLE) setState(BUFFERING);
+	}
 	return gsr;
 }
 
@@ -102,7 +111,6 @@ void AbstractDriver::heatup(int temperature) {
 	sendCode(oss.str());
 }
 
-#include <iostream>
 /*
  * Print control
  */
@@ -274,4 +282,38 @@ void AbstractDriver::setBaudrate(uint32_t baudrate) {
 //TODO: add 57600?
 void AbstractDriver::switchBaudrate() {
 	setBaudrate((baudrate_ == B250000)? B115200 : B250000);
+}
+
+int AbstractDriver::findNumber(const string& code, size_t startPos) const {
+	//LOG(Logger::BULK, "  findValue()");
+	std::size_t posEnd = code.find('\n',startPos);
+	//LOG(Logger::BULK, "    posEnd: %i", posEnd);
+	//TODO: why is posEnd set to the nearest space if a newline could not be found?
+	//      looks like it should look for a space first and only look for newline as backup instead
+	if(posEnd == string::npos) {
+		posEnd = code.find(' ',startPos);
+		//LOG(Logger::BULK, "    posEnd>: %i", posEnd);
+	}
+	string valueStr = code.substr(startPos, posEnd-startPos);
+	//LOG(Logger::BULK, "    valueStr: %s", valueStr.c_str());
+	return ::atof(valueStr.c_str());
+}
+
+void AbstractDriver::extractGCodeInfo(const string& gcode) {
+	//LOG(Logger::VERBOSE, "extractGCodeInfo()");
+	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
+
+	// check for a heat command (M109 S... / M109 R...)
+	std::size_t posHeat = gcode.find("M109");
+	if(posHeat != std::string::npos) {
+		targetTemperature_ = findNumber(gcode, posHeat + 6);
+		LOG(Logger::VERBOSE, "  targetTemperature_: %i", targetTemperature_);
+	}
+
+	// check for a bed heat command (M190 S... / M190 R...)
+	std::size_t posBedHeat = gcode.find("M190");
+	if(posHeat != std::string::npos) {
+		targetBedTemperature_ = findNumber(gcode, posBedHeat + 6);
+		LOG(Logger::VERBOSE, "  targetBedTemperature_: %i", targetBedTemperature_);
+	}
 }
