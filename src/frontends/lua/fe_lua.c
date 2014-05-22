@@ -18,10 +18,15 @@
 #include "../../logger.h"
 #include "../communicator.h"
 
+
+/***********
+ * KLUDGES *
+ ***********/
+
 /* from lauxlib.h, openwrt refuses to include that here */
 #ifndef LUA_FILEHANDLE
 
-#define LUA_FILEHANDLE "FILE*"
+# define LUA_FILEHANDLE "FILE*"
 
 typedef struct luaL_Stream {
   FILE *f;  /* stream (NULL for incompletely created streams) */
@@ -31,10 +36,13 @@ typedef struct luaL_Stream {
 #endif
 
 
+/********************
+ * DEFINITIONS ETC. *
+ ********************/
+
 #define LIB_MOD_NAME "print3d"
 #define LIB_META_NAME LIB_MOD_NAME ".meta"
 #define PRINTER_META_KEY LIB_META_NAME
-
 
 
 //names of metadata fields for appendGcode
@@ -49,6 +57,34 @@ struct printerData_s {
 		FILE *logStream;
 };
 
+
+/********************
+ * HELPER FUNCTIONS *
+ ********************/
+
+//from: http://www.lua.org/pil/24.2.3.html
+static void stackDump (lua_State *L) {
+	int i, top = lua_gettop(L);
+	for (i = 1; i <= top; i++) {  /* repeat for each level */
+		int t = lua_type(L, i);
+		switch (t) {
+		case LUA_TSTRING:  /* strings */
+			printf("`%s'", lua_tostring(L, i));
+			break;
+		case LUA_TBOOLEAN:  /* booleans */
+			printf(lua_toboolean(L, i) ? "true" : "false");
+			break;
+		case LUA_TNUMBER:  /* numbers */
+			printf("%g", lua_tonumber(L, i));
+			break;
+		default:  /* other values */
+			printf("%s", lua_typename(L, t));
+			break;
+		}
+		printf("  ");  /* put a separator */
+	}
+	printf("\n");  /* end the listing */
+}
 
 static struct printerData_s *getContext(lua_State *L) {
 	struct printerData_s **ctx = NULL;
@@ -74,18 +110,22 @@ static int initContext(lua_State* L) {
 		return -1;
 	}
 
-	if (ctx->initialized) return 0;
+	//if (ctx->initialized) return 0;
 
-	if (log_open_stream(ctx->logStream, ctx->logLevel) < 0) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "could not open log stream (%s)", strerror(errno));
-		return -1;
+	if (!log_is_open()) {
+		if (log_open_stream(ctx->logStream, ctx->logLevel) < 0) {
+			lua_pushnil(L);
+			lua_pushfstring(L, "could not open log stream (%s)", strerror(errno));
+			return -1;
+		}
 	}
 
-	if (comm_openSocket(ctx->deviceId) < 0) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "could not open IPC socket (%s)", strerror(errno));
-		return -1;
+	if (!comm_is_socket_open()) {
+		if (comm_openSocket(ctx->deviceId) < 0) {
+			lua_pushnil(L);
+			lua_pushfstring(L, "could not open IPC socket (%s)", strerror(errno));
+			return -1;
+		}
 	}
 
 	ctx->initialized = 1;
@@ -115,6 +155,10 @@ static int initStackWithReturnStatus(lua_State *L, int result) {
 }
 
 
+/************************
+ * 'META' API FUNCTIONS *
+ ************************/
+
 static int l_lua_gc(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	if (ctx) {
@@ -125,40 +169,16 @@ static int l_lua_gc(lua_State *L) {
 	return 0;
 }
 
-
 int l_lua_tostring(lua_State *L) {
 	struct printerData_s *ctx = getContext(L);
 	lua_pushfstring(L, "3D-printer[%s]", ctx->deviceId);
 	return 1;
 }
 
-int l_lua_getId(lua_State *L) {
-	struct printerData_s *ctx = getContext(L);
-	lua_pushstring(L, ctx->deviceId);
-	return 1;
-}
 
-int l_lua_hasSocket(lua_State *L) {
-	int rv, hasSocket;
-	struct stat statbuf;
-	struct printerData_s *ctx = getContext(L);
-	char *socketPath = ipc_construct_socket_path(ctx->deviceId);
-
-	rv = stat(socketPath, &statbuf);
-	if (rv == -1 && errno != ENOENT) {
-		lua_pushnil(L);
-		lua_pushfstring(L, "could not stat ipc socket path '%s' (%s)", socketPath, strerror(errno));
-		free(socketPath);
-		return 2;
-	}
-	free(socketPath);
-
-	hasSocket = (rv == 0 && S_ISSOCK(statbuf.st_mode) != 0) ? 1 : 0;
-
-	lua_pushboolean(L, hasSocket);
-	return 1;
-}
-
+/*****************
+ * API FUNCTIONS *
+ *****************/
 
 static int l_getPrinter(lua_State *L) {
 	size_t devLen;
@@ -204,6 +224,33 @@ static int l_getPrinter(lua_State *L) {
 }
 
 
+int l_lua_getId(lua_State *L) {
+	struct printerData_s *ctx = getContext(L);
+	lua_pushstring(L, ctx->deviceId);
+	return 1;
+}
+
+int l_lua_hasSocket(lua_State *L) {
+	int rv, hasSocket;
+	struct stat statbuf;
+	struct printerData_s *ctx = getContext(L);
+	char *socketPath = ipc_construct_socket_path(ctx->deviceId);
+
+	rv = stat(socketPath, &statbuf);
+	if (rv == -1 && errno != ENOENT) {
+		lua_pushnil(L);
+		lua_pushfstring(L, "could not stat ipc socket path '%s' (%s)", socketPath, strerror(errno));
+		free(socketPath);
+		return 2;
+	}
+	free(socketPath);
+
+	hasSocket = (rv == 0 && S_ISSOCK(statbuf.st_mode) != 0) ? 1 : 0;
+
+	lua_pushboolean(L, hasSocket);
+	return 1;
+}
+
 static int l_getTemperatures(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 
@@ -229,15 +276,13 @@ static int l_getTemperatures(lua_State *L) {
 	}
 }
 
-
 static int l_clearGcode(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int rv = comm_clearGcode();
+	int rv = comm_clearGCode();
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);
 }
-
 
 //requires gcode as first argument, accepts table as second argument with keys (all optional):
 //seq_number, seq_total, source (see GCodeBuffer for details)
@@ -266,16 +311,15 @@ static int l_appendGcode(lua_State *L) {
 		lua_pop(L, 1);
 	}
 
-	int rv = comm_sendGcodeData(luaL_checkstring(L, 2), &metadata);
+	int rv = comm_sendGCodeData(luaL_checkstring(L, 2), &metadata);
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);
 }
 
-
 static int l_appendFileContents(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int rv = comm_sendGcodeFile(luaL_checkstring(L, 2));
+	int rv = comm_sendGCodeFile(luaL_checkstring(L, 2));
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);
@@ -283,12 +327,11 @@ static int l_appendFileContents(lua_State *L) {
 
 static int l_startPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
-	int rv = comm_startPrintGcode();
+	int rv = comm_startPrintGCode();
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);
 }
-
 
 static int l_stopPrint(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
@@ -298,12 +341,11 @@ static int l_stopPrint(lua_State *L) {
 		endCode = luaL_checkstring(L, 2);
 	}
 
-	int rv = comm_stopPrintGcode(endCode);
+	int rv = comm_stopPrintGCode(endCode);
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);
 }
-
 
 static int l_heatup(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
@@ -313,7 +355,6 @@ static int l_heatup(lua_State *L) {
 
 	return initStackWithReturnStatus(L, rv);
 }
-
 
 //returns currentLine+bufferedLines+totalLines or nil+errmsg
 static int l_getProgress(lua_State *L) {
@@ -335,7 +376,6 @@ static int l_getProgress(lua_State *L) {
 		return numElems;
 	}
 }
-
 
 static int l_getState(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
@@ -410,6 +450,10 @@ static int l_setLocalLogLevel(lua_State *L) {
 }
 
 
+/**************************
+ * REGISTRATION FUNCTIONS *
+ **************************/
+
 static const struct luaL_Reg print3d_f[] = {
 		{"getPrinter", l_getPrinter},
 		{NULL, NULL}
@@ -418,6 +462,7 @@ static const struct luaL_Reg print3d_f[] = {
 static const struct luaL_Reg print3d_m[] = {
 		{"__gc", l_lua_gc},
 		{"__tostring", l_lua_tostring},
+
 		{"getId", l_lua_getId},
 		{"hasSocket", l_lua_hasSocket},
 		{"getTemperatures", l_getTemperatures},
@@ -431,6 +476,7 @@ static const struct luaL_Reg print3d_m[] = {
 		{"getState", l_getState},
 		{"setLocalLogStream", l_setLocalLogStream},
 		{"setLocalLogLevel", l_setLocalLogLevel},
+
 		{NULL, NULL}
 };
 

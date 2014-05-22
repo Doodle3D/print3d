@@ -19,8 +19,11 @@
 #include "../logger.h"
 #include "../utils.h"
 
+static const char *MOD_ABBR = "COMM";
+
 //NOTE: see Server.cpp for comments on these macros
-#define LOG(lvl, fmt, ...) log_message(lvl, "COMM", fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_message(lvl, MOD_ABBR, fmt, ##__VA_ARGS__)
+
 
 #define DEBUG_GCODE_FRAGMENTATION /** Uncomment to enable line counting while sending gcode data. */
 
@@ -64,14 +67,14 @@ static int openSocketInternal(const char *deviceId) {
 
 	fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	if (log_check_error(fd, "COMM", "could not create domain socket")) return -1;
+	if (log_check_error(fd, MOD_ABBR, "could not create domain socket")) return -1;
 
 	char *path = ipc_construct_socket_path(deviceId);
 	remote.sun_family = AF_UNIX;
 	strcpy(remote.sun_path, path);
 	len = sizeof(struct sockaddr_un);
 
-	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), "COMM", "could not connect domain socket with path '%s'", path)) {
+	if (log_check_error(connect(fd, (struct sockaddr *)&remote, len), MOD_ABBR, "could not connect domain socket with path '%s'", path)) {
 		close(fd);
 		free(path);
 		fd = -1;
@@ -80,8 +83,8 @@ static int openSocketInternal(const char *deviceId) {
 	free(path);
 
 	int flags = fcntl(fd, F_GETFL, 0);
-	log_check_error(flags, "COMM", "could not obtain flags for domain socket");
-	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), "COMM", "could not enable non-blocking mode on domain socket");
+	log_check_error(flags, MOD_ABBR, "could not obtain flags for domain socket");
+	log_check_error(fcntl(fd, F_SETFL, (flags | O_NONBLOCK)), MOD_ABBR, "could not enable non-blocking mode on domain socket");
 
 	signal(SIGPIPE, SIG_IGN);
 
@@ -104,7 +107,7 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 	log_ipc_cmd(LLVL_VERBOSE, sbuf, sbuflen, 0);
 	int rv = send(fd, sbuf, sbuflen, 0); //this should block until all data has been sent
 
-	if (log_check_error(rv, "COMM", "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
+	if (log_check_error(rv, MOD_ABBR, "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
 		setError("could not send ipc command");
 		return NULL;
 	} else if (rv < sbuflen) {
@@ -115,7 +118,7 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 	char *rbuf = 0;
 	*rbuflen = 0;
 	//read only once to avoid unneccessary timeout but still allow for the timeout to happen
-	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), "COMM", "error reading data from domain socket");
+	log_check_error(readAndAppendAvailableData(fd, &rbuf, rbuflen, IPC_WAIT_TIMEOUT, 1), MOD_ABBR, "error reading data from domain socket");
 
 	return rbuf;
 }
@@ -195,6 +198,10 @@ int comm_closeSocket() {
 	int rv = closeSocketInternal(socketFd);
 	socketFd = -1;
 	return rv;
+}
+
+int comm_is_socket_open() {
+	return socketFd >= 0 ? 1 : 0;
 }
 
 const char *comm_getError() {
@@ -309,7 +316,7 @@ int comm_testTransactions(const char *deviceId, char **outputText) {
 	return 0;
 }
 
-int comm_clearGcode() {
+int comm_clearGCode() {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -330,7 +337,7 @@ int comm_clearGcode() {
 }
 
 
-int comm_startPrintGcode() {
+int comm_startPrintGCode() {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -351,7 +358,7 @@ int comm_startPrintGcode() {
 }
 
 
-int comm_stopPrintGcode(const char *endCode) {
+int comm_stopPrintGCode(const char *endCode) {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -376,7 +383,7 @@ int comm_stopPrintGcode(const char *endCode) {
 	return rv;
 }
 
-int comm_sendGcodeFile(const char *file) {
+int comm_sendGCodeFile(const char *file) {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -397,7 +404,7 @@ int comm_sendGcodeFile(const char *file) {
 }
 
 //metadata may be NULL
-int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
+int comm_sendGCodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 	uint32_t startTime = getMillis();
 	clearError();
 
@@ -468,7 +475,9 @@ int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 		packetNum++;
 	}
 	uint32_t endTime = getMillis();
-	LOG(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
+
+	if (rv == 0) LOG(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
+	else LOG(LLVL_ERROR, "gcode data sent in %i packets (%lu msecs) until error %i", packetNum, endTime - startTime, rv);
 
 	return rv;
 }

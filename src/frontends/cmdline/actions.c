@@ -103,17 +103,17 @@ static int act_sendGcodeFile(const char *file) {
 
 	comm_openSocket(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if (comm_clearGCode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
 		return 1;
 	}
 
-	if (comm_sendGcodeFile(file) < 0) {
+	if (comm_sendGCodeFile(file) < 0) {
 		fprintf(stderr, "could not send gcode file (%s)\n", comm_getError());
 		return 1;
 	}
 
-	if (comm_startPrintGcode() < 0) {
+	if (comm_startPrintGCode() < 0) {
 		fprintf(stderr, "sent gcode file, but could not start print (%s)\n", comm_getError());
 		return 1;
 	}
@@ -127,7 +127,7 @@ static int act_sendGcodeFile(const char *file) {
 static int act_sendGcodeFromStdin() {
 	comm_openSocket(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if (comm_clearGCode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
 		return 1;
 	}
@@ -152,13 +152,13 @@ static int act_sendGcodeFromStdin() {
 		read_len += rv;
 	}
 
-	if (comm_sendGcodeData(gcode, NULL) < 0) {
+	if (comm_sendGCodeData(gcode, NULL) < 0) {
 		fprintf(stderr, "could not send gcode data (%s)\n", comm_getError());
 		return 1;
 	}
 	free(gcode);
 
-	if (comm_startPrintGcode() < 0) {
+	if (comm_startPrintGCode() < 0) {
 		fprintf(stderr, "sent gcode data, but could not start print (%s)\n", comm_getError());
 		return 1;
 	}
@@ -172,17 +172,17 @@ static int act_sendGcodeFromStdin() {
 static int act_sendGcode(const char *gcode) {
 	comm_openSocket(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if (comm_clearGCode() < 0) {
 		fprintf(stderr, "could not clear gcode (%s)\n", comm_getError());
 		return 1;
 	}
 
-	if (comm_sendGcodeData(gcode, NULL) < 0) {
+	if (comm_sendGCodeData(gcode, NULL) < 0) {
 		fprintf(stderr, "could not send gcode (%s)\n", comm_getError());
 		return 1;
 	}
 
-	if (comm_startPrintGcode() < 0) {
+	if (comm_startPrintGCode() < 0) {
 		fprintf(stderr, "sent gcode, but could not start print (%s)\n", comm_getError());
 		return 1;
 	}
@@ -246,7 +246,7 @@ static int act_doHeatup(int temperature) {
 
 static int act_stopPrint(const char *endCode) {
 	comm_openSocket(deviceId);
-	int rv = comm_stopPrintGcode(endCode);
+	int rv = comm_stopPrintGCode(endCode);
 	comm_closeSocket();
 
 	if (rv > -1) {

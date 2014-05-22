@@ -15,16 +15,17 @@
 
 int comm_openSocket(const char *deviceId);
 int comm_closeSocket();
+int comm_is_socket_open();
 const char *comm_getError();
 
 int comm_testCommand(const char *question, char **answer);
 int comm_testTransactions(const char *deviceId, char **outputText);
 
-int comm_clearGcode();
-int comm_startPrintGcode();
-int comm_stopPrintGcode(const char *endCode);
-int comm_sendGcodeFile(const char *file);
-int comm_sendGcodeData(const char *gcode, ipc_gcode_metadata_s *metadata);
+int comm_clearGCode();
+int comm_startPrintGCode();
+int comm_stopPrintGCode(const char *endCode);
+int comm_sendGCodeFile(const char *file);
+int comm_sendGCodeData(const char *gcode, ipc_gcode_metadata_s *metadata);
 
 int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which);
 int comm_heatup(int temperature);

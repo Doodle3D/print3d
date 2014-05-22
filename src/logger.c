@@ -107,7 +107,7 @@ int log_va_check_error(int rv, const char *module, const char *format, va_list a
 
 	vasprintf(&buf, format, args);
 
-	log_message(LLVL_ERROR, "%s (%s)", module, buf, strerror(savedErrno));
+	log_message(LLVL_ERROR, module, "%s (%s)", buf, strerror(savedErrno));
 	free(buf);
 
 	return 1;
