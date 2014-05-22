@@ -31,6 +31,7 @@ extern "C" {
 #endif
 
 const char *LOG_LEVEL_NAMES[] = { "_invalid_", "quiet", "error", "warning", "info", "verbose", "bulk", NULL };
+const int NUM_LOG_LEVELS = LLVL_BULK;
 
 const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* special codes (not sent or received) */

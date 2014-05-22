@@ -95,6 +95,10 @@ typedef struct ipc_gcode_metadata_s {
  */
 extern const char *LOG_LEVEL_NAMES[];
 
+/** Highest existing log level (required for looping through levels).
+ */
+extern const int NUM_LOG_LEVELS;
+
 /** Definitions of names for available IPC commands.
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];

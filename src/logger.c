@@ -17,10 +17,23 @@
 #include "logger.h"
 
 
-const int NUM_LOG_LEVELS = LLVL_BULK;
-
 static ELOG_LEVEL level_ = LLVL_BULK;
 static FILE* stream_ = NULL;
+
+static int get_padding_for_log_level(ELOG_LEVEL level) {
+	static int max_len = -1;
+
+	if (max_len == -1) {
+		int i;
+		for (i = 1; i < NUM_LOG_LEVELS; ++i) {
+			int l = strlen(LOG_LEVEL_NAMES[i]);
+			if (l > max_len) max_len = l;
+		}
+	}
+
+	return max_len - strlen(LOG_LEVEL_NAMES[level]);
+}
+
 
 int log_open_stream(FILE* stream, ELOG_LEVEL level) {
 	if (stream_ == stream) return 0;
@@ -94,8 +107,9 @@ void log_va_message(ELOG_LEVEL level, const char *module, const char *format, va
 
 	ltime = time(NULL);
 	now = localtime(&ltime);
-	fprintf(stream_, "%02i-%02i %02i:%02i:%02i [%s] (%s): %s\n",
-			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, module, LOG_LEVEL_NAMES[level], buf);
+	fprintf(stream_, "%02i-%02i %02i:%02i:%02i [%s] (%s)%*s: %s\n",
+			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec,
+			module, LOG_LEVEL_NAMES[level], get_padding_for_log_level(level), "", buf);
 	free(buf);
 }
 

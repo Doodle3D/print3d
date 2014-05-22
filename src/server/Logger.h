@@ -50,6 +50,8 @@ private:
 
 	Logger(const Logger& o);
 	void operator=(const Logger& o);
+
+	int getPaddingForLevel(ELOG_LEVEL level) const;
 };
 
 #endif /* __cplusplus */

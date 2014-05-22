@@ -84,8 +84,9 @@ void Logger::vaLog(ELOG_LEVEL level, const char *module, const char *format, va_
 
 	ltime = time(NULL);
 	now = localtime(&ltime);
-	fprintf(stream_, "%02i-%02i %02i:%02i:%02i [%s] (%s): %s\n",
-			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec, module, LOG_LEVEL_NAMES[level], buf);
+	fprintf(stream_, "%02i-%02i %02i:%02i:%02i [%s] (%s)%*s: %s\n",
+			now->tm_mday, now->tm_mon + 1, now->tm_hour, now->tm_min, now->tm_sec,
+			module, LOG_LEVEL_NAMES[level], getPaddingForLevel(level), "", buf);
 	free(buf);
 }
 
@@ -129,3 +130,16 @@ void Logger::logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isRep
 Logger::Logger()
 : level_(BULK), stream_(0)
 { /* empty */ }
+
+int Logger::getPaddingForLevel(ELOG_LEVEL level) const {
+	static int max_len = -1;
+
+	if (max_len == -1) {
+		for (int i = 1; i < NUM_LOG_LEVELS; ++i) {
+			int l = strlen(LOG_LEVEL_NAMES[i]);
+			if (l > max_len) max_len = l;
+		}
+	}
+
+	return max_len - strlen(LOG_LEVEL_NAMES[level]);
+}
