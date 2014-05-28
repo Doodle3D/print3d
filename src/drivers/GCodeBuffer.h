@@ -41,6 +41,8 @@ public:
 
 	GCodeBuffer();
 
+	void setKeepGpxMacroComments(bool keep);
+
 	GCODE_SET_RESULT set(const std::string &gcode, const MetaData *metaData = 0);
 	GCODE_SET_RESULT append(const std::string &gcode, const MetaData *metaData = 0);
 	void clear();
@@ -76,10 +78,12 @@ private:
 	int32_t sequenceTotal_;
 	std::string *source_;
 
+	bool keepGpxMacroComments_;
+
 	Logger& log_;
 
 	void updateStats(std::string *buffer, size_t pos);
-	void cleanupGCode(std::string *buffer, size_t pos);
+	void cleanupGCode(std::string *buffer, const size_t pos);
 };
 
 #endif /* ! GCODE_BUFFER_H_SEEN */

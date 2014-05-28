@@ -25,9 +25,17 @@ const size_t GCodeBuffer::GCODE_EXCERPT_LENGTH = 10;
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0),
-  sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0), log_(Logger::getInstance())
+  sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0),
+  keepGpxMacroComments_(false), log_(Logger::getInstance())
 {
 	LOG(Logger::VERBOSE, "init - max_bucket_size: %lu, max_buffer_size: %lu", MAX_BUCKET_SIZE, MAX_BUFFER_SIZE);
+}
+
+/**
+ * When passed true, gcode cleanup will not touch GPX macro comments (';@...').
+ */
+void GCodeBuffer::setKeepGpxMacroComments(bool keep) {
+	keepGpxMacroComments_ = keep;
 }
 
 /**
@@ -238,7 +246,7 @@ const std::string &GCodeBuffer::getGcodeSetResultString(GCODE_SET_RESULT gsr) {
  * PRIVATE FUNCTIONS *
  *********************/
 
-void GCodeBuffer::updateStats(string *buffer, size_t pos) {
+void GCodeBuffer::updateStats(string *buffer, const size_t pos) {
 	int32_t addedLineCount = std::count(buffer->begin() + pos, buffer->end(), '\n');
 	if (buffer->length() > 0 && buffer->at(buffer->length() - 1) != '\n') addedLineCount++;
 	bufferedLines_ += addedLineCount;
@@ -257,8 +265,14 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	std::replace(buffer->begin() + pos, buffer->end(), '\r', '\n');
 
 	//remove all comments (;...)
-	std::size_t posComment = 0;
-	while((posComment = buffer->find(';', pos)) != string::npos) {
+	std::size_t posComment = pos;
+	while((posComment = buffer->find(';', posComment)) != string::npos) {
+		if (keepGpxMacroComments_ && posComment < buffer->length() - 1 && buffer->at(posComment + 1) == '@') {
+			LOG(Logger::INFO, "found macro comment, skipping from %i to %i", posComment, posComment + 1);
+			posComment++;
+			continue;
+		}
+
 //		LOG(Logger::BULK, "  posComment: %i",posComment);
 		size_t posCommentEnd = buffer->find('\n', posComment);
 //		LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
@@ -269,6 +283,10 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 			buffer->erase(posComment, posCommentEnd - posComment);
 //			LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
 		}
+
+		if (buffer->empty()) return;
+
+		posComment = pos;
 	}
 
 	//replace \n\n with \n
