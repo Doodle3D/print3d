@@ -215,7 +215,7 @@ const std::string &AbstractDriver::getStateString(STATE state) {
 void AbstractDriver::printNextLine() {
 	LOG(Logger::VERBOSE, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getTotalLines());
 	string line;
-	if(gcodeBuffer_.getNextLine(line)) {
+	if(gcodeBuffer_.getNextLine(line) > 0) {
 		sendCode(line);
 		gcodeBuffer_.setCurrentLine(gcodeBuffer_.getCurrentLine() + 1);
 	} else { // print finished

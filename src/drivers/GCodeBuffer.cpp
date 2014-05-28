@@ -167,45 +167,51 @@ void GCodeBuffer::setCurrentLine(int32_t line) {
 
 //NOTE: FIXME: when requesting multiple lines, be aware that this function will currently
 //return at most the first bucket, i.e. it does not concatenate data from multiple buffers.
-bool GCodeBuffer::getNextLine(string &line, size_t amount) const {
+//NOTE: if the requested amount of lines is not present, as many as possible will be returned.
+int32_t GCodeBuffer::getNextLine(string &line, size_t amount) const {
 	if (buckets_.size() == 0) {
 		line = "";
-		return false;
+		return 0;
 	}
-
-	string *b = buckets_.front();
-	size_t posN = b->find('\n');
-
-	if (amount > 1) {
-		size_t i;
-		for (i = amount - 1; i > 0; i--) {
-			posN = b->find('\n', posN + 1);
-			if (posN == string::npos) break;
-		}
-
-		//if we breaked out of the loop, return false _unless_ we only needed one more line,
-		//were at the end of the buffer and it was not terminated with a newline (i.e., we actually got this last line)
-		if (i > 0 && !(i == 1 && posN == string::npos && *(b->rbegin()) != '\n')) return false;
-	}
-
-	line = b->substr(0, posN);
-	return (posN != string::npos || line.length() > 0);
-}
-
-//FIXME: this function does currently not operate across bucket boundaries
-bool GCodeBuffer::eraseLine(size_t amount) {
-	if (buckets_.size() == 0) return false;
 
 	string *b = buckets_.front();
 	size_t pos = b->find('\n');
+	int32_t counter = 1;
 
 	if (amount > 1) {
 		size_t i;
 		for (i = amount - 1; i > 0; i--) {
 			pos = b->find('\n', pos + 1);
 			if (pos == string::npos) break;
+			counter++;
 		}
-		if (i > 0 && !(i == 1 && pos == string::npos && *(b->rbegin()) != '\n')) return false; //see getNextLine for explanation
+
+		if (pos == string::npos && *(b->rbegin()) != '\n') counter++; //account for unterminated line at end of buffer
+	}
+
+	line = b->substr(0, pos);
+
+	return counter;
+}
+
+//FIXME: this function does currently not operate across bucket boundaries
+//NOTE: if amount of lines is not present, remove as many as possible
+int32_t GCodeBuffer::eraseLine(size_t amount) {
+	if (buckets_.size() == 0) return 0;
+
+	string *b = buckets_.front();
+	size_t pos = b->find('\n');
+	int32_t counter = 1;
+
+	if (amount > 1) {
+		size_t i;
+		for (i = amount - 1; i > 0; i--) {
+			pos = b->find('\n', pos + 1);
+			if (pos == string::npos) break;
+			counter++;
+		}
+
+		if (pos == string::npos && *(b->rbegin()) != '\n') counter++; //account for unterminated line at end of buffer
 	}
 
 	size_t len = b->length();
@@ -217,9 +223,9 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 		buckets_.pop_front();
 	}
 
-	bufferedLines_ -= amount;
+	bufferedLines_ -= counter;
 
-	return pos != string::npos;
+	return counter;
 }
 
 //static

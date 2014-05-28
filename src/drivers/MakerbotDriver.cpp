@@ -8,6 +8,7 @@
 
 /*
  * TODO:
+ * - Implement progress approximation (see cmdToLineRatio_, currently commented out because they contain bugs).
  * - In convertGCode: instead of separating the conversion buffer into separate commands again (with the parser), it would be better to adapt gpx to emit() these commands one by one (or something similar)...
  * - only build aux/uci.git on osx (with BUILD_LUA disabled, and possibly patch the makefile to disable building the executable?). for openwrt, add a dependency on libuci instead
  * - read uci config in server to create the correct type of driver (see lua frontend for reference)
@@ -19,6 +20,7 @@
  * Protocol spec: https://github.com/makerbot/s3g/blob/master/doc/s3gProtocol.md
  * online iButton CRC calculator: http://www.datastat.com/sysadminjournal/maximcrc.cgi
  */
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <errno.h>
@@ -39,13 +41,12 @@ using std::vector;
 # define LOG(lvl, fmt, ...) log_.log(lvl, "MBTD", fmt, ##__VA_ARGS__)
 #endif
 
-//NOTE: this should an amount that fits in one GcodeBuffer's bucket because getNextLine() cannot cross bucket boundaries
-//const int MakerbotDriver::WAIT_GCODE_LINES = 1000; //approximation: 1000 lines * 35 chars < 1024 bytes * 50
-const int MakerbotDriver::MAX_GPX_BUFFER_SIZE = 1024 * 50;
 const int MakerbotDriver::PRINTER_BUFFER_SIZE = 512;
-const size_t MakerbotDriver::QUEUE_MIN_SIZE = 1024;
-const size_t MakerbotDriver::QUEUE_FILL_SIZE = 3 * 1024;
 const int MakerbotDriver::GCODE_CVT_LINES = 25;
+
+//Note: these values are quite small in order to reduce accuracy errors in progress reports.
+const size_t MakerbotDriver::QUEUE_MIN_SIZE = 10;
+const size_t MakerbotDriver::QUEUE_FILL_SIZE = 30;
 
 
 MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath, const uint32_t& baudrate)
@@ -64,25 +65,27 @@ int MakerbotDriver::update() {
 
 	if (!isConnected()) return -1;
 
-	if (queue_.size() < QUEUE_MIN_SIZE) {
-		bool success = true;
-		while (success && queue_.size() < QUEUE_FILL_SIZE) {
+	if ((state_ == PRINTING || state_ == STOPPING) && queue_.size() < QUEUE_MIN_SIZE) {
+		int32_t amt = -1;
+		while (amt != 0 && queue_.size() < QUEUE_FILL_SIZE) {
 			string lines;
-			success = gcodeBuffer_.getNextLine(lines, GCODE_CVT_LINES);
+			amt = gcodeBuffer_.getNextLine(lines, GCODE_CVT_LINES);
 			int cmds = convertGCode(lines);
+			if (!lines.empty()) LOG(Logger::VERBOSE, "converted %i lines into %i commands: '%s'", amt, cmds, lines.c_str()); //TEMP
 
-			if (success) {
+			if (amt > 0) {
+				gcodeBuffer_.eraseLine(amt);
+				gcodeBuffer_.setCurrentLine(getCurrentLine() + amt);
+
 				//update approximation of s3g commands per line
-				float newRatio = (float)GCODE_CVT_LINES / cmds;
+				float newRatio = (float)amt / cmds;
 				float weight = cmds > 0 ? (float)cmds / queue_.size() : 0.0f;
 				cmdToLineRatio_ = cmdToLineRatio_ * (1.0f - weight) + newRatio * weight;
 			}
 		}
 	}
 
-
-	STATE s = getState();
-	if (s == PRINTING || s == STOPPING) {
+	if (state_ == PRINTING || state_ == STOPPING) {
 		processQueue();
 		//TODO: setState(IDLE) if all code has been processed
 	}
@@ -138,13 +141,13 @@ void MakerbotDriver::clearGCode() {
 
 int32_t MakerbotDriver::getCurrentLine() const {
 	int32_t cl = gcodeBuffer_.getCurrentLine();
-//	cl -= (queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_;
+	//cl -= std::min(cl, (int32_t)((queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_));
 	return cl;
 }
 
 int32_t MakerbotDriver::getBufferedLines() const {
 	int32_t cl = gcodeBuffer_.getBufferedLines();
-//	cl += (queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_;
+	//cl += (queue_.size() + PRINTER_BUFFER_SIZE - bufferSpace_) * cmdToLineRatio_;
 	return cl;
 }
 

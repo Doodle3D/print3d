@@ -54,8 +54,8 @@ public:
 
 	void setCurrentLine(int32_t line);
 
-	bool getNextLine(std::string &line, size_t amount = 1) const;
-	bool eraseLine(size_t amount = 1);
+	int32_t getNextLine(std::string &line, size_t amount = 1) const;
+	int32_t eraseLine(size_t amount = 1);
 
 	static const std::string &getGcodeSetResultString(GCODE_SET_RESULT gsr);
 

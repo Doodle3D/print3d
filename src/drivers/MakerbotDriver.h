@@ -47,7 +47,6 @@ protected:
 	void fullStop();
 
 private:
-	static const int MAX_GPX_BUFFER_SIZE;
 	static const int PRINTER_BUFFER_SIZE;
 	static const size_t QUEUE_MIN_SIZE;
 	static const size_t QUEUE_FILL_SIZE;;
