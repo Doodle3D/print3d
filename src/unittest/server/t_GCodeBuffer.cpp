@@ -84,6 +84,11 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(rv, true);
 		fructose_assert_eq(lineBuf, "line   ");
 
+		buffer.set(";  pure comment");
+		fructose_assert_eq(buffer.getTotalLines(), 0);
+		rv = buffer.getNextLine(lineBuf);
+		fructose_assert_eq(rv, false);
+
 		buffer.set("car+new mix\r\n\r\n\n\n\n");
 		fructose_assert_eq(buffer.getTotalLines(), 1);
 		rv = buffer.getNextLine(lineBuf);

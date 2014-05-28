@@ -27,12 +27,16 @@ public:
 		: name(n)
 		{}
 	};
+
 	// typedef (shorthand) for list of firmware descriptions
 	typedef std::vector<FirmwareDescription> vec_FirmwareDescription;
+
 	// typedef (shorthand) for create instance function of driver
 	typedef AbstractDriver* (*creatorFunc)(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
+
 	// driver info per driver (used in DriverFactory)
 	struct DriverInfo {
+		std::string name;
 		vec_FirmwareDescription supportedFirmware;
 		creatorFunc creator;                                //pointer to driver's create function
 	};
