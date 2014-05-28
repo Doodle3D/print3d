@@ -7,6 +7,7 @@
  */
 
 #include "GCodeBuffer.h"
+#include <algorithm>
 #include <stdlib.h>
 #include <string.h>
 using std::string;
@@ -246,10 +247,10 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
-	//LOG(Logger::VERBOSE, "  cleanupGCode");
-	//LOG(Logger::VERBOSE, "  buffer: ");
-	//LOG(Logger::VERBOSE, "  %s",buffer->c_str());
-
+//	LOG(Logger::BULK, "cleanupGCode");
+//	LOG(Logger::BULK, "  pos: %i",pos);
+//	LOG(Logger::BULK, "  ////////// buffer: ");
+//	LOG(Logger::BULK, "  \n%s\n////////// end buffer",buffer->c_str());
 	size_t buflen = buffer->length();
 
 	//replace \r with \n
@@ -258,31 +259,41 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	//remove all comments (;...)
 	std::size_t posComment = 0;
 	while((posComment = buffer->find(';', pos)) != string::npos) {
-		//LOG(Logger::BULK, "  posComment: %i",posComment);
+//		LOG(Logger::BULK, "  posComment: %i",posComment);
 		size_t posCommentEnd = buffer->find('\n', posComment);
-		//LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
+//		LOG(Logger::BULK, "  posCommentEnd: %i",posCommentEnd);
 		if(posCommentEnd == string::npos) {
 			buffer->erase(posComment);
-			//LOG(Logger::BULK, " erase until npos");
+//			LOG(Logger::BULK, " erase until npos");
 		} else {
 			buffer->erase(posComment, posCommentEnd - posComment);
-			//LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
+//			LOG(Logger::BULK, " erase: %i - %i",posComment,(posCommentEnd - posComment));
 		}
 	}
 
 	//replace \n\n with \n
 	std::size_t posDoubleNewline = pos;
+	// -1 to make sure we also check the first line of the part we're checking
+	if(posDoubleNewline > 0) posDoubleNewline--;
 	while((posDoubleNewline = buffer->find("\n\n", posDoubleNewline)) != string::npos) {
+//		LOG(Logger::BULK, " erase double lines: %i",posDoubleNewline);
 		buffer->replace(posDoubleNewline, 2, "\n");
 	}
 
 	// remove empty first line
 	if(buffer->find("\n",0) == 0) {
 		buffer->erase(0, 1);
+		LOG(Logger::BULK, " erase first empty line");
 	}
 
-	//LOG(Logger::BULK, "  >buffer: ");
-	//LOG(Logger::BULK, "  %s",buffer->c_str());
+	// Make sure we end with an empty line
+	char& lastChar = buffer->at(buffer->length()-1);
+	if(lastChar != '\n') {
+		buffer->append("\n");
+//		LOG(Logger::BULK, " add empty line at end");
+	}
+//	LOG(Logger::BULK, "  ////////// >>>buffer: ");
+//	LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
 
 	bufferSize_ -= (buflen - buffer->length());
 }

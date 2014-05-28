@@ -62,6 +62,7 @@ struct printerData_s {
  * HELPER FUNCTIONS *
  ********************/
 
+#if 0
 //from: http://www.lua.org/pil/24.2.3.html
 static void stackDump (lua_State *L) {
 	int i, top = lua_gettop(L);
@@ -85,6 +86,7 @@ static void stackDump (lua_State *L) {
 	}
 	printf("\n");  /* end the listing */
 }
+#endif
 
 static struct printerData_s *getContext(lua_State *L) {
 	struct printerData_s **ctx = NULL;

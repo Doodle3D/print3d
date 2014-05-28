@@ -293,7 +293,7 @@ string* Serial::extractLine() {
   if (p == buffer_ + bufferSize_) return NULL;
 
   int lineLen = p - buffer_;
-  char* lineCopy = (char*)malloc(lineLen);
+  char* lineCopy = (char*)malloc(lineLen + 1);
   memcpy(lineCopy, buffer_, lineLen);
 
   //this is rather ugly but at least it should work...

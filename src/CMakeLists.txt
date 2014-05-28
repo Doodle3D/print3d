@@ -6,8 +6,8 @@ if(APPLE)
 	set(CMAKE_OSX_ARCHITECTURES x86_64;i386)
 endif()
 
-#add_definitions(-Wall -Werror)
-add_definitions(-Wall)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 option(GENERATE_DOCS "generate documentation" OFF)
 #option(PRINT3D_DEBUG "debugging support" OFF)

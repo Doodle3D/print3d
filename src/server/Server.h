@@ -25,7 +25,7 @@ public:
 	typedef std::vector<Client*> vec_ClientP;
 	typedef std::set<int> set_int;
 
-	Server(const std::string& serialPortName, const std::string& socketPath);
+	Server(const std::string& serialPortName, const std::string& socketPath, const std::string& printerName = "");
 	~Server();
 
 	int start(bool fork = FORK_BY_DEFAULT);

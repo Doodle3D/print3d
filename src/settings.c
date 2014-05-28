@@ -17,9 +17,6 @@
 
 #ifdef USE_LIB_UCI
 static struct uci_context *ctx = NULL;
-#else
-static const char *dummy_response = "ultimaker";
-//static const char *dummy_response = "makerbot_generic";
 #endif
 
 
@@ -67,10 +64,6 @@ const char *settings_get(const char *uci_spec) {
 	}
 
 #else
-	if (strcmp(uci_spec, "wifibox.general.printer_type") == 0) {
-		return dummy_response;
-	} else {
 		return NULL;
-	}
 #endif
 }
