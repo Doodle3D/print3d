@@ -185,9 +185,9 @@ int32_t GCodeBuffer::getNextLine(string &line, size_t amount) const {
 
 	string *b = buckets_.front();
 	size_t pos = b->find('\n');
-	int32_t counter = 1;
+	int32_t counter = pos != string::npos ? 1 : 0;
 
-	if (amount > 1) {
+	if (amount > 1 && pos != string::npos) {
 		size_t i;
 		for (i = amount - 1; i > 0; i--) {
 			pos = b->find('\n', pos + 1);

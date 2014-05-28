@@ -79,13 +79,13 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		//check if the data has been appended properly
 		string lineBuf;
 		fructose_assert_eq(buffer.getTotalLines(), 3);
-		fructose_assert_eq(buffer.getNextLine(lineBuf), true);
+		fructose_assert_eq(buffer.getNextLine(lineBuf), 1);
 		fructose_assert_eq(lineBuf, "abc");
 		buffer.eraseLine();
-		fructose_assert_eq(buffer.getNextLine(lineBuf), true);
+		fructose_assert_eq(buffer.getNextLine(lineBuf), 1);
 		fructose_assert_eq(lineBuf, "def");
 		buffer.eraseLine();
-		fructose_assert_eq(buffer.getNextLine(lineBuf), true);
+		fructose_assert_eq(buffer.getNextLine(lineBuf), 1);
 		fructose_assert_eq(lineBuf, "ghi");
 		buffer.eraseLine();
 
@@ -116,56 +116,57 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.getTotalLines(), 4);
 
 		string lineBuf;
-		bool rv;
+		int32_t rv;
 
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, line1);
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, line1);
 
 		buffer.eraseLine();
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, line2);
 
 		buffer.eraseLine();
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, line3);
 
 		buffer.eraseLine();
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, line4);
 
 		buffer.eraseLine();
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, false);
+		fructose_assert_eq(rv, 0);
 		fructose_assert_eq(lineBuf, "");
 	}
 
 	void testCleanup(const string& test_name) {
 		GCodeBuffer buffer;
 		string lineBuf;
-		bool rv;
+		int32_t rv;
 
 		buffer.set("line   ;  with comment");
 		fructose_assert_eq(buffer.getTotalLines(), 1);
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, "line   ");
 
 		buffer.set(";  pure comment");
 		fructose_assert_eq(buffer.getTotalLines(), 0);
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, false);
+		fructose_assert_eq(lineBuf, "");
+		fructose_assert_eq(rv, 0);
 
 		buffer.set("car+new mix\r\n\r\n\n\n\n");
 		fructose_assert_eq(buffer.getTotalLines(), 1);
 		rv = buffer.getNextLine(lineBuf);
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, "car+new mix");
 	}
 
@@ -217,31 +218,32 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 
 	void testMultiLineGet(const string& test_name) {
 		GCodeBuffer buffer;
-		bool rv;
+		int32_t rv;
 		string rl;
 		const string l1nl = "line 1\n", l2nl = "line 2\n", l3nl = "line 3\n";
 		const string l1noNl = "line 1", l2noNl = "line 2", l3noNl = "line 3";
 
 		buffer.set(l1nl + l2nl + l3nl);
+		fructose_assert_eq(buffer.getBufferedLines(), 3);
 		rv = buffer.getNextLine(rl);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1noNl);
+		fructose_assert_eq(rv, 1); fructose_assert_eq(rl, l1noNl);
 		rv = buffer.getNextLine(rl, 1);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1noNl);
+		fructose_assert_eq(rv, 1); fructose_assert_eq(rl, l1noNl);
 		rv = buffer.getNextLine(rl, 2);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2noNl);
+		fructose_assert_eq(rv, 2); fructose_assert_eq(rl, l1nl + l2noNl);
 		rv = buffer.getNextLine(rl, 3);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+		fructose_assert_eq(rv, 3); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
 		rv = buffer.getNextLine(rl, 4);
-		fructose_assert_eq(rv, false);
+		fructose_assert_eq(rv, 3);
 
 		buffer.set(l1nl + l2nl + l3noNl);
 		rv = buffer.getNextLine(rl, 3);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+		fructose_assert_eq(rv, 3); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
 	}
 
 	void testMultiLineErase(const string& test_name) {
 		GCodeBuffer buffer;
-		bool rv;
+		int32_t rv;
 		string rl;
 		const string l1nl = "line 1\n", l2nl = "line 2\n", l3nl = "line 3\n";
 		const string l1noNl = "line 1", l2noNl = "line 2", l3noNl = "line 3";
@@ -249,20 +251,20 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		buffer.set(l1nl + l2nl + l3nl);
 		fructose_assert_eq(buffer.getBufferedLines(), 3);
 		rv = buffer.getNextLine(rl, 3);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
+		fructose_assert_eq(rv, 3); fructose_assert_eq(rl, l1nl + l2nl + l3noNl);
 		rv = buffer.eraseLine(2);
+		fructose_assert_eq(rv, 2);
 		fructose_assert_eq(buffer.getBufferedLines(), 1);
-		fructose_assert_eq(rv, true);
 		rv = buffer.getNextLine(rl, 2);
-		fructose_assert_eq(rv, false);
+		fructose_assert_eq(rv, 1);
 		rv = buffer.getNextLine(rl);
-		fructose_assert_eq(rv, true); fructose_assert_eq(rl, l3noNl);
+		fructose_assert_eq(rv, 1); fructose_assert_eq(rl, l3noNl);
 
 		rv = buffer.eraseLine();
-		fructose_assert_eq(rv, true);
+		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(buffer.getBufferedLines(), 0);
 		rv = buffer.eraseLine();
-		fructose_assert_eq(rv, false);
+		fructose_assert_eq(rv, 0);
 		fructose_assert_eq(buffer.getBufferedLines(), 0);
 	}
 
