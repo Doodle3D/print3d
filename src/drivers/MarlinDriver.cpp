@@ -269,6 +269,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("vision_3d_printer") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("builder3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bigbuilder3d") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("mamba3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_generic") );
 
 		info.supportedFirmware = supportedFirmware;
