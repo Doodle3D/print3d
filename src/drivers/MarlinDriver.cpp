@@ -23,47 +23,6 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
   checkConnection_(true),
   checkTemperatureAttempt_(0),
   maxCheckTemperatureAttempts_(2) {
-
-	/*//temperature parsing tests
-	readCode(*new string("T:19.1 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.1 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.5 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.6 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19 /0.0 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:0.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:90.0 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:90.6 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:90 /0.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:90.0 /180.0 @:0 B@:0"));
-	readCode(*new string("ok T:19.9 /180.5 B:90.0 /180.9 @:0 B@:0"));
-	readCode(*new string("ok T:19.1 @:0"));
-	readCode(*new string("T:19.1 @:0"));
-	readCode(*new string("ok T:19.1 /0.0 @:0 B:29.0 /0.0 "));
-	readCode(*new string("ok T:19.1 @:0 B:29.0 "));*/
-
-	/*// updateGCodeInfo parsing tests
-	startPrint("M109 S220");
-	startPrint("M109 S180");
-	startPrint("M109 S70");
-	startPrint("M109 S60\nM90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	startPrint("M90\nM91\nM109 S60\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	startPrint("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000\nM109 S60");
-	startPrint("M90\nM109 S60\nM91\nM92\nM109 S60\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");*/
-
-	/*//filterGCode parsing tests
-	LOG(Logger::BULK, "A");
-	setGCode("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	LOG(Logger::BULK, "B");
-	setGCode(";comment bla bla\nM90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	LOG(Logger::BULK, "C");
-	setGCode("M90\n;comment bla bla\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	LOG(Logger::BULK, "D");
-	setGCode("M90\n;comment bla bla\n;comment2 bla bla\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	LOG(Logger::BULK, "E");
-	setGCode("M90\n;comment bla bla\r;comment2 bla bla\rM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
-	LOG(Logger::BULK, "F");
-	setGCode("M90\n;comment bla bla\r;comment2 bla bla\rM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000\n;comment bla bla");*/
 }
 
 int MarlinDriver::update() {

@@ -304,15 +304,15 @@ void AbstractDriver::extractGCodeInfo(const string& gcode) {
 	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
 
 	// check for a heat command (M109 S... / M109 R...)
-	std::size_t posHeat = gcode.find("M109");
+	std::size_t posHeat = gcode.rfind("M109");
 	if(posHeat != std::string::npos) {
 		targetTemperature_ = findNumber(gcode, posHeat + 6);
 		LOG(Logger::VERBOSE, "  targetTemperature_: %i", targetTemperature_);
 	}
 
 	// check for a bed heat command (M190 S... / M190 R...)
-	std::size_t posBedHeat = gcode.find("M190");
-	if(posHeat != std::string::npos) {
+	std::size_t posBedHeat = gcode.rfind("M190");
+	if(posBedHeat != std::string::npos) {
 		targetBedTemperature_ = findNumber(gcode, posBedHeat + 6);
 		LOG(Logger::VERBOSE, "  targetBedTemperature_: %i", targetBedTemperature_);
 	}
