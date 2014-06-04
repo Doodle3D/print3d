@@ -7,18 +7,19 @@
 
 PRINT3D_RES_PATH=/tmp
 PRINT3D_RUNNER=/usr/libexec/print3d-runner.sh
+LOG_ID=print3d-mgr
 
 DEVBASE=`dmesg | tail -2 | sed -n -e 's/.*\(tty\w*\).*/\1/p'`
 SOCKET=$PRINT3D_RES_PATH/print3d-${DEVBASE}
 
 if [ "x$DEVBASE" == "x" ]; then
-	logger -t print3d-mgr "Not starting print3d server, no valid usb log message detected"
+	logger -t $LOG_ID "Not starting print3d server, no valid usb log message detected"
 	exit 1
 fi
 
-logger -t print3d-mgr "Starting print3d server for /dev/$DEVBASE"
+logger -t $LOG_ID "Starting print3d server for /dev/$DEVBASE"
 if [ ! -S $SOCKET ]; then
 	$PRINT3D_RUNNER ${DEVBASE} &
-	#disown $$
+	#disown $!
 	sleep 2
 fi

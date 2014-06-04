@@ -43,7 +43,6 @@ define Package/print3d/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/print3d.so $(1)/usr/lib/lua/
 	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d_init $(1)/etc/init.d/print3d
-	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-manager.sh $(1)/usr/libexec/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-runner.sh $(1)/usr/libexec/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-new-device.sh $(1)/usr/libexec/
 endef

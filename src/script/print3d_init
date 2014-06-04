@@ -6,17 +6,25 @@
 # See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
 
 START=99
+LOG_ID=print3d-mgr
+P3D_INOTIFYD_PID_FILE=/var/run/inotifyd-print3d.pid
+
+is_running() {
+	test -f $P3D_INOTIFYD_PID_FILE && cat $P3D_INOTIFYD_PID_FILE | xargs kill -0 > /dev/null 2>&1
+	#return $?
+}
 
 start() {
-	ps | grep 'print3d-manager.sh' | grep -v grep > /dev/null 2> /dev/null
-	if [ $? -eq 0 ]; then
+	if is_running; then
 		echo "print3d manager already running"
 		exit 1
 	fi
 
-	logger -t print3d-mgr "Starting print3d manager"
+	logger -t $LOG_ID "Starting inotifyd for print3d devices"
 
-	/usr/libexec/print3d-manager.sh > /dev/null 2> /dev/null &
+	inotifyd /usr/libexec/print3d-new-device.sh /dev:n > /dev/null 2>&1 &
+	echo $! > $P3D_INOTIFYD_PID_FILE
+
 
 	#Note: power cycling the USB port also causes inotifyd to detect an 'already connected' device
 	echo 0 > /sys/devices/virtual/gpio/gpio8/value
@@ -25,12 +33,16 @@ start() {
 }
 
 stop() {
-	#Note: this method of stopping processes is too coarse, it should keep pid files or something similar
-	#and print3d-runner.sh should use an exit handler (`trap exit_handler TERM`) to make sure the socket is removed
+	if ! is_running; then
+		echo "print3d manager not running"
+		exit 1
+	fi
 
-	logger -t print3d-mgr "Stopping print3d manager"
-	#P3D_MGR_PID=`pidof print3d-manager.sh`
-	killall print3d-manager.sh
-	killall inotifyd
-	killall print3d
+	logger -t $LOG_ID "Stopping inotifyd for print3d devices"
+
+	cat $P3D_INOTIFYD_PID_FILE | xargs kill > /dev/null 2>&1
+	if [ $? -eq 0 ]; then rm $P3D_INOTIFYD_PID_FILE; fi
+
+	#Note: this method of stopping print3d should be improved by use of pid files and an exit handler (`trap exit_handler TERM`) to make sure the socket is removed
+	killall print3d > /dev/null 2>&1
 }
