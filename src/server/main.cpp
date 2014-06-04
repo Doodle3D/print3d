@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include "../ipc_shared.h"
+#include "../settings.h"
 #include "../drivers/DriverFactory.h"
 #include "Logger.h"
 #include "Server.h"
@@ -20,6 +21,10 @@ using std::string;
 using std::cout;
 using std::cerr;
 using std::endl;
+
+static const char* UCI_KEY_LOG_PATH = "wifibox.system.log_path";
+static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.api_log_basename";
+static const char* UCI_KEY_LOG_LEVEL = "wifibox.system.api_log_level";
 
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -30,6 +35,7 @@ static struct option long_options[] = {
 		{"force", no_argument, NULL, 'S'},
 		{"device", required_argument, NULL, 'd'},
 		{"printer", required_argument, NULL, 'p'},
+		{"use-settings", required_argument, NULL, 'u'},
 		{NULL, 0, NULL, 0}
 };
 
@@ -40,9 +46,10 @@ int main(int argc, char** argv) {
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
 	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
+	bool useUci = false;
 	int ch;
 
-	while ((ch = getopt_long(argc, argv, "hqvfFSd:p:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvfFSd:p:u", long_options, NULL)) != -1) {
 		switch (ch) {
 			case 'h': showHelp = true; break;
 			case 'q':
@@ -58,6 +65,7 @@ int main(int argc, char** argv) {
 			case 'S': forceStart = true; break;
 			case 'd': serialDevice = optarg; break;
 			case 'p': printerName = optarg; break;
+			case 'u': useUci = true; break;
 
 			case ':': case '?':
 				::exit(1);
@@ -87,6 +95,7 @@ int main(int argc, char** argv) {
 		printf("\t-S,--force\t\tForce starting the server with a default device if none could be found\n");
 		printf("\t-d,--device\t\tThe printer serial device to use (any prefix path will be cut off)\n");
 		printf("\t-p,--printer\t\tThe 3D printer driver to use (use help to get more information)\n");
+		printf("\t-u,--use-settings\t\tRead log target and level from settings\n");
 		::exit(0);
 	}
 
@@ -148,7 +157,23 @@ int main(int argc, char** argv) {
 		cout << "Using printer type from UCI configuration." << endl;
 
 	Logger& log = Logger::getInstance();
-	log.open(stderr, logLevel);
+
+	if (useUci && settings_available()) {
+		const char *logFilePath = settings_get(UCI_KEY_LOG_PATH);
+		const char *logBasename = settings_get(UCI_KEY_LOG_BASENAME);
+		const char *lvlName = settings_get(UCI_KEY_LOG_LEVEL);
+		const Logger::ELOG_LEVEL logLevel = Logger::getLevelForName(lvlName, Logger::VERBOSE);
+
+		int rv = log.openParameterized(logFilePath, logBasename, serialDevice.c_str(), logLevel);
+
+		if (rv == -1) cerr << "Error: could not open log with UCI settings (" << strerror(errno) << ")" << endl;
+		else if (rv == -2) cerr << "Error: could not open log with UCI settings" << endl;
+	} else if (useUci) { //no settings available
+		cerr << "Error: cannot read log configuration, settings not available." << endl;
+		::exit(1);
+	} else {
+		log.open(stderr, logLevel);
+	}
 
 	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()), printerName);
 

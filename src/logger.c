@@ -52,7 +52,8 @@ int log_open_file(const char* file, ELOG_LEVEL level) {
 	int rv = log_close();
 
 	if (rv >= 0) {
-		//TODO: open filename (how to handle existing files?)
+		stream_ = fopen(file, "a");
+		if (stream_ == NULL) return -1;
 		log_set_level(level);
 	}
 

@@ -22,6 +22,7 @@
 int settings_init();
 int settings_deinit();
 const char *settings_get(const char *uci_spec);
+int settings_available();
 
 #ifdef __cplusplus
 	} //extern "C"

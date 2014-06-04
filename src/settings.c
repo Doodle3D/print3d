@@ -67,3 +67,11 @@ const char *settings_get(const char *uci_spec) {
 		return NULL;
 #endif
 }
+
+int settings_available() {
+#ifdef USE_LIB_UCI
+	return 1;
+#else
+	return 0;
+#endif
+}

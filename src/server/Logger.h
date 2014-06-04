@@ -9,6 +9,7 @@
 #ifndef LOGGER_H_SEEN
 #define LOGGER_H_SEEN
 
+#include <string>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -29,8 +30,10 @@ public:
 
 	static Logger& getInstance();
 
-	int open(FILE* stream, ELOG_LEVEL level);
-	int open(const char* file, ELOG_LEVEL level);
+	int open(FILE *stream, ELOG_LEVEL level);
+	int open(const std::string *file, ELOG_LEVEL level);
+	int openParameterized(const std::string *path, const std::string *basename, const std::string *logId, ELOG_LEVEL level);
+	int openParameterized(const char *path, const char *basename, const char *logId, ELOG_LEVEL level);
 	int close();
 
 	bool isOpen() const;
@@ -42,9 +45,13 @@ public:
 	bool vaCheckError(int rv, const char *module, const char *format, va_list args) const;
 	void logIpcCmd(ELOG_LEVEL level, const char *buf, int buflen, bool isReply = false);
 
+	static ELOG_LEVEL getLevelForName(const std::string& name, ELOG_LEVEL defaultLevel = INVALID);
+
 private:
+	static const std::string LOG_FILE_EXTENSION;
 	ELOG_LEVEL level_;
 	FILE* stream_;
+	bool streamIsPipe_;
 
 	Logger();
 
