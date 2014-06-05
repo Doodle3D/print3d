@@ -68,6 +68,12 @@ const char *settings_get(const char *uci_spec) {
 #endif
 }
 
+void settings_get_error(char **dest) {
+#ifdef USE_LIB_UCI
+	if (ctx) uci_get_errorstr(ctx, dest, NULL);
+#endif
+}
+
 int settings_available() {
 #ifdef USE_LIB_UCI
 	return 1;

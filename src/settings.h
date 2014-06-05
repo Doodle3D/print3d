@@ -22,6 +22,7 @@
 int settings_init();
 int settings_deinit();
 const char *settings_get(const char *uci_spec);
+void settings_get_error(char **dest); //dest must be deallocated
 int settings_available();
 
 #ifdef __cplusplus

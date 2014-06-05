@@ -23,8 +23,8 @@ using std::cerr;
 using std::endl;
 
 static const char* UCI_KEY_LOG_PATH = "wifibox.system.log_path";
-static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.api_log_basename";
-static const char* UCI_KEY_LOG_LEVEL = "wifibox.system.api_log_level";
+static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.p3d_log_basename";
+static const char* UCI_KEY_LOG_LEVEL = "wifibox.system.p3d_log_level";
 
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -159,10 +159,20 @@ int main(int argc, char** argv) {
 	Logger& log = Logger::getInstance();
 
 	if (useUci && settings_available()) {
+		if (!settings_init()) cerr << "could not initialize uci settings context";
+
+		//TODO: the difference between not_found and 'actual' errors should be detectable
 		const char *logFilePath = settings_get(UCI_KEY_LOG_PATH);
 		const char *logBasename = settings_get(UCI_KEY_LOG_BASENAME);
 		const char *lvlName = settings_get(UCI_KEY_LOG_LEVEL);
 		const Logger::ELOG_LEVEL logLevel = Logger::getLevelForName(lvlName, Logger::VERBOSE);
+
+		if (!logBasename) {
+			char *msg = NULL;
+			settings_get_error(&msg);
+			printf("Error: could not read log basename from settings (%s)\n", msg);
+			free(msg);
+		}
 
 		int rv = log.openParameterized(logFilePath, logBasename, serialDevice.c_str(), logLevel);
 
