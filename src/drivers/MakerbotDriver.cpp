@@ -21,6 +21,7 @@
  * online iButton CRC calculator: http://www.datastat.com/sysadminjournal/maximcrc.cgi
  */
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <errno.h>
@@ -60,10 +61,9 @@ MakerbotDriver::MakerbotDriver(Server& server, const std::string& serialPortPath
 }
 
 static int lastCode = -1;
+static int counter = 0;
 
 int MakerbotDriver::update() {
-	static int counter = 0; //TEMP
-
 	if (!isConnected()) return -1;
 
 	if ((state_ == PRINTING || state_ == STOPPING) && queue_.size() < QUEUE_MIN_SIZE) {
@@ -72,7 +72,7 @@ int MakerbotDriver::update() {
 			string lines;
 			amt = gcodeBuffer_.getNextLine(lines, GCODE_CVT_LINES);
 			int cmds = convertGCode(lines);
-			if (!lines.empty()) LOG(Logger::VERBOSE, "converted %i lines into %i commands: '%s'", amt, cmds, lines.c_str()); //TEMP
+			if (!lines.empty()) LOG(Logger::BULK, "converted %i lines into %i commands: '%s'", amt, cmds, lines.c_str()); //TEMP
 
 			if (amt > 0) {
 				gcodeBuffer_.eraseLine(amt);
@@ -97,11 +97,11 @@ int MakerbotDriver::update() {
 			LOG(Logger::INFO, "Makerbot firmware version %.2f", ver / 100.0f);
 		}
 		updateTemperatures();
-		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, queue: %i, c2l ratio: %.2f, prbuf space: %i",
+		requestBufferSpace();
+
+		LOG(Logger::VERBOSE, "  hTemps: %i/%i, bTemps: %i/%i, queue: %i, c2l ratio: %.2f, prbuf space (actual): %i",
 				temperature_, targetTemperature_, bedTemperature_, targetBedTemperature_,
 				queue_.size(), cmdToLineRatio_, bufferSpace_);
-
-		requestBufferSpace();
 
 		counter = 0;
 	}
@@ -227,6 +227,7 @@ void MakerbotDriver::sendCode(const std::string& code) {
 //	}
 }
 
+//TODO: actually implement this to interpret response packets instead of the local function which does that now?
 void MakerbotDriver::readResponseCode(std::string& code) {
 }
 
@@ -265,11 +266,14 @@ void MakerbotDriver::processQueue() {
 		}
 		if (oldQSize - queue_.size()) {
 			LOG(Logger::VERBOSE, "processed %i cmds (size=%i), printbuf: %i => %i", oldQSize - queue_.size(), queue_.size(), oldBSpace, bufferSpace_);
-	//		LOG(Logger::VERBOSE, "actual buffer space: %i", getBufferSpace());
 		}
 	} else {
-		setState(IDLE);
-		LOG(Logger::INFO, "Print queue empty. Done!");
+		if (requestBufferSpace() < PRINTER_BUFFER_SIZE) {
+			if (counter == 0) LOG(Logger::INFO, "Print queue empty, waiting for printer to finish...");
+		} else {
+			setState(IDLE);
+			LOG(Logger::INFO, "Print queue and printer buffer empty. Done!");
+		}
 	}
 }
 
@@ -454,7 +458,7 @@ int MakerbotDriver::parseResponse(int cmd, int toolcmd) {
 		//en: set-ext.pos(140) / ena/dis steppers(137) / find axes mins(131) / find axes maxes(132)
 		//en: change tool(134) / wait for tool ready(135)
 		default:
-			LOG(Logger::WARNING, "ingored response for cmd: %i (toolcmd: %i, len: %i)", cmd, toolcmd, len);
+			LOG(Logger::WARNING, "ignored response for cmd: %i (toolcmd: %i, len: %i)", cmd, toolcmd, len);
 			break;
 	}
 
@@ -499,6 +503,17 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 	int retriesLeft = 5;
 	int rv;
 	while (retriesLeft > 0) {
+		if (Logger::getInstance().getLevel() == Logger::BULK) {
+			bool tempQuery = pktBuf[2] == 10 && (pktBuf[4] == 2 || pktBuf[4] == 30 || pktBuf[4] == 32 || pktBuf[4] == 33);
+			if (pktBuf[2] != 2 && !tempQuery) {
+				stringstream strstr;
+				for (int i = 0; i < len + 3; ++i) {
+					strstr << " " << std::noshowbase << std::hex << std::setw(2) << std::setfill('0') << (int)pktBuf[i];
+				}
+				LOG(Logger::BULK, "|%i| writing packet with len %i:%s", 5 - retriesLeft, len + 3, strstr.str().c_str());
+			}
+		}
+
 		serial_.write(pktBuf, len + 3);
 		//NOTE: in case of a tool action command (10), also pass the tool command code (payload[2])
 		rv = parseResponse(cmd, cmd == 10 ? payload[2] : -1);
