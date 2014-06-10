@@ -183,9 +183,6 @@ bool MakerbotDriver::startPrint(const std::string& gcode, AbstractDriver::STATE 
 	return startPrint(state);
 }
 
-//FIXME: for set/append/clear gcode and start/stop print functions: buffer management is very hacky
-//because of lack of distinction between abstract driver and implementations. The abstract stopprint
-//clear the gcode buffer, which doesn't matter for us....but it is ugly and should be rewritten.
 bool MakerbotDriver::stopPrint(const std::string& endcode) {
 	clearGCode();
 	setGCode(endcode);

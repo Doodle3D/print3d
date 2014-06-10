@@ -9,6 +9,10 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		GCodeBuffer buffer;
 
 		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_no_exception(buffer.set("")); //actually, none of the buffer's functions should throw exceptions
+		fructose_assert_eq(buffer.getTotalLines(), 0);
+
+		fructose_assert_eq(buffer.getTotalLines(), 0);
 		buffer.set("abc");
 		fructose_assert_eq(buffer.getTotalLines(), 1);
 

@@ -111,12 +111,7 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const Met
 
 	size_t pos = b->length();
 
-	//make sure the gcode to be appended is never appended to an existing line
-	if (pos > 0 && *(b->rbegin()) != '\n') {
-		b->append("\n");
-		pos++;
-		bufferSize_++;
-	}
+	//Note: cleanupGCode has been run on any previously added gcode so we know that the last line is properly terminated.
 
 	b->append(gcode);
 	cleanupGCode(b, pos);
@@ -305,8 +300,7 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 	}
 
 	// Make sure we end with an empty line
-	char& lastChar = buffer->at(buffer->length()-1);
-	if(lastChar != '\n') {
+	if(buffer->length() > 0 && *(buffer->rbegin()) != '\n') {
 		buffer->append("\n");
 //		LOG(Logger::BULK, " add empty line at end");
 	}
