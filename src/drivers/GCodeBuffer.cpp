@@ -67,9 +67,15 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
  * separate buckets, so MAX_BUCKET_SIZE is not a strict limit
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const MetaData *metaData) {
-	if (!metaData) LOG(Logger::VERBOSE, "append - len: %zu, excerpt: '%s'", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str());
-	else LOG(Logger::VERBOSE, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s", gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
-			metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)");
+	if (!metaData) {
+		LOG(Logger::VERBOSE, "append - len: %zu, excerpt: '%s'; ttl size(lines): %d (%d)",
+				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(), bufferSize_, bufferedLines_);
+	} else {
+		LOG(Logger::VERBOSE, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s; ttl size (lines): %d (%d)",
+				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
+				metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)",
+				bufferSize_, bufferedLines_);
+	}
 
 	if (sequenceLastSeen_ > -1) {
 		if (!metaData || metaData->seqNumber < 0) return GSR_SEQ_NUM_MISSING;

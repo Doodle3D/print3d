@@ -152,12 +152,11 @@ int Server::start(bool fork) {
 			log_.checkError(rv, "SRV ", "cannot read from client");
 
 			if (rv >= 0 || (rv == -2 && client->getBufferSize() > 0)) {
-				if (rv >= 0)
-					LOG(Logger::BULK, "read %i bytes from client with fd %i",
-							rv, client->getFileDescriptor());
-				else
-					LOG(Logger::WARNING, "client with fd %i closed connection, still %i bytes available",
-							client->getFileDescriptor(), client->getBufferSize());
+				if (rv >= 0) {
+					//LOG(Logger::BULK, "read %i bytes from client with fd %i", rv, client->getFileDescriptor());
+				} else {
+					LOG(Logger::WARNING, "client with fd %i closed connection, still %i bytes available", client->getFileDescriptor(), client->getBufferSize());
+				}
 
 				client->runCommands();
 			}
