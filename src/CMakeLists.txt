@@ -11,6 +11,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 option(GENERATE_DOCS "generate documentation" OFF)
 #option(PRINT3D_DEBUG "debugging support" OFF)
+option(ENABLE_UCI "include UCI (OpenWrt only)" ON)
 
 #configure_file( ${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/config.h )
 
@@ -29,9 +30,20 @@ target_link_libraries(logger ipc_shared)
 add_library(settings settings.c settings.h)
 set_target_properties(settings PROPERTIES COMPILE_FLAGS "-fPIC")
 
-if(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
-	target_link_libraries(settings -luci)
-endif(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
+if(ENABLE_UCI)
+	if(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
+		target_link_libraries(settings -luci)
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUCI_ENABLED=1")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUCI_ENABLED=1")
+	else()
+		message(SEND_ERROR "Cannot enable UCI since we're not compiling for OpenWrt")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUCI_ENABLED=0")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUCI_ENABLED=0")
+	endif(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DUCI_ENABLED=0")
+	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DUCI_ENABLED=0")
+endif(ENABLE_UCI)
 
 add_library(timer Timer.cpp Timer.h)
 
