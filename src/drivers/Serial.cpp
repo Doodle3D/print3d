@@ -141,14 +141,6 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 	if (ioctl(portFd_, TCSETS2, &options) < 0) return SSR_IO_SET;
 #endif
 
-	//toggle DTR
-	if (ioctl(portFd_, TIOCMGET, &modemBits) < 0) return SSR_IO_MGET;
-	modemBits |= TIOCM_DTR;
-	if (ioctl(portFd_, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET1;
-	usleep(100 * 1000);
-	modemBits &=~TIOCM_DTR;
-	if (ioctl(portFd_, TIOCMSET, &modemBits) < 0) return SSR_IO_MSET2;
-
 	return SSR_OK;
 }
 

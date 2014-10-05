@@ -22,7 +22,7 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
   checkTemperatureInterval_(2000),
   checkConnection_(true),
   checkTemperatureAttempt_(0),
-  maxCheckTemperatureAttempts_(2) {
+  maxCheckTemperatureAttempts_(45) {
 
 	/*//temperature parsing tests
 	readCode(*new string("T:19.1 /0.0 B:0.0 /0.0 @:0 B@:0"));
