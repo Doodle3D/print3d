@@ -189,11 +189,13 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 		LOG(Logger::BULK, " erase first empty line");
 	}
 
-	// Make sure we end with an empty line
-	char& lastChar = buffer->at(buffer->length()-1);
-	if(lastChar != '\n') {
-		buffer->append("\n");
-//		LOG(Logger::BULK, " add empty line at end");
+	// Make sure we end with an empty line except when the buffer is empty
+	if (buffer->length() > 0) {
+		char lastChar = buffer->at(buffer->length()-1);
+		if(lastChar != '\n') {
+			buffer->append("\n");
+//			LOG(Logger::BULK, " add empty line at end");
+		}
 	}
 //	LOG(Logger::BULK, "  ////////// >>>buffer: ");
 //	LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
