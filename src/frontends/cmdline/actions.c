@@ -23,8 +23,6 @@ static int act_printTemperature() {
 	int16_t hotendTemperature = INT16_MIN, hotendTargetTemperature = INT16_MIN;
 	int16_t bedTemperature = INT16_MIN, bedTargetTemperature = INT16_MIN;
 
-	comm_openSocketForDeviceId(deviceId);
-
 	rv = comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND);
 	rv = rv || comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT);
 	rv = rv || comm_getTemperature(&bedTemperature, IPC_TEMP_BED);
@@ -53,8 +51,6 @@ static int act_printTestResponse() {
 	char *answer;
 	int rv;
 
-	comm_openSocketForDeviceId(deviceId);
-
 	rv = comm_testCommand(0, &answer);
 	if (rv > -1 && !json_output) printf("first test command returned: '%s'\n", answer);
 	//free(answer);
@@ -73,13 +69,6 @@ static int act_printTestResponse() {
 
 static int act_sendGcodeFile(const char *file) {
 	int rv = 0;
-
-	if (!isAbsolutePath(file)) {
-		printError(json_output, "please supply an absolute path for the file to print");
-		return 1;
-	}
-
-	comm_openSocketForDeviceId(deviceId);
 
 	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
@@ -102,8 +91,6 @@ static int act_sendGcodeFile(const char *file) {
 static int act_sendGcodeFromStdin() {
 	int rv = 0;
 	char *gcode = NULL;
-
-	comm_openSocketForDeviceId(deviceId);
 
 	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
@@ -155,8 +142,6 @@ static int act_sendGcodeFromStdin() {
 static int act_sendGcode(const char *gcode) {
 	int rv = 0;
 
-	comm_openSocketForDeviceId(deviceId);
-
 	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
 	} else if ((rv = comm_sendGcodeData(gcode)) < 0) {
@@ -178,7 +163,6 @@ static int act_sendGcode(const char *gcode) {
 static int act_printProgress() {
 	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 
-	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines);
 	comm_closeSocket();
 
@@ -202,7 +186,6 @@ static int act_printProgress() {
 static int act_printState() {
 	char *state;
 
-	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_getState(&state);
 	comm_closeSocket();
 
@@ -219,7 +202,6 @@ static int act_printState() {
 }
 
 static int act_doHeatup(int temperature) {
-	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_heatup(temperature);
 	comm_closeSocket();
 
@@ -234,7 +216,6 @@ static int act_doHeatup(int temperature) {
 }
 
 static int act_stopPrint(const char *endCode) {
-	comm_openSocketForDeviceId(deviceId);
 	int rv = comm_stopPrintGcode(endCode);
 	comm_closeSocket();
 
@@ -262,6 +243,16 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		log_open_stream(stderr, LLVL_VERBOSE); break;
 	case 0: default:
 		log_open_stream(stderr, LLVL_WARNING); break;
+	}
+
+	switch (action) {
+	case AT_GET_TEMPERATURE: case AT_GET_TEST: case AT_GET_PROGRESS: case AT_GET_STATE:
+	case AT_HEATUP: case AT_PRINT_FILE: case AT_SEND_CODE: case AT_SEND_STDIN: case AT_STOP_PRINT:
+		if(comm_openSocketForDeviceId(deviceId) < 0) {
+			printError(json_output, "could not open socket (run in verbose mode for details)");
+			return 1;
+		}
+	default: break;
 	}
 
 	switch (action) {
@@ -305,6 +296,7 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	case AT_GET_STATE:
 		return act_printState();
 	case AT_GET_SUPPORTED: {
+		//TODO: implement (and remember to open/close socket)
 		const char *msg = "unimplemented: get supported";
 
 		if (!json_output) printf("[dummy] %s\n", msg);
@@ -317,6 +309,10 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	case AT_PRINT_FILE:
 		if (!printFile) {
 			printError(json_output, "error: missing filename to print");
+			return 1;
+		}
+		if (!isAbsolutePath(printFile)) {
+			printError(json_output, "please supply an absolute path for the file to print");
 			return 1;
 		}
 
