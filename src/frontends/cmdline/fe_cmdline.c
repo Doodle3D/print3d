@@ -175,12 +175,12 @@ int main(int argc, char **argv) {
 		devlist = ipc_find_devices();
 
 		if (!devlist) { //no device list
-			fprintf(stderr, "error: could not obtain device list\n");
+			printError(json_output, "could not obtain device list");
 			exit(1);
 		}
 
 		if (devlist[0] == NULL && forceStart == 0) { //no devices found, and no force-run
-			fprintf(stderr, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'\n");
+			printError(json_output, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'");
 			exit(1);
 		} else if (devlist[0] == NULL) { //no devices, but force-run requested
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
