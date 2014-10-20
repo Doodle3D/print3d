@@ -100,50 +100,56 @@ static int act_sendGcodeFile(const char *file) {
 }
 
 static int act_sendGcodeFromStdin() {
+	int rv = 0;
+	char *gcode = NULL;
+
 	comm_openSocketForDeviceId(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
-		return 1;
 	}
 
-	if (!json_output) printf("Please enter gcode and finish with C-d...\n");
+	if (rv == 0) {
+		if (!json_output) printf("Please enter gcode and finish with C-d...\n");
 
-	char *gcode = NULL;
-	ssize_t gcode_len = 0, read_len = 0;
-	while (1) {
-		gcode_len += 128;
-		gcode = (char*)realloc(gcode, gcode_len);
-		ssize_t rv = read(STDIN_FILENO, gcode + read_len, gcode_len - read_len);
+		ssize_t gcode_len = 0, read_len = 0;
+		while (1) {
+			gcode_len += 128;
+			gcode = (char*)realloc(gcode, gcode_len);
+			ssize_t rv = read(STDIN_FILENO, gcode + read_len, gcode_len - read_len);
 
-		if (rv < 0) {
-			printError(json_output, "error reading from stdin (%s)", strerror(errno));
-			free(gcode);
-			return 1;
+			if (rv < 0) {
+				printError(json_output, "error reading from stdin (%s)", strerror(errno));
+				free(gcode);
+			}
+
+			if (rv <= 0) break;
+
+			read_len += rv;
 		}
-
-		if (rv == 0) break;
-
-		read_len += rv;
 	}
 
-	if (comm_sendGcodeData(gcode) < 0) {
-		printError(json_output, "could not send gcode data (%s)", comm_getError());
-		return 1;
+	if (rv == 0) {
+		if ((rv = comm_sendGcodeData(gcode)) < 0) {
+			printError(json_output, "could not send gcode data (%s)", comm_getError());
+		}
+		free(gcode);
 	}
-	free(gcode);
 
-	if (comm_startPrintGcode() < 0) {
-		printError(json_output, "sent gcode data, but could not start print (%s)", comm_getError());
-		return 1;
+	if (rv == 0) {
+		if ((rv = comm_startPrintGcode()) < 0) {
+			printError(json_output, "sent gcode data, but could not start print (%s)", comm_getError());
+		}
 	}
 
 	comm_closeSocket();
 
-	if (!json_output) printf("sent gcode data and started print\n");
-	else printJsonOk(NULL);
+	if (!rv) {
+		if (!json_output) printf("sent gcode data and started print\n");
+		else printJsonOk(NULL);
+	}
 
-	return 0;
+	return rv ? 1 : 0;
 }
 
 static int act_sendGcode(const char *gcode) {
