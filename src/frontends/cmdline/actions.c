@@ -25,25 +25,10 @@ static int act_printTemperature() {
 
 	comm_openSocketForDeviceId(deviceId);
 
-	if (comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND) < 0) {
-		printError(json_output, "could not read hotend temperature (%s)", comm_getError());
-		rv = 1;
-	}
-
-	if (comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT) < 0) {
-		printError(json_output, "could not read hotend target temperature (%s)", comm_getError());
-		rv = 1;
-	}
-
-	if (comm_getTemperature(&bedTemperature, IPC_TEMP_BED) < 0) {
-		printError(json_output, "could not read bed temperature (%s)", comm_getError());
-		rv = 1;
-	}
-
-	if (comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT) < 0) {
-		printError(json_output, "could not read bed target temperature (%s)", comm_getError());
-		rv = 1;
-	}
+	rv = comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND);
+	rv = rv || comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT);
+	rv = rv || comm_getTemperature(&bedTemperature, IPC_TEMP_BED);
+	rv = rv || comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT);
 
 	comm_closeSocket();
 
@@ -56,45 +41,39 @@ static int act_printTemperature() {
 					"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}}",
 					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
 		}
+	} else {
+		printError(json_output, "could not read one or more target temperatures (%s)", comm_getError());
 	}
 
-	return rv;
+	return rv ? 1 : 0;
 }
 
 static int act_printTestResponse() {
 	char *question = "what?";
 	char *answer;
 	int rv;
-	int result = 0;
 
 	comm_openSocketForDeviceId(deviceId);
 
 	rv = comm_testCommand(0, &answer);
-	if (rv > -1) {
-		printf("first test command returned: '%s'\n", answer);
-	} else {
-		printError(json_output, "could not complete first test command (%s)", comm_getError());
-		result = 1;
-	}
-
+	if (rv > -1 && !json_output) printf("first test command returned: '%s'\n", answer);
 	//free(answer);
 
-	rv = comm_testCommand(question, &answer);
-	if (rv > -1) {
-		printf("second test command returned: '%s'\n", answer);
-	} else {
-		printError(json_output, "could not complete second test command (%s)", comm_getError());
-		result = 1;
-	}
-
+	rv = rv || comm_testCommand(question, &answer);
+	if (rv > -1 && !json_output) printf("second test command returned: '%s'\n", answer);
 	//free(answer);
 
 	comm_closeSocket();
 
-	return result;
+	if (rv) printError(json_output, "could not complete second test command (%s)", comm_getError());
+	else if (json_output) printJsonOk(NULL);
+
+	return rv ? 1 : 0;
 }
 
 static int act_sendGcodeFile(const char *file) {
+	int rv = 0;
+
 	if (!isAbsolutePath(file)) {
 		printError(json_output, "please supply an absolute path for the file to print");
 		return 1;
@@ -102,27 +81,22 @@ static int act_sendGcodeFile(const char *file) {
 
 	comm_openSocketForDeviceId(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
-		return 1;
-	}
-
-	if (comm_sendGcodeFile(file) < 0) {
+	} else if ((rv = comm_sendGcodeFile(file)) < 0) {
 		printError(json_output, "could not send gcode file (%s)", comm_getError());
-		return 1;
-	}
-
-	if (comm_startPrintGcode() < 0) {
+	} else if ((rv = comm_startPrintGcode()) < 0) {
 		printError(json_output, "sent gcode file, but could not start print (%s)", comm_getError());
-		return 1;
 	}
 
 	comm_closeSocket();
 
-	if (!json_output) printf("sent gcode file and started print\n");
-	else printJsonOk(NULL);
+	if (!rv) {
+		if (!json_output) printf("sent gcode file and started print\n");
+		else printJsonOk(NULL);
+	}
 
-	return 0;
+	return rv ? 1 : 0;
 }
 
 static int act_sendGcodeFromStdin() {
@@ -133,7 +107,7 @@ static int act_sendGcodeFromStdin() {
 		return 1;
 	}
 
-	printf("Please enter gcode and finish with C-d...\n");
+	if (!json_output) printf("Please enter gcode and finish with C-d...\n");
 
 	char *gcode = NULL;
 	ssize_t gcode_len = 0, read_len = 0;
@@ -166,77 +140,76 @@ static int act_sendGcodeFromStdin() {
 
 	comm_closeSocket();
 
-	printf("sent gcode data and started print\n");
+	if (!json_output) printf("sent gcode data and started print\n");
+	else printJsonOk(NULL);
+
 	return 0;
 }
 
 static int act_sendGcode(const char *gcode) {
+	int rv = 0;
+
 	comm_openSocketForDeviceId(deviceId);
 
-	if (comm_clearGcode() < 0) {
+	if ((rv = comm_clearGcode()) < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
-		return 1;
-	}
-
-	if (comm_sendGcodeData(gcode) < 0) {
+	} else if ((rv = comm_sendGcodeData(gcode)) < 0) {
 		printError(json_output, "could not send gcode (%s)", comm_getError());
-		return 1;
-	}
-
-	if (comm_startPrintGcode() < 0) {
+	} else if ((rv = comm_startPrintGcode()) < 0) {
 		printError(json_output, "sent gcode, but could not start print (%s)", comm_getError());
-		return 1;
 	}
 
 	comm_closeSocket();
 
-	if (!json_output) printf("sent gcode and started print\n");
-	else printJsonOk(NULL);
+	if (!rv) {
+		if (!json_output) printf("sent gcode and started print\n");
+		else printJsonOk(NULL);
+	}
 
-	return 0;
+	return rv ? 1 : 0;
 }
 
 static int act_printProgress() {
 	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 
 	comm_openSocketForDeviceId(deviceId);
+	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines);
+	comm_closeSocket();
 
-	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines) < 0) {
+	if (rv > -1) {
+		if (!json_output) {
+			printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
+			if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
+			printf("\n");
+		} else {
+			printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d}",
+					currentLine, totalLines, bufferedLines);
+		}
+
+		return 0;
+	} else {
 		printError(json_output, "could not get printing progress (%s)", comm_getError());
 		return 1;
 	}
-
-	comm_closeSocket();
-
-	if (!json_output) {
-		printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
-		if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
-		printf("\n");
-	} else {
-		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d}",
-				currentLine, totalLines, bufferedLines);
-	}
-
-	return 0;
 }
 
 static int act_printState() {
 	char *state;
 
 	comm_openSocketForDeviceId(deviceId);
+	int rv = comm_getState(&state);
+	comm_closeSocket();
 
-	if (comm_getState(&state) < 0) {
+	if (rv > -1) {
+		if (!json_output) printf("printer state: '%s'\n", state);
+		else printJsonOk("\"printer_state\": \"%s\"", state);
+
+		//free(state);
+		return 0;
+	} else {
 		printError(json_output, "could not get printer state (%s)", comm_getError());
 		return 1;
 	}
-
-	//free(state);
-	comm_closeSocket();
-
-	if (!json_output) printf("printer state: '%s'\n", state);
-	else printJsonOk("\"printer_state\": \"%s\"", state);
-
-	return 0;
 }
 
 static int act_doHeatup(int temperature) {
