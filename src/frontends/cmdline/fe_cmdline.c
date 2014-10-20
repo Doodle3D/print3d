@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include "fe_cmdline.h"
@@ -20,6 +21,7 @@ static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"quiet", no_argument, NULL, 'q'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"json", no_argument, NULL, 'j'},
 
 		{"get", required_argument, NULL, 'g'},
 		{"temperature", no_argument, NULL, 't'},
@@ -40,6 +42,7 @@ static struct option long_options[] = {
 };
 
 int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
+int json_output = 0;
 char *deviceId = NULL;
 char *printFile = NULL, *sendGcode = NULL, *endGcode = NULL;
 int heatupTemperature = -1;
@@ -49,13 +52,14 @@ static int deviceIdRequired = 0;
 static ACTION_TYPE action = AT_NONE;
 
 
-void parseOptions(int argc, char **argv) {
+static void parseOptions(int argc, char **argv) {
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvjg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
 		case 'v': verbosity = 1; break;
+		case 'j': json_output = 1; break; //this also enforces verbosity to -1 below
 		case 'g':
 			if (strcmp(optarg, "temperature") == 0) {
 				action = AT_GET_TEMPERATURE;
@@ -122,6 +126,38 @@ void parseOptions(int argc, char **argv) {
 			break;
 		}
 	}
+
+	if (json_output) verbosity = -1;
+}
+
+
+void printError(int output_as_json, const char *format, ...) {
+	char *buf = 0;
+
+	va_list args;
+	va_start(args, format);
+	vasprintf(&buf, format, args);
+	va_end(args);
+
+	if (!output_as_json) fprintf(stderr, "error: %s\n", buf);
+	else printf("{\"status\": \"ERR\", \"message\": \"%s\"}", buf);
+
+	free(buf);
+}
+
+void printJsonOk(const char *format, ...) {
+	char *buf = 0;
+
+	if (format) {
+		va_list args;
+		va_start(args, format);
+		vasprintf(&buf, format, args);
+		va_end(args);
+	}
+
+	printf("{\"status\": \"OK\"%s%s}", buf && strlen(buf) > 0 ? ", " : "", buf ? buf : "");
+
+	free(buf);
 }
 
 
@@ -148,7 +184,7 @@ int main(int argc, char **argv) {
 			exit(1);
 		} else if (devlist[0] == NULL) { //no devices, but force-run requested
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
-			printf("no device specified and none found, using default (%s)\n", deviceId);
+			if (verbosity > 0) printf("no device specified and none found, using default (%s)\n", deviceId);
 		} else if (devlist[1] != NULL) { //multiple devices found
 			fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
 			for (int i = 0; devlist[i] != 0; i++) {
@@ -168,7 +204,7 @@ int main(int argc, char **argv) {
 	}
 
 	//NOTE: this may print (null) as device, which is okay for commands not requiring a server connection
-	printf("Using device ID '%s'\n", deviceId);
+	if (verbosity > 0) printf("Using device ID '%s'\n", deviceId);
 	int rv = handleAction(argc, argv, action);
 	ipc_free_device_list(devlist);
 

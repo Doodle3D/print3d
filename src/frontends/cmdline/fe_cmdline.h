@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 
+
 /* from fe_cmdline.c */
 typedef enum ACTION_TYPE {
 		AT_NONE, AT_ERROR, AT_SHOW_HELP,
@@ -19,12 +20,17 @@ typedef enum ACTION_TYPE {
 } ACTION_TYPE;
 
 extern int verbosity;
+extern int json_output;
 extern char *deviceId;
 extern char *printFile;
 extern char *sendGcode;
 extern char *endGcode;
 extern int heatupTemperature;
 extern int forceStart;
+
+/* from fe_cmdline.c */
+void printError(int output_as_json, const char* format, ...);
+void printJsonOk(const char *format, ...);
 
 /* from actions.c */
 int handleAction(int argc, char **argv, ACTION_TYPE action);
