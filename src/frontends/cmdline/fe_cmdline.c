@@ -54,7 +54,8 @@ static ACTION_TYPE action = AT_NONE;
 
 static void parseOptions(int argc, char **argv) {
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hqvjg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
+	//opterr = 0; //suppresses error printing, but leading ':' in optstring also does that
+	while ((ch = getopt_long(argc, argv, ":hqvjg:tpsSd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
@@ -121,8 +122,11 @@ static void parseOptions(int argc, char **argv) {
 			action = AT_STOP_PRINT;
 			deviceIdRequired = 1;
 			break;
-		case '?': /* signifies an error (like option with missing argument) */
-			action = AT_ERROR;
+		case '?': /* signifies an invalid argument (and other errors?) */
+			action = AT_ERR_UNKNOWN;
+			break;
+		case ':': /* signifies missing argument */
+			action = AT_ERR_MISSING;
 			break;
 		}
 	}
@@ -164,7 +168,11 @@ void printJsonOk(const char *format, ...) {
 int main(int argc, char **argv) {
 	parseOptions(argc, argv);
 
-	if (action == AT_ERROR) {
+	if (action == AT_ERR_UNKNOWN) {
+		printError(json_output, "invalid option '%c' to executable, try -h", (char)optopt);
+		exit(2);
+	} else if (action == AT_ERR_MISSING) {
+		printError(json_output, "option '%c' to executable requires an argument, try -h", (char)optopt);
 		exit(2);
 	}
 
@@ -186,12 +194,16 @@ int main(int argc, char **argv) {
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
 			if (verbosity > 0) printf("no device specified and none found, using default (%s)\n", deviceId);
 		} else if (devlist[1] != NULL) { //multiple devices found
-			fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
-			for (int i = 0; devlist[i] != 0; i++) {
-				const char *item = devlist[i];
-				fprintf(stderr, " '%s'", item);
+			if (!json_output) {
+				fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
+				for (int i = 0; devlist[i] != 0; i++) {
+					const char *item = devlist[i];
+					fprintf(stderr, " '%s'", item);
+				}
+				fprintf(stderr, "\n");
+			} else {
+				printError(json_output, "more than one device found, please specify one of them");
 			}
-			fprintf(stderr, "\n");
 			exit(1);
 		} else { //one device found
 			deviceId = devlist[0];

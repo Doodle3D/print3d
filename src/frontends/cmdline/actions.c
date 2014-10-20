@@ -259,11 +259,17 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	}
 
 	switch (action) {
-	case AT_ERROR:
+	case AT_ERR_UNKNOWN:
+	case AT_ERR_MISSING:
 		printError(json_output, "Action handler called with 'error' action, this should not happen.");
 		return 2;
 		break;
 	case AT_NONE: case AT_SHOW_HELP:
+		if (json_output) {
+			printJsonOk("\"message\": \"help requested, ignored in JSON mode\"");
+			return 0;
+		}
+
 		printf("Basic usage: '%s [<options>]'.\n", argv[0]);
 		printf("The following options are available:\n");
 		printf("\t-h,--help\t\tShow this help message\n");
@@ -292,9 +298,14 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		return act_printProgress();
 	case AT_GET_STATE:
 		return act_printState();
-	case AT_GET_SUPPORTED:
-		printf("[dummy] get supported\n");
+	case AT_GET_SUPPORTED: {
+		const char *msg = "unimplemented: get supported";
+
+		if (!json_output) printf("[dummy] %s\n", msg);
+		else printJsonOk("\"message\": \"%s\"", msg);
+
 		return 5;
+	}
 	case AT_HEATUP:
 		return act_doHeatup(heatupTemperature);
 	case AT_PRINT_FILE:
