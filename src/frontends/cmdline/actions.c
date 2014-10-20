@@ -48,8 +48,14 @@ static int act_printTemperature() {
 	comm_closeSocket();
 
 	if (rv == 0) {
-		printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i\n",
-				hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
+		if (!json_output) {
+			printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i\n",
+					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
+		} else {
+			printJsonOk("\"temperatures\": {\"hotend\": "
+					"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}}",
+					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
+		}
 	}
 
 	return rv;
@@ -113,7 +119,9 @@ static int act_sendGcodeFile(const char *file) {
 
 	comm_closeSocket();
 
-	printf("sent gcode file and started print\n");
+	if (!json_output) printf("sent gcode file and started print\n");
+	else printJsonOk(NULL);
+
 	return 0;
 }
 
@@ -182,7 +190,9 @@ static int act_sendGcode(const char *gcode) {
 
 	comm_closeSocket();
 
-	printf("sent gcode and started print\n");
+	if (!json_output) printf("sent gcode and started print\n");
+	else printJsonOk(NULL);
+
 	return 0;
 }
 
@@ -198,9 +208,14 @@ static int act_printProgress() {
 
 	comm_closeSocket();
 
-	printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
-	if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
-	printf("\n");
+	if (!json_output) {
+		printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
+		if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
+		printf("\n");
+	} else {
+		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d}",
+				currentLine, totalLines, bufferedLines);
+	}
 
 	return 0;
 }
@@ -218,7 +233,8 @@ static int act_printState() {
 	//free(state);
 	comm_closeSocket();
 
-	printf("printer state: '%s'\n", state);
+	if (!json_output) printf("printer state: '%s'\n", state);
+	else printJsonOk("\"printer_state\": \"%s\"", state);
 
 	return 0;
 }
@@ -229,7 +245,8 @@ static int act_doHeatup(int temperature) {
 	comm_closeSocket();
 
 	if (rv > -1) {
-		printf("requested printer heatup to %i degrees celcius\n", temperature);
+		if (!json_output) printf("requested printer heatup to %i degrees celcius\n", temperature);
+		else printJsonOk("\"target_temperatures\": {\"hotend\": %i}", temperature);
 		return 0;
 	} else {
 		printError(json_output, "could not request printer heatup (%s)", comm_getError());
@@ -243,8 +260,13 @@ static int act_stopPrint(const char *endCode) {
 	comm_closeSocket();
 
 	if (rv > -1) {
-		if (!endCode) printf("requested printing stop\n");
-		else printf("requested printing stop with %zu bytes of end code\n", strlen(endCode));
+		if (!json_output) {
+			if (!endCode) printf("requested printing stop\n");
+			else printf("requested printing stop with %zu bytes of end code\n", strlen(endCode));
+		} else {
+			size_t ecSize = endCode ? strlen(endCode) : 0;
+			printJsonOk("\"end_code_size\": %zu", ecSize);
+		}
 		return 0;
 	} else {
 		printError(json_output, "could not request printing stop (%s)", comm_getError());
