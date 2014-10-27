@@ -10,20 +10,31 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <string.h>
+#include "config.h"
 #include "../utils.h"
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
 #define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
 
+#ifndef GCODE_BUFFER_MAX_SIZE_KB
+# define GCODE_BUFFER_MAX_SIZE_KB 1024 * 3
+#endif
+#ifndef GCODE_BUFFER_SPLIT_SIZE_KB
+# define GCODE_BUFFER_SPLIT_SIZE_KB 8
+#endif
+
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
-const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
-const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * 8; //append will split its input on the first newline after this size
+const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB;
+const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * GCODE_BUFFER_SPLIT_SIZE_KB; //append will split its input on the first newline after this size
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
-{ /* empty */ }
+{
+	LOG(Logger::VERBOSE, "init: max size: %luKiB, bucket size: %luKiB, split size: %luKiB",
+		MAX_BUFFER_SIZE, MAX_BUCKET_SIZE, BUFFER_SPLIT_SIZE);
+}
 
 void GCodeBuffer::set(const string &gcode) {
 	clear();

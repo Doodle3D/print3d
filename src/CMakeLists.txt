@@ -13,7 +13,13 @@ option(GENERATE_DOCS "generate documentation" OFF)
 #option(PRINT3D_DEBUG "debugging support" OFF)
 option(ENABLE_UCI "include UCI (OpenWrt only)" ON)
 
-#configure_file( ${CMAKE_SOURCE_DIR}/config.h.in ${CMAKE_SOURCE_DIR}/config.h )
+#define this here to make sure it has been initialized before configure_file()
+set(GCODE_BUFFER_MAX_SIZE_KB "3072" CACHE STRING "maximum gcode buffer size (KiB)")
+set(GCODE_BUFFER_SPLIT_SIZE_KB "8" CACHE STRING "gcode buffer split size (KiB)")
+
+configure_file("${PROJECT_SOURCE_DIR}/config.h.in" "${PROJECT_BINARY_DIR}/config.h")
+include_directories("${PROJECT_BINARY_DIR}")
+
 
 add_subdirectory(server)
 add_subdirectory(drivers)
