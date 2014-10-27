@@ -24,6 +24,7 @@ for arg in $@; do
 		echo -e "Furthermore, the following arguments are valid:"
 		echo -e "\t-h\tshow this help"
 		echo -e "\t-i\trun interactive cmake configurator ($CCMAKE)"
+		echo -e "\t-D*\tany -D define will be passed to cmake directly"
 		exit
 		;;
 	-i)
@@ -43,6 +44,9 @@ for arg in $@; do
 			UCI="ON"
 		elif [ $arg == "NoUci" ]; then
 			UCI="OFF"
+		elif [[ $arg == \-D* ]]; then
+			echo "adding arg '$arg'"
+			CMAKE_FLAGS+=("$arg")
 		else
 			echo "$0: unknown argument: '$arg', try using the '-h' argument"
 			exit 1

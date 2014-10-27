@@ -26,7 +26,7 @@ using std::string;
 
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
-const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB;
+const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB; //set to 0 to disable (TODO: actually, this isn used at all currently)
 const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * GCODE_BUFFER_SPLIT_SIZE_KB; //append will split its input on the first newline after this size
 
 GCodeBuffer::GCodeBuffer()
