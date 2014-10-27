@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <string.h>
+#include "../utils.h"
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
@@ -18,7 +19,7 @@ using std::string;
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
-const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * 4; //append will split its input on the first newline after this size
+const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * 8; //append will split its input on the first newline after this size
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
@@ -32,6 +33,9 @@ void GCodeBuffer::set(const string &gcode) {
 //NOTE: this function splits given code into chunk of approximately BUFFER_SPLIT_SIZE.
 //without this, huge chunks (>1MB) would make repeated erase operations very inefficient.
 void GCodeBuffer::append(const string &gcode) {
+	uint32_t startTime = getMillis();
+	int count = 0;
+	size_t size = gcode.size();
 	size_t start = 0;
 	
 	while(start < gcode.size()) {
@@ -40,8 +44,12 @@ void GCodeBuffer::append(const string &gcode) {
 
 		len = (nl != string::npos) ? nl - start + 1 : gcode.size() - start;
 		appendChunk(gcode.substr(start, len));
+		count++;
 		start += len;
 	}
+
+	LOG(Logger::VERBOSE, "append(): added %zu bytes of gcode (%i chunks) in %lu ms",
+		size, count, getMillis() - startTime);
 }
 
 void GCodeBuffer::clear() {
@@ -165,6 +173,8 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
+	uint32_t startTime = getMillis(), commentDelta, doubleNLDelta, endTime;
+
 //	LOG(Logger::BULK, "cleanupGCode");
 //	LOG(Logger::BULK, "  pos: %i",pos);
 //	LOG(Logger::BULK, "  ////////// buffer: ");
@@ -189,6 +199,8 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 		}
 	}
 
+	commentDelta = getMillis();
+
 	//replace \n\n with \n
 	std::size_t posDoubleNewline = pos;
 	// -1 to make sure we also check the first line of the part we're checking
@@ -197,6 +209,8 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 //		LOG(Logger::BULK, " erase double lines: %i",posDoubleNewline);
 		buffer->replace(posDoubleNewline, 2, "\n");
 	}
+
+	doubleNLDelta = getMillis();
 
 	// remove empty first line
 	if(buffer->find("\n",0) == 0) {
@@ -216,4 +230,8 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 //	LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
 
 	bufferSize_ -= (buflen - buffer->length());
+
+	endTime = getMillis();
+	LOG(Logger::BULK, "cleanupGCode(): took %lu ms (%lu removing comments, %lu removing double newlines)",
+		endTime - startTime, commentDelta - startTime, doubleNLDelta - commentDelta);
 }
