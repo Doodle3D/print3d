@@ -6,6 +6,8 @@
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
 
+#define _GNU_SOURCE /* for vasprintf */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
