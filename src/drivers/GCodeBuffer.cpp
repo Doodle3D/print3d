@@ -18,6 +18,7 @@ using std::string;
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
 const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
+const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * 4; //append will split its input on the first newline after this size
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
@@ -28,22 +29,19 @@ void GCodeBuffer::set(const string &gcode) {
 	append(gcode);
 }
 
-//NOTE: currently this function will never split given gcode into parts for
-//separate buckets, so MAX_BUCKET_SIZE is not a strict limit
+//NOTE: this function splits given code into chunk of approximately BUFFER_SPLIT_SIZE.
+//without this, huge chunks (>1MB) would make repeated erase operations very inefficient.
 void GCodeBuffer::append(const string &gcode) {
+	size_t start = 0;
+	
+	while(start < gcode.size()) {
+		size_t len = BUFFER_SPLIT_SIZE;
+		size_t nl = gcode.find('\n', start + len);
 
-	if (buckets_.size() == 0) buckets_.push_back(new string());
-	string *b = buckets_.back();
-	if (b->length() >= MAX_BUCKET_SIZE) {
-		b = new string();
-		buckets_.push_back(b);
+		len = (nl != string::npos) ? nl - start + 1 : gcode.size() - start;
+		appendChunk(gcode.substr(start, len));
+		start += len;
 	}
-
-	size_t pos = b->length();
-	b->append(gcode);
-	cleanupGCode(b, pos);
-	bufferSize_ += gcode.length();
-	updateStats(b, pos);
 }
 
 void GCodeBuffer::clear() {
@@ -137,9 +135,26 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 	return pos != string::npos;
 }
 
+
 /*********************
  * PRIVATE FUNCTIONS *
  *********************/
+
+void GCodeBuffer::appendChunk(const string &gcode) {
+
+	if (buckets_.size() == 0) buckets_.push_back(new string());
+	string *b = buckets_.back();
+	if (b->length() >= MAX_BUCKET_SIZE) {
+		b = new string();
+		buckets_.push_back(b);
+	}
+
+	size_t pos = b->length();
+	b->append(gcode);
+	cleanupGCode(b, pos);
+	bufferSize_ += gcode.length();
+	updateStats(b, pos);
+}
 
 void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 	int32_t addedLineCount = std::count(buffer->begin() + pos, buffer->end(), '\n');

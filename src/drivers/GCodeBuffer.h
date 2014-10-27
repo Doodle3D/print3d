@@ -39,6 +39,7 @@ public:
 private:
 	static const uint32_t MAX_BUCKET_SIZE;
 	static const uint32_t MAX_BUFFER_SIZE;
+	static const uint32_t BUFFER_SPLIT_SIZE;
 
 	deque_stringP buckets_;
 	int32_t currentLine_;
@@ -48,6 +49,7 @@ private:
 
 	Logger& log_;
 
+	void appendChunk(const std::string &gcode);
 	void updateStats(std::string *buffer, size_t pos);
 	void cleanupGCode(std::string *buffer, size_t pos);
 };
