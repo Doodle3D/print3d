@@ -8,6 +8,7 @@
 
 #include <errno.h>
 #include <algorithm>
+#include <iostream>
 #include <sstream>
 #include "AbstractDriver.h"
 #include "../server/Server.h"
@@ -101,7 +102,6 @@ void AbstractDriver::heatup(int temperature) {
 	sendCode(oss.str());
 }
 
-#include <iostream>
 /*
  * Print control
  */

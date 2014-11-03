@@ -51,7 +51,7 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 	startPrint("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000\nM109 S60");
 	startPrint("M90\nM109 S60\nM91\nM92\nM109 S60\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");*/
 
-	/*//filterGCode parsing tests
+	/* //filterGCode parsing tests
 	LOG(Logger::BULK, "A");
 	setGCode("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
 	LOG(Logger::BULK, "B");
@@ -63,20 +63,21 @@ MarlinDriver::MarlinDriver(Server& server, const std::string& serialPortPath, co
 	LOG(Logger::BULK, "E");
 	setGCode("M90\n;comment bla bla\r;comment2 bla bla\rM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000");
 	LOG(Logger::BULK, "F");
-	setGCode("M90\n;comment bla bla\r;comment2 bla bla\rM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000\n;comment bla bla");*/
+	setGCode("M90\n;comment bla bla\r;comment2 bla bla\rM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000\n;comment bla bla");
+	*/
 }
 
 int MarlinDriver::update() {
 	if (!isConnected()) return -1;
 
-	if(checkTemperatureInterval_ != -1 && temperatureTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
+	if (checkTemperatureInterval_ != -1 && temperatureTimer_.getElapsedTimeInMilliSec() > checkTemperatureInterval_) {
 		LOG(Logger::BULK, "update temp()");
 		temperatureTimer_.start(); // restart timer
 
 		// We check the temperature
 		// during startup we use this to check for a valid connection, when it's established we stop checking
-		if(checkConnection_) {
-			if(checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
+		if (checkConnection_) {
+			if (checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
 				LOG(Logger::BULK, "  check temp %i/%i",checkTemperatureAttempt_,maxCheckTemperatureAttempts_);
 				checkTemperature();
 				checkTemperatureAttempt_++;
@@ -100,7 +101,7 @@ int MarlinDriver::update() {
 				delete line;
 			}
 		}
-		timer_.start(); // restart timer
+		timer_.start(); //restart timer
 	}
 
 	//request to be called again after the time that's left of the update interval
@@ -124,12 +125,12 @@ void MarlinDriver::appendGCode(const std::string& gcode) {
 }
 
 void MarlinDriver::readResponseCode(std::string& code) {
-	LOG(Logger::BULK, "readCode(): '%s'",code.c_str());
+	LOG(Logger::BULK, "readCode(): '%s'", code.c_str());
 
-	bool tempMessage = code.find("ok T:")==0;
-	bool heatingMessage = code.find("T:")==0;
-	if(tempMessage || heatingMessage) { // temperature or heating
+	bool tempMessage = (code.find("ok T:") == 0);
+	bool heatingMessage = (code.find("T:") == 0);
 
+	if (tempMessage || heatingMessage) { // temperature or heating
 		parseTemperatures(code);
 		//checkTemperatureAttempt_ = -1; //set to -1 to disable baud rate switching mechanism
 		if (checkConnection_) {
@@ -139,26 +140,24 @@ void MarlinDriver::readResponseCode(std::string& code) {
 		//maxCheckTemperatureAttempts_ = 1;
 
 		// determine checkTempInterval
-		//if(heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
-		if(state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
+		//if (heatingMessage) checkTemperatureInterval_ = -1; // if it's heating we don't really need to ask
+		if (state_ == PRINTING || state_ == STOPPING) checkTemperatureInterval_ = 5000; // if it's printing we ask it less frequently
 		else checkTemperatureInterval_ = 1500; // normal
 
-		LOG(Logger::BULK, "  checkTemperatureInterval_: '%i'",checkTemperatureInterval_);
-	} else if(code.find("ok") == 0) { // confirmation that code is received okay
+		LOG(Logger::BULK, "  checkTemperatureInterval_: '%i'", checkTemperatureInterval_);
 
+	} else if (code.find("ok") == 0) { // confirmation that code is received okay
 		//sendCode("M105"); // temp
-		if(state_ == PRINTING || state_ == STOPPING) {
+		if (state_ == PRINTING || state_ == STOPPING) {
 			gcodeBuffer_.eraseLine();
 			printNextLine();
 		}
 
-	} else if(code.find("start") != string::npos) {
-
+	} else if (code.find("start") != string::npos) {
 		//sendCode("M105"); // temp
 		//startPrint("M90\nM91\nM92\nG0 X10.600 Y10.050 Z0.200 F2100.000 E0.000"); // temp
 
-	} else if(code.find("Resend:") != string::npos) { // please resend line
-
+	} else if (code.find("Resend:") != string::npos) { // please resend line
 		//currentLine_ = atoi(strstr(code.c_str(), "Resend:") + 7); // correct current line
 		gcodeBuffer_.setCurrentLine(getCurrentLine() - 1);
 		LOG(Logger::BULK, "  Resend: %i", gcodeBuffer_.getCurrentLine());
@@ -173,44 +172,44 @@ void MarlinDriver::parseTemperatures(string& code) {
 	//   T:19.51 B:-1.00 @:0
 	//   T:19.5 E:0 W:?
 
-	LOG(Logger::BULK, "parseTemperatures(): '%s'",code.c_str());
+	LOG(Logger::BULK, "parseTemperatures(): '%s'", code.c_str());
 	// temperature hotend
 	std::size_t posT = code.find("T:");
-	temperature_ = findValue(code,posT+2);
-	//LOG(Logger::BULK, "  temp '%i'",temperature_);
+	temperature_ = findValue(code, posT + 2);
+	//LOG(Logger::BULK, "  temp '%i'", temperature_);
 
 	// target temperature hotend
-	std::size_t posTT = code.find('/',posT);
-	if(posTT != std::string::npos) {
-		targetTemperature_ = findValue(code,posTT+1);
-		LOG(Logger::VERBOSE, "  (parseTemperatures)targetTemp '%i'",targetTemperature_);//TEMP was commented
+	std::size_t posTT = code.find('/', posT);
+	if (posTT != std::string::npos) {
+		targetTemperature_ = findValue(code, posTT + 1);
+		LOG(Logger::VERBOSE, "  (parseTemperatures) targetTemp '%i'", targetTemperature_); //TEMP was commented
 	}
 
 	// bed temperature
 	std::size_t posB = code.find("B:");
-	if(posB != std::string::npos) {
-		bedTemperature_ = findValue(code,posB+2);
-		//LOG(Logger::BULK, "  bedTemp '%i'",bedTemperature_);
+	if (posB != std::string::npos) {
+		bedTemperature_ = findValue(code, posB + 2);
+		//LOG(Logger::BULK, "  bedTemp '%i'", bedTemperature_);
 
 		// target bed temperature
-		std::size_t posTBT = code.find('/',posB);
-		if(posTBT != std::string::npos) {
-			targetBedTemperature_ = findValue(code,posTBT+1);
-			//LOG(Logger::BULK, "  targetBedTemp '%i'",targetBedTemperature_);
+		std::size_t posTBT = code.find('/', posB);
+		if (posTBT != std::string::npos) {
+			targetBedTemperature_ = findValue(code, posTBT + 1);
+			//LOG(Logger::BULK, "  targetBedTemp '%i'", targetBedTemperature_);
 		}
 	}
 }
 
 int MarlinDriver::findValue(const string& code, size_t startPos) {
 	//LOG(Logger::BULK, "  findValue()");
-	std::size_t posEnd = code.find('\n',startPos);
-	//LOG(Logger::BULK, "    posEnd: %i",posEnd);
-	if(posEnd == string::npos) {
-		posEnd = code.find(' ',startPos);
-		//LOG(Logger::BULK, "    posEnd>: %i",posEnd);
+	std::size_t posEnd = code.find('\n', startPos);
+	//LOG(Logger::BULK, "    posEnd: %i", posEnd);
+	if (posEnd == string::npos) {
+		posEnd = code.find(' ', startPos);
+		//LOG(Logger::BULK, "    posEnd>: %i", posEnd);
 	}
 	string valueStr = code.substr(startPos, posEnd-startPos);
-	//LOG(Logger::BULK, "    valueStr: %s",valueStr.c_str());
+	//LOG(Logger::BULK, "    valueStr: %s", valueStr.c_str());
 	return ::atof(valueStr.c_str());
 }
 
@@ -219,10 +218,10 @@ void MarlinDriver::checkTemperature() {
 }
 
 void MarlinDriver::sendCode(const std::string& code) {
-	LOG(Logger::BULK, "sendCode(): %s",code.c_str());
+	LOG(Logger::BULK, "sendCode(): %s", code.c_str());
 	if (isConnected()) {
 		extractGCodeInfo(code);
-		serial_.send((code+"\n").c_str());
+		serial_.send((code + "\n").c_str());
 	}
 }
 
@@ -296,12 +295,12 @@ void MarlinDriver::extractGCodeInfo(const string& gcode) {
 	std::size_t posHeat = gcode.find("M109");
 	if(posHeat != std::string::npos) {
 		targetTemperature_ = findValue(gcode, posHeat + 6);
-		LOG(Logger::VERBOSE, "  (extractGCodeInfo)targetTemperature_: %i",targetTemperature_);//TEMP was bulk
+		LOG(Logger::VERBOSE, "  (extractGCodeInfo)targetTemperature_: %i", targetTemperature_); //TEMP was bulk
 	}
 
 	// check for a bed heat command (M190 S... / M190 R...)
 	std::size_t posBedHeat = gcode.find("M190");
-	if(posHeat != std::string::npos) {
+	if (posHeat != std::string::npos) {
 		targetBedTemperature_ = findValue(gcode, posBedHeat + 6);
 		LOG(Logger::BULK, "  targetBedTemperature_: %i", targetBedTemperature_);
 	}
