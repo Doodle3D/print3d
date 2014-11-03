@@ -296,26 +296,44 @@ AbstractDriver* MarlinDriver::create(Server& server, const string& serialPortPat
  *********************/
 
 void MarlinDriver::extractGCodeInfo(const string& gcode) {
+	int rv;
 	LOG(Logger::BULK, "extractGCodeInfo()");
 	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
 
 	// check for an extruder heat command (M109 S... / M109 R... / M104 ...)
-	size_t posHeat = gcode.find("M109");
-	if (posHeat == string::npos) posHeat = gcode.find("M104");
-
-	if(posHeat != string::npos) {
-		targetTemperature_ = findValue(gcode, posHeat + 6);
-		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetTemperature_: %i", targetTemperature_); //TEMP was bulk
+	rv = extractTemperatureFromMCode(gcode, (const string[]){"M109", "M104"}, 2);
+	if (rv >= 0) {
+		targetTemperature_ = rv;
+		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetTemperature_: %i", targetTemperature_);
 	}
 
 	// check for a bed heat command (M190 S... / M190 R... / M140 ...)
-	size_t posBedHeat = gcode.find("M190");
-	if (posBedHeat == string::npos) posBedHeat = gcode.find("M140");
-
-	if (posBedHeat != string::npos) {
-		targetBedTemperature_ = findValue(gcode, posBedHeat + 6);
-		LOG(Logger::BULK, "  targetBedTemperature_: %i", targetBedTemperature_);
+	rv = extractTemperatureFromMCode(gcode, (const string[]){"M190", "M140"}, 2);
+	if (rv >= 0) {
+		targetBedTemperature_ = rv;
+		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetBedTemperature_: %i", targetBedTemperature_);
 	}
+}
+
+//int MarlinDriver::extractTemperatureFromMCode(const string& gcode, const vector<const string>& codes) {
+int MarlinDriver::extractTemperatureFromMCode(const string& gcode, const string *codes, int num_codes) {
+	size_t cmdPos = string::npos, offset = 0;
+	int result = -1;
+
+	for (int i = 0; i < num_codes; ++i) {
+		cmdPos = gcode.find(codes[i]);
+		if (cmdPos != string::npos) {
+			offset = codes[i].size() + 1; //assume space after command
+			break;
+		}
+	}
+
+	if(cmdPos != string::npos) {
+		if (gcode.at(cmdPos + offset) == 'T') offset += 3; //skip toolhead
+		result = findValue(gcode, cmdPos + offset + 1); //skip S or R
+	}
+
+	return result;
 }
 
 void MarlinDriver::filterText(string& text, const string& replace) {

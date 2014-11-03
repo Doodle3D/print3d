@@ -10,7 +10,7 @@ target_link_libraries(t_gcodebuffer drivers)
 add_test(server_gcodebuffer t_gcodebuffer)
 
 add_custom_target(
-	test
+	unittest
 	COMMAND ctest
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 	DEPENDS t_gcodebuffer
