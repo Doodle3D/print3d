@@ -126,6 +126,13 @@ void MarlinDriver::appendGCode(const string& gcode) {
 }
 
 void MarlinDriver::readResponseCode(string& code) {
+	/*
+	 * Printing data from printer with wrong baudrate sometimes garbles the
+	 * terminal, enable this to filter a number of control characters.
+	 * See: https://bbs.archlinux.org/viewtopic.php?pid=423358#p423358.
+	 */
+	//filterText(code, "\x0D\x0E\x1B"); //not sure if replacing these is enough
+
 	LOG(Logger::BULK, "readCode(): '%s'", code.c_str());
 
 	bool tempMessage = (code.find("ok T:") == 0);
@@ -292,17 +299,27 @@ void MarlinDriver::extractGCodeInfo(const string& gcode) {
 	LOG(Logger::BULK, "extractGCodeInfo()");
 	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
 
-	// check for a heat command (M109 S... / M109 R...)
-	if(posHeat != std::string::npos) {
+	// check for an extruder heat command (M109 S... / M109 R... / M104 ...)
 	size_t posHeat = gcode.find("M109");
+	if (posHeat == string::npos) posHeat = gcode.find("M104");
+
+	if(posHeat != string::npos) {
 		targetTemperature_ = findValue(gcode, posHeat + 6);
-		LOG(Logger::VERBOSE, "  (extractGCodeInfo)targetTemperature_: %i", targetTemperature_); //TEMP was bulk
+		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetTemperature_: %i", targetTemperature_); //TEMP was bulk
 	}
 
-	// check for a bed heat command (M190 S... / M190 R...)
-	if (posHeat != std::string::npos) {
+	// check for a bed heat command (M190 S... / M190 R... / M140 ...)
 	size_t posBedHeat = gcode.find("M190");
+	if (posBedHeat == string::npos) posBedHeat = gcode.find("M140");
+
+	if (posBedHeat != string::npos) {
 		targetBedTemperature_ = findValue(gcode, posBedHeat + 6);
 		LOG(Logger::BULK, "  targetBedTemperature_: %i", targetBedTemperature_);
+	}
+}
+
+void MarlinDriver::filterText(string& text, const string& replace) {
+	for (string::iterator it = text.begin(); it < text.end(); ++it) {
+		if (replace.find(*it) != string::npos) *it = '.';
 	}
 }

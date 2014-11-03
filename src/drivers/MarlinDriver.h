@@ -47,6 +47,8 @@ private:
 	int maxCheckTemperatureAttempts_;
 
 	void extractGCodeInfo(const std::string& gcode);
+
+	void filterText(std::string& text, const std::string& replace);
 };
 
 #endif /* ! MARLIN_DRIVER_H_SEEN */
