@@ -22,22 +22,26 @@ static int act_printTemperature() {
 	int rv = 0;
 	int16_t hotendTemperature = INT16_MIN, hotendTargetTemperature = INT16_MIN;
 	int16_t bedTemperature = INT16_MIN, bedTargetTemperature = INT16_MIN;
+	int16_t heating;
 
 	rv = comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND);
 	rv = rv || comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT);
 	rv = rv || comm_getTemperature(&bedTemperature, IPC_TEMP_BED);
 	rv = rv || comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT);
+	rv = rv || comm_getTemperature(&heating, IPC_TEMP_HEATING);
 
 	comm_closeSocket();
 
 	if (rv == 0) {
 		if (!json_output) {
-			printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i\n",
-					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
+			printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i, heating: %s\n",
+					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
+					heating ? "yes" : "no");
 		} else {
 			printJsonOk("\"temperatures\": {\"hotend\": "
-					"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}}",
-					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature);
+					"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}, \"heating\": %s}",
+					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
+					heating ? "true" : "false");
 		}
 	} else {
 		printError(json_output, "could not read one or more target temperatures (%s)", comm_getError());

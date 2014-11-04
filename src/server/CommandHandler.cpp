@@ -94,6 +94,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 		case IPC_TEMP_HOTEND_TGT: temp = driver->getTargetTemperature(); break;
 		case IPC_TEMP_BED: temp = driver->getBedTemperature(); break;
 		case IPC_TEMP_BED_TGT: temp = driver->getTargetBedTemperature(); break;
+		case IPC_TEMP_HEATING: temp = driver->isHeating() ? 1 : 0; break;
 		default:
 			/* incorrect value, set to known invalid value and handle below */;
 			which = IPC_TEMP_NONE;

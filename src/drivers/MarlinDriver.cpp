@@ -183,6 +183,10 @@ void MarlinDriver::parseTemperatures(string& code) {
 	LOG(Logger::BULK, "parseTemperatures(): '%s'", code.c_str());
 	// temperature hotend
 	size_t posT = code.find("T:");
+
+	//status variant _not_ prefixed with 'ok ' indicates the printer is heating
+	heating_ = (posT == 0);
+
 	temperature_ = findValue(code, posT + 2);
 	//LOG(Logger::BULK, "  temp '%i'", temperature_);
 

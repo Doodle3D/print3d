@@ -25,7 +25,8 @@ const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "conne
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
-: temperature_(0),
+: heating_(false),
+  temperature_(0),
   targetTemperature_(0),
   bedTemperature_(0),
   targetBedTemperature_(0),
@@ -140,6 +141,10 @@ bool AbstractDriver::stopPrint() {
 /*
  * Getters and setters
  */
+bool AbstractDriver::isHeating() const {
+	return heating_;
+}
+
 uint16_t AbstractDriver::getTemperature() const {
 	return temperature_;
 }

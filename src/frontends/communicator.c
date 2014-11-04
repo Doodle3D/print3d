@@ -157,7 +157,7 @@ int comm_testCommand(const char *question, char **answer) {
 }
 
 //returns 0 on success, -1 on error (retrieved using getError())
-int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which) {
+int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PARAMETER which) {
 	clearError();
 
 	int scmdlen, rcmdlen;
