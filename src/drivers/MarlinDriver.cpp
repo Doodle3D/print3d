@@ -305,14 +305,16 @@ void MarlinDriver::extractGCodeInfo(const string& gcode) {
 	//LOG(Logger::BULK, "  gcode: %s", gcode.c_str());
 
 	// check for an extruder heat command (M109 S... / M109 R... / M104 ...)
-	rv = extractTemperatureFromMCode(gcode, (const string[]){"M109", "M104"}, 2);
+	const string extruderCmds[] = {"M109", "M104"};
+	rv = extractTemperatureFromMCode(gcode, extruderCmds, 2);
 	if (rv >= 0) {
 		targetTemperature_ = rv;
 		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetTemperature_: %i", targetTemperature_);
 	}
 
 	// check for a bed heat command (M190 S... / M190 R... / M140 ...)
-	rv = extractTemperatureFromMCode(gcode, (const string[]){"M190", "M140"}, 2);
+	const string bedCmds[] = {"M190", "M140"};
+	rv = extractTemperatureFromMCode(gcode, bedCmds, 2);
 	if (rv >= 0) {
 		targetBedTemperature_ = rv;
 		LOG(Logger::VERBOSE, "  (extractGCodeInfo) targetBedTemperature_: %i", targetBedTemperature_);
