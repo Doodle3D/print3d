@@ -20,7 +20,7 @@ define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
-	DEPENDS:=+uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +libuci +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
+	DEPENDS:= +libuci +uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
 endef
 
 define Package/print3d/description
