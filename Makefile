@@ -49,13 +49,27 @@ define Package/print3d/install
 endef
 
 define Package/print3d/postinst
-	$${IPKG_INSTROOT}/etc/init.d/print3d enable
-	$${IPKG_INSTROOT}/etc/init.d/print3d start
+	#!/bin/sh
+	# check if we are on real system
+	if [ -z "$${IPKG_INSTROOT}" ]; then
+		echo 'Enabling rc.d symlink for print3d'
+		$${IPKG_INSTROOT}/etc/init.d/print3d enable
+		echo 'Start print3d service'
+		$${IPKG_INSTROOT}/etc/init.d/print3d start
+	fi
+	exit 0
 endef
 
 define Package/print3d/prerm
-	$${IPKG_INSTROOT}/etc/init.d/print3d stop
-	$${IPKG_INSTROOT}/etc/init.d/print3d disable
+	#!/bin/sh
+	# check if we are on real system
+	if [ -z "$${IPKG_INSTROOT}" ]; then
+		echo 'Stop print3d service'
+		$${IPKG_INSTROOT}/etc/init.d/print3d stop
+		echo 'Disable print3d service'
+		$${IPKG_INSTROOT}/etc/init.d/print3d disable
+	fi
+	exit 0
 endef
 
 $(eval $(call BuildPackage,print3d))
