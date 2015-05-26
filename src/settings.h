@@ -10,7 +10,7 @@
 #define SETTINGS_H_SEEN
 
 #if UCI_ENABLED == 1
-#error "UCI_ENABLED"
+//#error "UCI_ENABLED" //--error disabled
 //TODO: improve this to only detect openwrt
 # ifdef __linux
 #  include "uci.h"
