@@ -262,6 +262,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("kossel") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("leapfrog_creatr") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_aO_101") );
+    	supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_taz_4") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_m2") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_prusa") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makibox") );
