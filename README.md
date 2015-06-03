@@ -14,6 +14,7 @@ Building natively is done using the script `build-local.sh` (or manually). The i
 Requirements to build and run the code natively are: cmake (more to come).
 
 ## Startup scripts
+The Print3D package includes shell scripts that start print3D when a printer is connected. These are added in `/usr/libexec/`. 
 - [print3d_init](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d_init). A init script that starts the print3d-manager as a deamon. 
 - [print3d-manager](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-manager.sh). Uses inotifyd to start `print3d-new-device` when a new device is connected. 
 - [print3d-new-device](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-new-device.sh). Figures out whether to start print3d in a seemingly crude way. If appropriate it tries to start `print3d-runner`
