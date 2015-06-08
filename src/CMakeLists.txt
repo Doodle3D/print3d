@@ -11,7 +11,12 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall")
 
 option(GENERATE_DOCS "generate documentation" OFF)
 #option(PRINT3D_DEBUG "debugging support" OFF)
-option(ENABLE_UCI "include UCI (OpenWrt only)" ON)
+
+if(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
+	option(ENABLE_UCI "include UCI (OpenWrt only)" ON)
+else()
+	option(ENABLE_UCI "disable UCI (OpenWrt only)" OFF)
+endif(CMAKE_SYSTEM_NAME STREQUAL Linux AND CMAKE_CROSSCOMPILING)
 
 #define this here to make sure it has been initialized before configure_file()
 set(GCODE_BUFFER_MAX_SIZE_KB "3072" CACHE STRING "maximum gcode buffer size (KiB)")
