@@ -284,7 +284,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bigbuilder3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("mamba3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_generic") );
-    //supportedFirmware.push_back( AbstractDriver::FirmwareDescription("doodle_dream") );
+        supportedFirmware.push_back( AbstractDriver::FirmwareDescription("doodle_dream") );
 
 		info.supportedFirmware = supportedFirmware;
 		info.creator = &MarlinDriver::create;
