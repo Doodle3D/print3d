@@ -200,6 +200,7 @@ const AbstractDriver::DriverInfo& MakerbotDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_replicator2x") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_thingomatic") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makerbot_generic") );
+        supportedFirmware.push_back( AbstractDriver::FirmwareDescription("wanhao_duplicator4") );
 
 		info.supportedFirmware = supportedFirmware;
 		info.creator = &MakerbotDriver::create;
