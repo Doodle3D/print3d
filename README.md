@@ -14,10 +14,11 @@ Building natively is done using the script `build-local.sh` (or manually). The i
 Requirements to build and run the code natively are: cmake (more to come).
 
 ## Startup scripts
-- [print3d_init](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d_init). A init script that starts the print3d-manager as a deamon. 
-- [print3d-manager](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-manager.sh). Uses inotifyd to start `print3d-new-device` when a new device is connected. 
-- [print3d-new-device](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-new-device.sh). Figures out whether to start print3d in a seemingly crude way. If appropriate it tries to start `print3d-runner`
-- [print3d-runner.sh](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-runner.sh). Starts the print3d deamon. 
+The Print3D package includes shell scripts that start print3D when a printer is connected.
+- `/etc.init.d/`[print3d](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d_init). A init script that starts the print3d-manager as a deamon. 
+- `/usr/libexec/`[print3d-manager](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-manager.sh). Uses inotifyd to start `print3d-new-device` when a new device is connected. 
+- `/usr/libexec/`[print3d-new-device](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-new-device.sh). Figures out whether to start print3d in a seemingly crude way. If appropriate it tries to start `print3d-runner`
+- `/usr/libexec/`[print3d-runner.sh](https://github.com/Doodle3D/print3d/blob/master/src/script/print3d-runner.sh). Starts the print3d deamon. 
 
 ## CMDline usage
 - **Print3D** is a deamon that communicates with the printer. It sends the printer gcode line for line from it's buffer, it automatically checks the temperature etc. Preverably it's started when a printer is connected. 

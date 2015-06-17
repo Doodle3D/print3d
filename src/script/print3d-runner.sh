@@ -10,7 +10,7 @@ PRINT3D=/bin/print3d
 DEVBASE=`basename $1`
 OPTIONS=-v
 
-sleep 1
+sleep 5
 
 #start server without forking (this script is backgrounded by print3d-manager)
 $PRINT3D -F -d ${DEVBASE} $OPTIONS >> $PRINT3D_RES_PATH/print3d-${DEVBASE}.log 2>&1

@@ -159,11 +159,12 @@ static int l_getPrinter(lua_State *L) {
 static int l_getTemperatures(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 
-	int16_t tH, tHt, tB, tBt;
+	int16_t tH, tHt, tB, tBt, tHeating;
 	int rv = comm_getTemperature(&tH, IPC_TEMP_HOTEND);
 	if (rv >= 0) rv = comm_getTemperature(&tHt, IPC_TEMP_HOTEND_TGT);
 	if (rv >= 0) rv = comm_getTemperature(&tB, IPC_TEMP_BED);
 	if (rv >= 0) rv = comm_getTemperature(&tBt, IPC_TEMP_BED_TGT);
+	if (rv >= 0) rv = comm_getTemperature(&tHeating, IPC_TEMP_HEATING);
 	comm_closeSocket();
 
 	if (rv > -1) {
@@ -172,6 +173,7 @@ static int l_getTemperatures(lua_State *L) {
 		lua_pushnumber(L, tHt); lua_setfield(L, -2, "hotend_target");
 		lua_pushnumber(L, tB); lua_setfield(L, -2, "bed");
 		lua_pushnumber(L, tBt); lua_setfield(L, -2, "bed_target");
+		lua_pushnumber(L, tHeating); lua_setfield(L, -2, "heating");
 		return 1;
 	} else {
 		lua_pushnil(L);

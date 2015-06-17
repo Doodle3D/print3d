@@ -274,7 +274,7 @@ int Serial::extractByte() {
 
 //returns -1 if no data available
 int Serial::extractBytes(unsigned char *buf, size_t buflen) {
-	if (bufferSize_ < buflen) return -1;
+	if ((unsigned int)bufferSize_ < buflen) return -1;
 
 	memcpy(buf, buffer_, buflen);
 	memmove(buffer_, buffer_ + buflen, bufferSize_ - buflen);

@@ -10,40 +10,57 @@
 #include <algorithm>
 #include <stdlib.h>
 #include <string.h>
+#include "config.h"
+#include "../utils.h"
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
 #define LOG(lvl, fmt, ...) log_.log(lvl, "[MLD] " fmt, ##__VA_ARGS__)
 
+#ifndef GCODE_BUFFER_MAX_SIZE_KB
+# define GCODE_BUFFER_MAX_SIZE_KB 1024 * 3
+#endif
+#ifndef GCODE_BUFFER_SPLIT_SIZE_KB
+# define GCODE_BUFFER_SPLIT_SIZE_KB 8
+#endif
+
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
-const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * 1024 * 3;
+const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB; //set to 0 to disable (TODO: actually, this isn used at all currently)
+const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * GCODE_BUFFER_SPLIT_SIZE_KB; //append will split its input on the first newline after this size
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0), log_(Logger::getInstance())
-{ /* empty */ }
+{
+	LOG(Logger::VERBOSE, "init: max size: %luKiB, bucket size: %luKiB, split size: %luKiB",
+		MAX_BUFFER_SIZE, MAX_BUCKET_SIZE, BUFFER_SPLIT_SIZE);
+}
 
 void GCodeBuffer::set(const string &gcode) {
 	clear();
 	append(gcode);
 }
 
-//NOTE: currently this function will never split given gcode into parts for
-//separate buckets, so MAX_BUCKET_SIZE is not a strict limit
+//NOTE: this function splits given code into chunk of approximately BUFFER_SPLIT_SIZE.
+//without this, huge chunks (>1MB) would make repeated erase operations very inefficient.
 void GCodeBuffer::append(const string &gcode) {
+	uint32_t startTime = getMillis();
+	int count = 0;
+	size_t size = gcode.size();
+	size_t start = 0;
+	
+	while(start < gcode.size()) {
+		size_t len = BUFFER_SPLIT_SIZE;
+		size_t nl = gcode.find('\n', start + len);
 
-	if (buckets_.size() == 0) buckets_.push_back(new string());
-	string *b = buckets_.back();
-	if (b->length() >= MAX_BUCKET_SIZE) {
-		b = new string();
-		buckets_.push_back(b);
+		len = (nl != string::npos) ? nl - start + 1 : gcode.size() - start;
+		appendChunk(gcode.substr(start, len));
+		count++;
+		start += len;
 	}
 
-	size_t pos = b->length();
-	b->append(gcode);
-	cleanupGCode(b, pos);
-	bufferSize_ += gcode.length();
-	updateStats(b, pos);
+	LOG(Logger::VERBOSE, "append(): added %zu bytes of gcode (%i chunks) in %lu ms",
+		size, count, getMillis() - startTime);
 }
 
 void GCodeBuffer::clear() {
@@ -137,9 +154,26 @@ bool GCodeBuffer::eraseLine(size_t amount) {
 	return pos != string::npos;
 }
 
+
 /*********************
  * PRIVATE FUNCTIONS *
  *********************/
+
+void GCodeBuffer::appendChunk(const string &gcode) {
+
+	if (buckets_.size() == 0) buckets_.push_back(new string());
+	string *b = buckets_.back();
+	if (b->length() >= MAX_BUCKET_SIZE) {
+		b = new string();
+		buckets_.push_back(b);
+	}
+
+	size_t pos = b->length();
+	b->append(gcode);
+	cleanupGCode(b, pos);
+	bufferSize_ += gcode.length();
+	updateStats(b, pos);
+}
 
 void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 	int32_t addedLineCount = std::count(buffer->begin() + pos, buffer->end(), '\n');
@@ -150,6 +184,8 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
+	uint32_t startTime = getMillis(), commentDelta, doubleNLDelta, endTime;
+
 //	LOG(Logger::BULK, "cleanupGCode");
 //	LOG(Logger::BULK, "  pos: %i",pos);
 //	LOG(Logger::BULK, "  ////////// buffer: ");
@@ -174,6 +210,8 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 		}
 	}
 
+	commentDelta = getMillis();
+
 	//replace \n\n with \n
 	std::size_t posDoubleNewline = pos;
 	// -1 to make sure we also check the first line of the part we're checking
@@ -183,20 +221,28 @@ void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {
 		buffer->replace(posDoubleNewline, 2, "\n");
 	}
 
+	doubleNLDelta = getMillis();
+
 	// remove empty first line
 	if(buffer->find("\n",0) == 0) {
 		buffer->erase(0, 1);
 		LOG(Logger::BULK, " erase first empty line");
 	}
 
-	// Make sure we end with an empty line
-	char& lastChar = buffer->at(buffer->length()-1);
-	if(lastChar != '\n') {
-		buffer->append("\n");
-//		LOG(Logger::BULK, " add empty line at end");
+	// Make sure we end with an empty line except when the buffer is empty
+	if (buffer->length() > 0) {
+		char lastChar = buffer->at(buffer->length()-1);
+		if(lastChar != '\n') {
+			buffer->append("\n");
+//			LOG(Logger::BULK, " add empty line at end");
+		}
 	}
 //	LOG(Logger::BULK, "  ////////// >>>buffer: ");
 //	LOG(Logger::BULK, "  \n%s\n////////// end >>>buffer",buffer->c_str());
 
 	bufferSize_ -= (buflen - buffer->length());
+
+	endTime = getMillis();
+	LOG(Logger::BULK, "cleanupGCode(): took %lu ms (%lu removing comments, %lu removing double newlines)",
+		endTime - startTime, commentDelta - startTime, doubleNLDelta - commentDelta);
 }

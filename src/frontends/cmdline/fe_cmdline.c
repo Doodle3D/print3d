@@ -6,10 +6,13 @@
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
 
+#define _GNU_SOURCE /* for vasprintf */
+
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 #include "fe_cmdline.h"
@@ -20,6 +23,7 @@ static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
 		{"quiet", no_argument, NULL, 'q'},
 		{"verbose", no_argument, NULL, 'v'},
+		{"json", no_argument, NULL, 'j'},
 
 		{"get", required_argument, NULL, 'g'},
 		{"temperature", no_argument, NULL, 't'},
@@ -40,6 +44,7 @@ static struct option long_options[] = {
 };
 
 int verbosity = 0; //-1 for quiet, 0 for normal, 1 for verbose
+int json_output = 0;
 char *deviceId = NULL;
 char *printFile = NULL, *sendGcode = NULL, *endGcode = NULL;
 int heatupTemperature = -1;
@@ -49,13 +54,15 @@ static int deviceIdRequired = 0;
 static ACTION_TYPE action = AT_NONE;
 
 
-void parseOptions(int argc, char **argv) {
+static void parseOptions(int argc, char **argv) {
 	int ch;
-	while ((ch = getopt_long(argc, argv, "hqvg:tpsd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
+	//opterr = 0; //suppresses error printing, but leading ':' in optstring also does that
+	while ((ch = getopt_long(argc, argv, ":hqvjg:tpsSd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
 		case 'q': verbosity = -1; break;
 		case 'v': verbosity = 1; break;
+		case 'j': json_output = 1; break; //this also enforces verbosity to -1 below
 		case 'g':
 			if (strcmp(optarg, "temperature") == 0) {
 				action = AT_GET_TEMPERATURE;
@@ -117,18 +124,57 @@ void parseOptions(int argc, char **argv) {
 			action = AT_STOP_PRINT;
 			deviceIdRequired = 1;
 			break;
-		case '?': /* signifies an error (like option with missing argument) */
-			action = AT_ERROR;
+		case '?': /* signifies an invalid argument (and other errors?) */
+			action = AT_ERR_UNKNOWN;
+			break;
+		case ':': /* signifies missing argument */
+			action = AT_ERR_MISSING;
 			break;
 		}
 	}
+
+	if (json_output) verbosity = -1;
+}
+
+
+void printError(int output_as_json, const char *format, ...) {
+	char *buf = 0;
+
+	va_list args;
+	va_start(args, format);
+	vasprintf(&buf, format, args);
+	va_end(args);
+
+	if (!output_as_json) fprintf(stderr, "error: %s\n", buf);
+	else printf("{\"status\": \"ERR\", \"message\": \"%s\"}", buf);
+
+	free(buf);
+}
+
+void printJsonOk(const char *format, ...) {
+	char *buf = 0;
+
+	if (format) {
+		va_list args;
+		va_start(args, format);
+		vasprintf(&buf, format, args);
+		va_end(args);
+	}
+
+	printf("{\"status\": \"OK\"%s%s}", buf && strlen(buf) > 0 ? ", " : "", buf ? buf : "");
+
+	free(buf);
 }
 
 
 int main(int argc, char **argv) {
 	parseOptions(argc, argv);
 
-	if (action == AT_ERROR) {
+	if (action == AT_ERR_UNKNOWN) {
+		printError(json_output, "invalid option '%c' to executable, try -h", (char)optopt);
+		exit(2);
+	} else if (action == AT_ERR_MISSING) {
+		printError(json_output, "option '%c' to executable requires an argument, try -h", (char)optopt);
 		exit(2);
 	}
 
@@ -139,23 +185,27 @@ int main(int argc, char **argv) {
 		devlist = ipc_find_devices();
 
 		if (!devlist) { //no device list
-			fprintf(stderr, "error: could not obtain device list\n");
+			printError(json_output, "could not obtain device list");
 			exit(1);
 		}
 
 		if (devlist[0] == NULL && forceStart == 0) { //no devices found, and no force-run
-			fprintf(stderr, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'\n");
+			printError(json_output, "no devices found, please connect a printer and start a server for it, or re-rerun with '-F'");
 			exit(1);
 		} else if (devlist[0] == NULL) { //no devices, but force-run requested
 			deviceId = strdup(IPC_DEFAULT_DEVICE_ID); //NOTE: WARNING: technically this is a memory leak because deviceId is never freed
-			printf("no device specified and none found, using default (%s)\n", deviceId);
+			if (verbosity > 0) printf("no device specified and none found, using default (%s)\n", deviceId);
 		} else if (devlist[1] != NULL) { //multiple devices found
-			fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
-			for (int i = 0; devlist[i] != 0; i++) {
-				const char *item = devlist[i];
-				fprintf(stderr, " '%s'", item);
+			if (!json_output) {
+				fprintf(stderr, "more than one device found (listed below), please specify one the following:\n");
+				for (int i = 0; devlist[i] != 0; i++) {
+					const char *item = devlist[i];
+					fprintf(stderr, " '%s'", item);
+				}
+				fprintf(stderr, "\n");
+			} else {
+				printError(json_output, "more than one device found, please specify one of them");
 			}
-			fprintf(stderr, "\n");
 			exit(1);
 		} else { //one device found
 			deviceId = devlist[0];
@@ -168,7 +218,7 @@ int main(int argc, char **argv) {
 	}
 
 	//NOTE: this may print (null) as device, which is okay for commands not requiring a server connection
-	printf("Using device ID '%s'\n", deviceId);
+	if (verbosity > 0) printf("Using device ID '%s'\n", deviceId);
 	int rv = handleAction(argc, argv, action);
 	ipc_free_device_list(devlist);
 

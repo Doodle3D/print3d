@@ -79,6 +79,11 @@ public:
 	void heatup(int temperature);
 
 	/*
+	 * Get cached heating state
+	 */
+	bool isHeating() const;
+
+	/*
 	 * Get cached extruder temperature
 	 */
 	uint16_t getTemperature() const;
@@ -119,6 +124,7 @@ public:
 protected:
 	static const bool REQUEST_EXIT_ON_PORT_FAIL;
 
+	bool heating_;
 	uint16_t temperature_;
 	uint16_t targetTemperature_;
 	uint16_t bedTemperature_;

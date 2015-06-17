@@ -18,7 +18,7 @@ int comm_closeSocket();
 const char *comm_getError();
 
 int comm_testCommand(const char *question, char **answer);
-int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PATAMETER which);
+int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PARAMETER which);
 
 int comm_clearGcode();
 int comm_startPrintGcode();
