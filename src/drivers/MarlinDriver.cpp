@@ -250,7 +250,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("rigidbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2") );
-        supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2go") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2go") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("printrbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bukobot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("cartesio") );
@@ -263,7 +263,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("kossel") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("leapfrog_creatr") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_aO_101") );
-        supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_taz_4") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("lulzbot_taz_4") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_m2") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makergear_prusa") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("makibox") );
@@ -284,7 +284,12 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bigbuilder3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("mamba3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_generic") );
-        supportedFirmware.push_back( AbstractDriver::FirmwareDescription("doodle_dream") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("doodle_dream") );
+    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_2_0_plus") );
+    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_m2020") );
+    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_x3045") );
+    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_compact") );
+    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_diy") );
 
 		info.supportedFirmware = supportedFirmware;
 		info.creator = &MarlinDriver::create;
