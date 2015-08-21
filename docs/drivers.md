@@ -13,7 +13,7 @@ If it receives a temperature it will go into `idle` mode.
 Every 1,5 seconds it will perform a temperature check.
 
 ### Printing mode
-Buffered gcode lines are send, line by line.
+Buffered [gcode](http://www.doodle3d.com/help/g-code) lines are send, line by line.
 When a `Resend:{linenumber}` is received the same line is send again.
 When an `ok` is received the next line is send.
 Every 5 seconds it will perform a temperature check.
