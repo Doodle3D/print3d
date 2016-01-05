@@ -5,10 +5,22 @@
 # This software is licensed under the terms of the GNU GPL v2 or later.
 # See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
 
+#Note: temporary way to have print3d respect log level specified in UCI (print3d will read this internally later on)
+LOG_LEVEL=`uci get wifibox.general.system_log_level`
+LOG_FLAG=
+case $LOG_LEVEL in
+	quiet) LOG_FLAG=-Q ;;
+	error) LOG_FLAG=-q ;;
+	warning) ;;
+	info) ;;
+	verbose) LOG_FLAG=-v ;;
+	bulk) LOG_FLAG=-V ;;
+esac
+
 PRINT3D_RES_PATH=/tmp
 PRINT3D=/bin/print3d
 DEVBASE=`basename $1`
-OPTIONS=-v
+OPTIONS=$LOG_FLAG
 
 sleep 5
 
