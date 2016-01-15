@@ -18,7 +18,7 @@ using std::string;
 #define LOG(lvl, fmt, ...) log_.log(lvl, "GCB ", fmt, ##__VA_ARGS__)
 
 #ifndef GCODE_BUFFER_MAX_SIZE_KB
-# define GCODE_BUFFER_MAX_SIZE_KB 1024 * 3
+# define GCODE_BUFFER_MAX_SIZE_KB 1024 * 3 /* 3 MiB */
 #endif
 #ifndef GCODE_BUFFER_SPLIT_SIZE_KB
 # define GCODE_BUFFER_SPLIT_SIZE_KB 8
@@ -26,7 +26,7 @@ using std::string;
 
 //private
 const uint32_t GCodeBuffer::MAX_BUCKET_SIZE = 1024 * 50;
-const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB; //set to 0 to disable (TODO: actually, this isn't used at all currently)
+const uint32_t GCodeBuffer::MAX_BUFFER_SIZE = 1024 * GCODE_BUFFER_MAX_SIZE_KB; //set to 0 to disable
 const uint32_t GCodeBuffer::BUFFER_SPLIT_SIZE = 1024 * GCODE_BUFFER_SPLIT_SIZE_KB; //append will split its input on the first newline after this size
 
 //Note: the GcodeSetResult texts are used all the way on the other end in javascript, consider this when changing them.
@@ -38,8 +38,8 @@ GCodeBuffer::GCodeBuffer()
   sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0),
   keepGpxMacroComments_(false), log_(Logger::getInstance())
 {
-	LOG(Logger::VERBOSE, "init - max size: %luKiB, bucket size: %luKiB, split size: %luKiB",
-		MAX_BUFFER_SIZE, MAX_BUCKET_SIZE, BUFFER_SPLIT_SIZE);
+	LOG(Logger::VERBOSE, "init - max size: %.1fKiB, bucket size: %.1fKiB, split size: %.1fKiB",
+		MAX_BUFFER_SIZE / (float)1024, MAX_BUCKET_SIZE / (float)1024, BUFFER_SPLIT_SIZE / (float)1024);
 }
 
 /**
@@ -105,7 +105,7 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const Met
 		if (*source_ != *metaData->source) return GSR_SRC_MISMATCH;
 	}
 
-	if (getBufferSize() + gcode.length() > MAX_BUFFER_SIZE) {
+	if (MAX_BUFFER_SIZE > 0 && getBufferSize() + gcode.length() > MAX_BUFFER_SIZE) {
 		return GSR_BUFFER_FULL;
 	}
 
