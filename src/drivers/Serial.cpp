@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -55,7 +55,7 @@ int	tcflush(int fildes, int action);
 using std::string;
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) log_.log(lvl, "[SER] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) log_.log(lvl, "SER ", fmt, ##__VA_ARGS__)
 
 
 const int Serial::READ_BUF_SIZE = 1024;
@@ -66,12 +66,12 @@ Serial::Serial()
 int Serial::open(const char* file) {
 	//ESERIAL_SET_SPEED_RESULT spdResult;
 
-  LOG(Logger::VERBOSE,"open(): %s",file);
+  LOG(Logger::INFO,"open(): %s",file);
 
 	portFd_ = ::open(file, O_RDWR | O_NONBLOCK);
-	//LOG(Logger::VERBOSE,"  serial opened %i",portFd_);
+	//LOG(Logger::VERBOSE,"  serial open returned %i", portFd_);
 	if (portFd_ < 0) {
-		LOG(Logger::ERROR,"Could not open port %s (%s)\n", file, strerror(errno));
+		LOG(Logger::ERROR, "Could not open port %s (%s)\n", file, strerror(errno));
 		return portFd_;
 	}
 
@@ -96,7 +96,7 @@ bool Serial::isOpen() const {
 }
 
 Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
-	LOG(Logger::VERBOSE,"setSpeed(): %i",speed);
+	LOG(Logger::INFO, "setSpeed(): %i", speed);
 	struct TERMIOS_TYPE options;
 	int modemBits;
 
@@ -153,7 +153,7 @@ Serial::SET_SPEED_RESULT Serial::setSpeed(int speed) {
 }
 
 bool Serial::send(const char* code) const {
-  //LOG(Logger::VERBOSE,"Serial::send(): %s",code);
+  //LOG(Logger::VERBOSE,"Serial::send(): %s", code);
 	if (portFd_ >= 0) {
 		::write(portFd_, code, strlen(code));
 		return true;
@@ -182,7 +182,7 @@ bool Serial::write(const unsigned char b) {
 
 int Serial::readData(int timeout, bool onlyOnce) {
   //Logger& log = Logger::getInstance();
-	//log.log(Logger::VERBOSE,"Serial::readData");
+	//log.log(Logger::VERBOSE, "SER ", "Serial::readData");
 
 
   int rv = readAndAppendAvailableData(portFd_, &buffer_, &bufferSize_, timeout, onlyOnce ? 1 : 0);

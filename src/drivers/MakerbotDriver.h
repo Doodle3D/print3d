@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -24,16 +24,15 @@ public:
 	static const AbstractDriver::DriverInfo& getDriverInfo();
 	virtual int update();
 
-	void clearGpxBuffer();
-	size_t convertGcode(const std::string &gcode);//TEMP
+	size_t convertGCode(const std::string &gcode); //TEMP
+
 	//overrides
-	void setGCode(const std::string& gcode);
-	void appendGCode(const std::string& gcode);
+	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
 	void clearGCode();
 
+	//overrides
 	int32_t getCurrentLine() const;
 	int32_t getBufferedLines() const;
-	int32_t getTotalLines() const;
 
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
@@ -45,21 +44,21 @@ protected:
 	bool resetPrint();
 	void sendCode(const std::string& code);
 	void readResponseCode(std::string& code);
+	void fullStop();
 
 private:
-//	static const int WAIT_GCODE_LINES;
-	static const int MAX_GPX_BUFFER_SIZE;
+	static const int PRINTER_BUFFER_SIZE;
+	static const size_t QUEUE_MIN_SIZE;
+	static const size_t QUEUE_FILL_SIZE;;
+	static const int GCODE_CVT_LINES;
 
 	Timer timer_;
 	S3GParser parser_;
 
-	unsigned char *gpxBuffer_;
-	size_t gpxBufferSize_;
-
 	uint32_t bufferSpace_;
 	std::deque<std::string> queue_;
 
-	size_t currentCmd_, totalCmds_;
+	float cmdToLineRatio_;
 	bool validResponseReceived_;
 
 	unsigned int firmwareVersion_;

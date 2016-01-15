@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -30,6 +30,9 @@ extern char *strdup (__const char *__s);
 extern "C" {
 #endif
 
+const char *LOG_LEVEL_NAMES[] = { "_invalid_", "quiet", "error", "warning", "info", "verbose", "bulk", NULL };
+const int NUM_LOG_LEVELS = LLVL_BULK;
+
 const ipc_cmd_name_s IPC_COMMANDS[] = {
 		/* special codes (not sent or received) */
 		{ IPC_CMDS_INVALID, "invalid", "-", "" },
@@ -39,7 +42,11 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_TEST, "test", "*", "*" }, //NOTE: echoes anything it receives?
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" }, //NOTE: accepts 'which' selector
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
-		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "x", "" },
+
+		//NOTE: signature is 'xwWWs', x is gcode, all other arguments are optional
+		//w is a IPC_GCODE_TRANSACTION_BITS mask (optional, collected in CommandHandler, cleared when first_bit is set and passed to driver when last_bit is set), WWs is curr_seq/ttl_seq/src (optional)
+		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" },
+
 		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "x", "" }, //NOTE: accepts absolute path to file
 		{ IPC_CMDQ_GCODE_STARTPRINT, "gcodeStartPrint", "", "" },
 		{ IPC_CMDQ_GCODE_STOPPRINT, "gcodeStopPrint", "x", "" }, //NOTE: accepts end g-code (ignored if 0 length)
@@ -49,8 +56,11 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 
 		/* response commands send by server */
 		{ IPC_CMDR_OK, "ok", "*", NULL },
-		{ IPC_CMDR_ERROR, "error", "is", NULL },
-		{ IPC_CMDR_NOT_IMPLEMENTED, "not_implemented", "", NULL },
+		{ IPC_CMDR_ERROR, "error", "x", NULL },
+		{ IPC_CMDR_NOT_IMPLEMENTED, "not_implemented", "*", NULL },
+		{ IPC_CMDR_GCODE_ADD_FAILED, "gcode_add_failed", "x", NULL }, //NOTE: returns formal error message (for interpretation by lua/js)
+		{ IPC_CMDR_RETRY_LATER, "retry_later", "*", NULL }, //NOTE: returned when trying to append a file while a transaction is already in progress
+		{ IPC_CMDR_TRX_CANCELLED, "trx_cancelled", "*", NULL }, //NOTE: if a stop is requested, all connected clients have their are blocked to append further gcode
 
 		{ 0, NULL, NULL, NULL } /* sentinel */
 };
@@ -146,12 +156,12 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 	const char* fmtp = format;
 
 	if (!fmtp) {
-		log_message(LLVL_BULK, "[IPC] construct_cmd: NULL format specifier, assuming no arguments");
+		log_message(LLVL_BULK, "IPC ", "construct_cmd: NULL format specifier, assuming no arguments");
 		fmtp = "";
 	}
 
 	if (!equal(description->arg_fmt, "*") && !equal(description->arg_fmt, fmtp)) {
-		log_message(LLVL_WARNING, "[IPC] construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
+		log_message(LLVL_WARNING, "IPC ", "construct_cmd: given message format '%s' not equal to predefined format '%s'", fmtp, description->arg_fmt);
 	}
 
 	char* cmd = 0;
@@ -187,7 +197,7 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 			break;
 		}
 		default:
-			log_message(LLVL_WARNING, "[IPC] illegal format specifier in construct_cmd (%c)", argtype);
+			log_message(LLVL_WARNING, "IPC ", "illegal format specifier in construct_cmd (%c)", argtype);
 			//TODO: free unfinished command and return, instead of ignoring this
 			break;
 		}
@@ -415,11 +425,12 @@ int ipc_stringify_cmd(const char *buf, int buflen, int is_reply, char **outbuf) 
 				int slen = strlen(s);
 
 				if (slen <= STRINGIFY_MAX_TEXT_DISPLAY_CHARS) {
-					outlen += slen + 2;
+					outlen += slen + 3;
 					*outbuf = (char*)realloc(*outbuf, outlen);
 					if (!*outbuf) return -1;
 					strcat(*outbuf, ":\"");
 					strcat(*outbuf, s);
+					strcat(*outbuf, "\"");
 				} else {
 					outlen += number_length(slen) + 2;
 					*outbuf = (char*)realloc(*outbuf, outlen);

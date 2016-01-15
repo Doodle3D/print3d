@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -12,7 +12,6 @@
 #include "Logger.h"
 #include "Server.h"
 #include "CommandHandler.h"
-#include "../ipc_shared.h"
 #include "../utils.h"
 
 Client::Client(Server& server, int fd)
@@ -38,28 +37,45 @@ bool Client::sendData(const char* buf, int buflen) {
 
 	int rv = ::send(fd_, buf, buflen, 0);
 
-	logger_.checkError(rv, "could not send data in client with fd %i", getFileDescriptor());
+	logger_.checkError(rv, "CLI ", "could not send data in client with fd %i", getFileDescriptor());
 
 	return (rv == buflen);
 }
 
 
 bool Client::sendOk() {
+	return sendReply(IPC_CMDR_OK);
+}
+
+bool Client::sendError(const std::string& message) {
+	return sendReply(IPC_CMDR_ERROR, &message);
+}
+
+bool Client::sendReply(IPC_COMMAND_CODE code, const std::string *message) {
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "");
+	char* cmd = 0;
+
+	if (message) cmd = ipc_construct_cmd(&cmdlen, code, "x", message->c_str(), message->length());
+	else cmd = ipc_construct_cmd(&cmdlen, code, "");
+
 	if (!cmd) return false;
+
+//	char *cmd_text = NULL;
+//	ipc_stringify_cmd(cmd, cmdlen, 1, &cmd_text);
+//	printf("--- about to send reply: %s\n", cmd_text); free(cmd_text);
+
 	sendData(cmd, cmdlen);
 	free(cmd);
 	return true;
 }
 
-bool Client::sendError(const std::string& message) {
-	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_ERROR, "x", message.c_str(), message.length());
-	if (!cmd) return false;
-	sendData(cmd, cmdlen);
-	free(cmd);
-	return true;
+
+Client::Transaction &Client::getTransaction() {
+	return transaction_;
+}
+
+const Client::Transaction &Client::getTransaction() const {
+	return transaction_;
 }
 
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -67,8 +67,8 @@ public:
 	// should return in how much milliseconds it wants to be called again
 	virtual int update() = 0;
 
-	virtual void setGCode(const std::string& gcode);
-	virtual void appendGCode(const std::string& gcode);
+	virtual GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
+	virtual GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
 	virtual void clearGCode();
 
 	virtual bool startPrint(const std::string& gcode, STATE state = PRINTING);
@@ -78,48 +78,18 @@ public:
 
 	void heatup(int temperature);
 
-	/*
-	 * Get cached heating state
-	 */
 	bool isHeating() const;
-
-	/*
-	 * Get cached extruder temperature
-	 */
 	uint16_t getTemperature() const;
-
-	/*
-	 * Get cached extruder target temperature
-	 */
 	uint16_t getTargetTemperature() const;
-
-	/*
-	 * Get cached bed temperature
-	 */
 	uint16_t getBedTemperature() const;
-
-	/*
-	 * Get cached bed target temperature
-	 */
 	uint16_t getTargetBedTemperature() const;
 
-	/*
-	 * Get the line number which is currently being printed (current/total*100 yields progress percentage)
-	 */
 	virtual int32_t getCurrentLine() const;
-
-	/*
-	 * Get the number of lines currently in the buffer
-	 */
 	virtual int32_t getBufferedLines() const;
-
-	/*
-	 * Get the total number of lines which were appended to the buffer after the last clear or set
-	 */
 	virtual int32_t getTotalLines() const;
 
 	STATE getState() const;
-	const std::string &getStateString(STATE state);
+	static const std::string &getStateString(STATE state);
 
 protected:
 	static const bool REQUEST_EXIT_ON_PORT_FAIL;
@@ -150,6 +120,9 @@ protected:
 	int readData();
 	void setBaudrate(uint32_t baudrate);
 	void switchBaudrate();
+
+	int findNumber(const std::string& code, std::size_t startPos) const;
+	void extractGCodeInfo(const std::string& gcode);
 
 private:
 	static const std::string STATE_NAMES[];

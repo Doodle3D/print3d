@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -60,15 +60,24 @@ static void parseOptions(int argc, char **argv) {
 	while ((ch = getopt_long(argc, argv, ":hqvjg:tpsSd:Fw:f:c:rkK:", long_options, NULL)) != -1) {
 		switch (ch) {
 		case 'h': action = AT_SHOW_HELP; break;
-		case 'q': verbosity = -1; break;
-		case 'v': verbosity = 1; break;
-		case 'j': json_output = 1; break; //this also enforces verbosity to -1 below
+		case 'q':
+			verbosity = -1; break;
+		case 'v':
+			if (verbosity < 1) verbosity = 1;
+			else verbosity++;
+			break;
+		case 'j': //this also enforces verbosity to -1 below
+			json_output = 1;
+			break;
 		case 'g':
 			if (strcmp(optarg, "temperature") == 0) {
 				action = AT_GET_TEMPERATURE;
 				deviceIdRequired = 1;
 			} else if (strcmp(optarg, "test") == 0) {
 				action = AT_GET_TEST;
+				deviceIdRequired = 1;
+			} else if (strcmp(optarg, "trxtest") == 0) {
+				action = AT_GET_TRX_TEST;
 				deviceIdRequired = 1;
 			} else if (strcmp(optarg, "progress") == 0) {
 				action = AT_GET_PROGRESS;
@@ -178,7 +187,9 @@ int main(int argc, char **argv) {
 		exit(2);
 	}
 
-	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 0) ? " (verbose mode)" : "");
+	if (verbosity >= 0) printf("Print3D command-line client%s\n", (verbosity > 1)
+			? " (bulk mode)"
+			: (verbosity > 0 ? " (verbose mode)" : ""));
 
 	char **devlist = NULL;
 	if (deviceIdRequired && !deviceId) {

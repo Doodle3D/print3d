@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -21,10 +21,6 @@ public:
 	static const AbstractDriver::DriverInfo& getDriverInfo();
 	virtual int update();
 
-	//overrides
-	void setGCode(const std::string& gcode);
-	void appendGCode(const std::string& gcode);
-
 	static AbstractDriver* create(Server& server, const std::string& serialPortPath, const uint32_t& baudrate);
 
 protected:
@@ -34,7 +30,6 @@ protected:
 	void parseTemperatures(std::string& code);
 	void checkTemperature();
 	void sendCode(const std::string& code);
-	int findValue(const std::string& code, std::size_t startPos);
 
 private:
 	static const int UPDATE_INTERVAL;
@@ -45,8 +40,6 @@ private:
 	bool checkConnection_;
 	int checkTemperatureAttempt_;
 	int maxCheckTemperatureAttempts_;
-
-	void extractGCodeInfo(const std::string& gcode);
 	int extractTemperatureFromMCode(const std::string& gcode, const std::string *codes, int num_codes);
 
 	void filterText(std::string& text, const std::string& replace);

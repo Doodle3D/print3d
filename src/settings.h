@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -25,6 +25,8 @@
 int settings_init();
 int settings_deinit();
 const char *settings_get(const char *uci_spec);
+void settings_get_error(char **dest); //dest must be deallocated
+int settings_available();
 
 #ifdef __cplusplus
 	} //extern "C"

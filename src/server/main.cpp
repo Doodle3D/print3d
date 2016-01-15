@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -12,6 +12,7 @@
 #include <iostream>
 #include <string>
 #include "../ipc_shared.h"
+#include "../settings.h"
 #include "../drivers/DriverFactory.h"
 #include "Logger.h"
 #include "Server.h"
@@ -21,17 +22,20 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+static const char* UCI_KEY_LOG_PATH = "wifibox.system.log_path";
+static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.p3d_log_basename";
+static const char* UCI_KEY_LOG_LEVEL = "wifibox.system.p3d_log_level";
+
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
-		{"quieter", no_argument, NULL, 'Q'},
 		{"quiet", no_argument, NULL, 'q'},
 		{"verbose", no_argument, NULL, 'v'},
-		{"verboser", no_argument, NULL, 'V'},
 		{"fork", no_argument, NULL, 'f'},
 		{"no-fork", no_argument, NULL, 'F'},
 		{"force", no_argument, NULL, 'S'},
 		{"device", required_argument, NULL, 'd'},
 		{"printer", required_argument, NULL, 'p'},
+		{"use-settings", required_argument, NULL, 'u'},
 		{NULL, 0, NULL, 0}
 };
 
@@ -42,20 +46,26 @@ int main(int argc, char** argv) {
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
 	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
+	bool useUci = false;
 	int ch;
 
-	while ((ch = getopt_long(argc, argv, "hQqvVfFSd:p:", long_options, NULL)) != -1) {
+	while ((ch = getopt_long(argc, argv, "hqvfFSd:p:u", long_options, NULL)) != -1) {
 		switch (ch) {
 			case 'h': showHelp = true; break;
-			case 'Q': logLevel = Logger::QUIET; break;
-			case 'q': logLevel = Logger::ERROR; break;
-			case 'v': logLevel = Logger::VERBOSE; break;
-			case 'V': logLevel = Logger::BULK; break;
+			case 'q':
+				if (logLevel > Logger::ERROR) logLevel = Logger::ERROR;
+				else if (logLevel > Logger::QUIET) logLevel = Logger::QUIET;
+				break;
+			case 'v':
+				if (logLevel < Logger::VERBOSE) logLevel = Logger::VERBOSE;
+				else if (logLevel < Logger::BULK) logLevel = Logger::BULK;
+				break;
 			case 'f': doFork = 1; break;
 			case 'F': doFork = -1; break;
 			case 'S': forceStart = true; break;
 			case 'd': serialDevice = optarg; break;
 			case 'p': printerName = optarg; break;
+			case 'u': useUci = true; break;
 
 			case ':': case '?':
 				::exit(1);
@@ -78,15 +88,14 @@ int main(int argc, char** argv) {
 	if (showHelp) {
 		printf("The following options are accepted (forking is %s by default):\n", Server::FORK_BY_DEFAULT ? "on" : "off");
 		printf("\t-h,--help\t\tDisplay this help message\n");
-		printf("\t-Q,--quieter\t\tLog nothing\n");
-		printf("\t-q,--quiet\t\tLog only errors\n");
-		printf("\t-v,--verbose\t\tLog verbose\n");
-		printf("\t-V,--verboser\t\tLog as much as possible\n");
+		printf("\t-q,--quiet\t\tLog only errors (repeat to disable logging)\n");
+		printf("\t-v,--verbose\t\tLog verbose (repeat for bulk)\n");
 		printf("\t-f,--fork\t\tFork the server process\n");
 		printf("\t-F,--no-fork\t\tDo not fork the server process\n");
 		printf("\t-S,--force\t\tForce starting the server with a default device if none could be found\n");
 		printf("\t-d,--device\t\tThe printer serial device to use (any prefix path will be cut off)\n");
 		printf("\t-p,--printer\t\tThe 3D printer driver to use (use help to get more information)\n");
+		printf("\t-u,--use-settings\t\tRead log target and level from settings\n");
 		::exit(0);
 	}
 
@@ -148,7 +157,33 @@ int main(int argc, char** argv) {
 		cout << "Using printer type from UCI configuration." << endl;
 
 	Logger& log = Logger::getInstance();
-	log.open(stderr, logLevel);
+
+	if (useUci && settings_available()) {
+		if (!settings_init()) cerr << "could not initialize uci settings context";
+
+		//TODO: the difference between not_found and 'actual' errors should be detectable
+		const char *logFilePath = settings_get(UCI_KEY_LOG_PATH);
+		const char *logBasename = settings_get(UCI_KEY_LOG_BASENAME);
+		const char *lvlName = settings_get(UCI_KEY_LOG_LEVEL);
+		const Logger::ELOG_LEVEL logLevel = Logger::getLevelForName(lvlName, Logger::VERBOSE);
+
+		if (!logBasename) {
+			char *msg = NULL;
+			settings_get_error(&msg);
+			printf("Error: could not read log basename from settings (%s)\n", msg);
+			free(msg);
+		}
+
+		int rv = log.openParameterized(logFilePath, logBasename, serialDevice.c_str(), logLevel);
+
+		if (rv == -1) cerr << "Error: could not open log with UCI settings (" << strerror(errno) << ")" << endl;
+		else if (rv == -2) cerr << "Error: could not open log with UCI settings" << endl;
+	} else if (useUci) { //no settings available
+		cerr << "Error: cannot read log configuration, settings not available." << endl;
+		::exit(1);
+	} else {
+		log.open(stderr, logLevel);
+	}
 
 	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()), printerName);
 

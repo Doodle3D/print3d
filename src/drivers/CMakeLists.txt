@@ -6,4 +6,4 @@ set(HEADERS ${HEADERS} AbstractDriver.h DriverFactory.h GCodeBuffer.h MakerbotDr
 
 add_library(drivers ${SOURCES} ${HEADERS})
 
-target_link_libraries(drivers gpx timer server)
+target_link_libraries(drivers gpx timer server settings)

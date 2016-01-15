@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -15,7 +15,7 @@
 /* from fe_cmdline.c */
 typedef enum ACTION_TYPE {
 		AT_NONE, AT_ERR_UNKNOWN, AT_ERR_MISSING, AT_SHOW_HELP,
-		AT_GET_TEMPERATURE, AT_GET_TEST, AT_GET_PROGRESS, AT_GET_STATE, AT_GET_SUPPORTED,
+		AT_GET_TEMPERATURE, AT_GET_TEST, AT_GET_TRX_TEST, AT_GET_PROGRESS, AT_GET_STATE, AT_GET_SUPPORTED,
 		AT_HEATUP, AT_PRINT_FILE, AT_SEND_CODE, AT_SEND_STDIN, AT_STOP_PRINT
 } ACTION_TYPE;
 

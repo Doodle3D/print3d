@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -11,7 +11,7 @@
 #include "DriverFactory.h"
 
 //NOTE: see Server.cpp for comments on this macro
-#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "[DFC] " fmt, ##__VA_ARGS__)
+#define LOG(lvl, fmt, ...) Logger::getInstance().log(lvl, "DFCT", fmt, ##__VA_ARGS__)
 
 
 AbstractDriver* DriverFactory::createDriver(const std::string& driverName, Server& server, const std::string& serialPortPath, const uint32_t& baudrate) {

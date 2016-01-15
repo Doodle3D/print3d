@@ -2,7 +2,7 @@ package.cpath = package.cpath .. ';build/Debug/frontends/lua/?.so;../build/Debug
 
 local p3d = require("print3d")
 
-local printer = p3d.getPrinter("xyz")
+local printer = p3d.getPrinter("tty.usbmodem1a21")
 
 local rv,msg
 
@@ -11,7 +11,7 @@ rv,msg = printer:getId()
 if rv then
 	print("printer:getId returned '" .. rv .. "'")
 else
-	print("printer:getId returned false/nil");
+	print("printer:getId returned false/nil (" .. msg .. ")");
 end
 
 
@@ -19,7 +19,7 @@ rv,msg = printer:getState()
 if rv then
 	print("printer:getState returned '" .. rv .. "'")
 else
-	print("printer:getState returned false/nil");
+	print("printer:getState returned false/nil (" .. msg .. ")");
 end
 
 
@@ -42,7 +42,7 @@ rv,msg = printer:heatup(42)
 if rv then
 	print("requested printer:heatup(42) successfully")
 else
-	print("printer:heatup(42) returned false/nil");
+	print("printer:heatup(42) returned false/nil (" .. msg .. ")");
 end
 
 
@@ -50,13 +50,13 @@ rv,msg = printer:appendGcode("M104 S11")
 if rv then
 	print("requested printer:appendGcode successfully")
 else
-	print("printer:appendGcode returned false/nil");
+	print("printer:appendGcode returned false/nil (" .. msg .. ")");
 end
 rv,msg = printer:startPrint()
 if rv then
 	print("requested printer:startPrint successfully")
 else
-	print("printer:startPrint returned false/nil");
+	print("printer:startPrint returned false/nil (" .. msg .. ")");
 end
 
 
@@ -71,10 +71,10 @@ end
 
 rv,msg = printer:stopPrint()
 if rv then print("printer:stopPrint() returned true")
-else print("printer:stopPrint() returned false/nil");
+else print("printer:stopPrint() returned false/nil (" .. msg .. ")");
 end
 
 rv,msg = printer:stopPrint("xyzzy")
 if rv then print("printer:stopPrint(\"xyzzy\") returned true")
-else print("printer:stopPrint(\"xyzzy\") returned false/nil");
+else print("printer:stopPrint(\"xyzzy\") returned false/nil (" .. msg .. ")");
 end

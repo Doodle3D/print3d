@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -24,185 +24,223 @@ static int act_printTemperature() {
 	int16_t bedTemperature = INT16_MIN, bedTargetTemperature = INT16_MIN;
 	int16_t heating;
 
-	rv = comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND);
-	rv = rv || comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT);
-	rv = rv || comm_getTemperature(&bedTemperature, IPC_TEMP_BED);
-	rv = rv || comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT);
-	rv = rv || comm_getTemperature(&heating, IPC_TEMP_HEATING);
+	if (comm_getTemperature(&hotendTemperature, IPC_TEMP_HOTEND) < 0) {
+		printError(json_output, "could not read hotend temperature (%s)\n", comm_getError());
+		rv = 1;
+	}
+
+	if (comm_getTemperature(&hotendTargetTemperature, IPC_TEMP_HOTEND_TGT) < 0) {
+		printError(json_output, "could not read hotend target temperature (%s)\n", comm_getError());
+		rv = 1;
+	}
+
+	if (comm_getTemperature(&bedTemperature, IPC_TEMP_BED) < 0) {
+		printError(json_output, "could not read bed temperature (%s)\n", comm_getError());
+		rv = 1;
+	}
+
+	if (comm_getTemperature(&bedTargetTemperature, IPC_TEMP_BED_TGT) < 0) {
+		printError(json_output, "could not read bed target temperature (%s)\n", comm_getError());
+		rv = 1;
+	}
+
+	if (comm_getTemperature(&heating, IPC_TEMP_HEATING); < 0) {
+		printError(json_output, "could not read heating status (%s)\n", comm_getError());
+		rv = 1;
+	}
 
 	comm_closeSocket();
 
-	if (rv == 0) {
-		if (!json_output) {
-			printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i, heating: %s\n",
-					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
-					heating ? "yes" : "no");
-		} else {
-			printJsonOk("\"temperatures\": {\"hotend\": "
-					"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}, \"heating\": %s}",
-					hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
-					heating ? "true" : "false");
-		}
+	if (!json_output) {
+		printf("actual/target hotend temperature: %i/%i; actual/target bed temperature: %i/%i, heating: %s\n",
+				hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
+				heating ? "yes" : "no");
 	} else {
-		printError(json_output, "could not read one or more target temperatures (%s)", comm_getError());
+		printJsonOk("\"temperatures\": {\"hotend\": "
+				"{\"current\": %i, \"target\": %i}, \"bed\": {\"current\": %i, \"target\": %i}, \"heating\": %s}",
+				hotendTemperature, hotendTargetTemperature, bedTemperature, bedTargetTemperature,
+				heating ? "true" : "false");
 	}
 
-	return rv ? 1 : 0;
+	return rv;
 }
 
 static int act_printTestResponse() {
 	char *question = "what?";
 	char *answer;
 	int rv;
+	int result = 0;
 
 	rv = comm_testCommand(0, &answer);
-	if (rv > -1 && !json_output) printf("first test command returned: '%s'\n", answer);
+	if (rv > -1) {
+		if (!json_output) printf("first test command returned: '%s'\n", answer);
+	} else {
+		printError(json_output, "could not complete first test command (%s)\n", comm_getError());
+		result = 1;
+	}
+
 	//free(answer);
 
-	rv = rv || comm_testCommand(question, &answer);
-	if (rv > -1 && !json_output) printf("second test command returned: '%s'\n", answer);
+	rv = comm_testCommand(question, &answer);
+	if (rv > -1) {
+		if (!json_output) printf("second test command returned: '%s'\n", answer);
+	} else {
+		printError(json_output, "could not complete second test command (%s)\n", comm_getError());
+		result = 1;
+	}
+
 	//free(answer);
 
 	comm_closeSocket();
 
-	if (rv) printError(json_output, "could not complete second test command (%s)", comm_getError());
-	else if (json_output) printJsonOk(NULL);
+	if (rv > -1 && json_output) printJsonOk(NULL);
+	return result;
+}
 
-	return rv ? 1 : 0;
+//Note: this function is special in that the actual test function opens multiple sockets itself, so we don't do that here.
+static int act_testTransactions() {
+	char *resultText = NULL;
+	int rv = comm_testTransactions(deviceId, &resultText);
+	if (!json_output) printf("transaction tester returned: %s\n", resultText);
+	free(resultText);
+	return rv == 0 ? 0 : 1;
 }
 
 static int act_sendGcodeFile(const char *file) {
-	int rv = 0;
+	if (!isAbsolutePath(file)) {
+		printError(json_output, "please supply an absolute path for the file to print\n");
+		return 1;
+	}
 
-	if ((rv = comm_clearGcode()) < 0) {
-		printError(json_output, "could not clear gcode (%s)", comm_getError());
-	} else if ((rv = comm_sendGcodeFile(file)) < 0) {
-		printError(json_output, "could not send gcode file (%s)", comm_getError());
-	} else if ((rv = comm_startPrintGcode()) < 0) {
-		printError(json_output, "sent gcode file, but could not start print (%s)", comm_getError());
+	if (comm_clearGCode() < 0) {
+		printError(json_output, "could not clear gcode (%s)\n", comm_getError());
+		return 1;
+	}
+
+	if (comm_sendGCodeFile(file) < 0) {
+		printError(json_output, "could not send gcode file (%s)\n", comm_getError());
+		return 1;
+	}
+
+	if (comm_startPrintGCode() < 0) {
+		fprintf(stderr, "sent gcode file, but could not start print (%s)\n", comm_getError());
+		return 1;
 	}
 
 	comm_closeSocket();
 
-	if (!rv) {
-		if (!json_output) printf("sent gcode file and started print\n");
-		else printJsonOk(NULL);
-	}
+	if (!json_output) printf("sent gcode file and started print\n");
+	else printJsonOk(NULL);
 
-	return rv ? 1 : 0;
+	return 0;
 }
 
 static int act_sendGcodeFromStdin() {
-	int rv = 0;
+	if (comm_clearGCode() < 0) {
+		printError(json_output, "could not clear gcode (%s)\n", comm_getError());
+		return 1;
+	}
+
+	if (!json_output) printf("Please enter gcode and finish with C-d...\n");
+
 	char *gcode = NULL;
+	ssize_t gcode_len = 0, read_len = 0;
+	while (1) {
+		gcode_len += 128;
+		gcode = (char*)realloc(gcode, gcode_len);
+		ssize_t rv = read(STDIN_FILENO, gcode + read_len, gcode_len - read_len);
 
-	if ((rv = comm_clearGcode()) < 0) {
-		printError(json_output, "could not clear gcode (%s)", comm_getError());
+		if (rv < 0) {
+			printError(json_output, "error reading from stdin (%s)", strerror(errno));
+			free(gcode);
+			return 1;
+		}
+
+		if (rv == 0) break;
+
+		read_len += rv;
 	}
 
-	if (rv == 0) {
-		if (!json_output) printf("Please enter gcode and finish with C-d...\n");
-
-		ssize_t gcode_len = 0, read_len = 0;
-		while (1) {
-			gcode_len += 128;
-			gcode = (char*)realloc(gcode, gcode_len);
-			ssize_t rv = read(STDIN_FILENO, gcode + read_len, gcode_len - read_len);
-
-			if (rv < 0) {
-				printError(json_output, "error reading from stdin (%s)", strerror(errno));
-				free(gcode);
-			}
-
-			if (rv <= 0) break;
-
-			read_len += rv;
-		}
+	if (comm_sendGCodeData(gcode, NULL) < 0) {
+		printError(json_output, "could not send gcode data (%s)", comm_getError());
+		return 1;
 	}
+	free(gcode);
 
-	if (rv == 0) {
-		if ((rv = comm_sendGcodeData(gcode)) < 0) {
-			printError(json_output, "could not send gcode data (%s)", comm_getError());
-		}
-		free(gcode);
-	}
-
-	if (rv == 0) {
-		if ((rv = comm_startPrintGcode()) < 0) {
-			printError(json_output, "sent gcode data, but could not start print (%s)", comm_getError());
-		}
+	if (comm_startPrintGCode() < 0) {
+		printError(json_output, "sent gcode data, but could not start print (%s)", comm_getError());
+		return 1;
 	}
 
 	comm_closeSocket();
 
-	if (!rv) {
-		if (!json_output) printf("sent gcode data and started print\n");
-		else printJsonOk(NULL);
-	}
+	if (!json_output) printf("sent gcode data and started print\n");
+	else printJsonOk(NULL);
 
-	return rv ? 1 : 0;
+	return 0;
 }
 
 static int act_sendGcode(const char *gcode) {
-	int rv = 0;
-
-	if ((rv = comm_clearGcode()) < 0) {
+	if (comm_clearGCode() < 0) {
 		printError(json_output, "could not clear gcode (%s)", comm_getError());
-	} else if ((rv = comm_sendGcodeData(gcode)) < 0) {
+		return 1;
+	}
+
+	if (comm_sendGCodeData(gcode, NULL) < 0) {
 		printError(json_output, "could not send gcode (%s)", comm_getError());
-	} else if ((rv = comm_startPrintGcode()) < 0) {
+		return 1;
+	}
+
+	if (comm_startPrintGCode() < 0) {
 		printError(json_output, "sent gcode, but could not start print (%s)", comm_getError());
+		return 1;
 	}
 
 	comm_closeSocket();
 
-	if (!rv) {
-		if (!json_output) printf("sent gcode and started print\n");
-		else printJsonOk(NULL);
-	}
+	if (!json_output) printf("sent gcode and started print\n");
+	else printJsonOk(NULL);
 
-	return rv ? 1 : 0;
+	return 0;
 }
 
 static int act_printProgress() {
 	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 
-	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines);
-	comm_closeSocket();
-
-	if (rv > -1) {
-		if (!json_output) {
-			printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
-			if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
-			printf("\n");
-		} else {
-			printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d}",
-					currentLine, totalLines, bufferedLines);
-		}
-
-		return 0;
-	} else {
+	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines) < 0) {
 		printError(json_output, "could not get printing progress (%s)", comm_getError());
 		return 1;
 	}
+
+	comm_closeSocket();
+
+	if (!json_output) {
+		printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
+		if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
+		printf("\n");
+	} else {
+		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d}",
+				currentLine, totalLines, bufferedLines);
+	}
+
+	return 0;
 }
 
 static int act_printState() {
 	char *state;
 
-	int rv = comm_getState(&state);
-	comm_closeSocket();
-
-	if (rv > -1) {
-		if (!json_output) printf("printer state: '%s'\n", state);
-		else printJsonOk("\"printer_state\": \"%s\"", state);
-
-		//free(state);
-		return 0;
-	} else {
-		printError(json_output, "could not get printer state (%s)", comm_getError());
+	if (comm_getState(&state) < 0) {
+		printError(json_output, "could not get printer state (%s)\n", comm_getError());
 		return 1;
 	}
+
+	//free(state);
+	comm_closeSocket();
+
+	if (!json_output) printf("printer state: '%s'\n", state);
+	else printJsonOk("\"printer_state\": \"%s\"", state);
+
+	return 0;
 }
 
 static int act_doHeatup(int temperature) {
@@ -214,13 +252,13 @@ static int act_doHeatup(int temperature) {
 		else printJsonOk("\"target_temperatures\": {\"hotend\": %i}", temperature);
 		return 0;
 	} else {
-		printError(json_output, "could not request printer heatup (%s)", comm_getError());
+		printError(json_output, "could not request printer heatup (%s)\n", comm_getError());
 		return 1;
 	}
 }
 
 static int act_stopPrint(const char *endCode) {
-	int rv = comm_stopPrintGcode(endCode);
+	int rv = comm_stopPrintGCode(endCode);
 	comm_closeSocket();
 
 	if (rv > -1) {
@@ -233,20 +271,23 @@ static int act_stopPrint(const char *endCode) {
 		}
 		return 0;
 	} else {
-		printError(json_output, "could not request printing stop (%s)", comm_getError());
+		printError(json_output, "could not request printing stop (%s)\n", comm_getError());
 		return 1;
 	}
 }
 
 
 int handleAction(int argc, char **argv, ACTION_TYPE action) {
+	int rv = 2;
+
+	if (verbosity < -1) verbosity = -1;
+	else if (verbosity > 2) verbosity = 2;
+
 	switch(verbosity) {
-	case -1:
-		log_open_stream(stderr, LLVL_QUIET); break;
-	case 1:
-		log_open_stream(stderr, LLVL_VERBOSE); break;
-	case 0: default:
-		log_open_stream(stderr, LLVL_WARNING); break;
+	case -1: log_open_stream(stderr, LLVL_QUIET); break;
+	case 1: log_open_stream(stderr, LLVL_VERBOSE); break;
+	case 2: log_open_stream(stderr, LLVL_BULK); break;
+	case 0: default: log_open_stream(stderr, LLVL_WARNING); break;
 	}
 
 	switch (action) {
@@ -262,8 +303,8 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	switch (action) {
 	case AT_ERR_UNKNOWN:
 	case AT_ERR_MISSING:
-		printError(json_output, "Action handler called with 'error' action, this should not happen.");
-		return 2;
+		printError(json_output, "Action handler called with 'unknown' or 'missing' action, this should not happen.");
+		//leave rv at 2
 		break;
 	case AT_NONE: case AT_SHOW_HELP:
 		if (json_output) {
@@ -275,9 +316,9 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("The following options are available:\n");
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
-		printf("\t-v,--verbose\t\tPrint verbose output\t\n");
+		printf("\t-v,--verbose\t\tPrint verbose output (repeat to increase verbosity)\n");
 		printf("\t-j,--json\t\tEmit only JSON output (verbosity will be set to quiet)\n");
-		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|progress)\n");
+		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|trxtest|progress)\n");
 		printf("\t-t,--temperature\tRetrieve the printer temperature\n");
 		printf("\t-p,--progress\t\tRetrieve printing progress\n");
 		printf("\t-s,--state\t\tQuery the printer state\n");
@@ -290,48 +331,46 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("\t-r,--stdin\t\tPrint g-code read from stdin (end interactive input with C-d)\n");
 		printf("\t-k,--stop\t\tStop printing\n");
 		printf("\t-K,--stop-with-code <gcode> Stop printing, with specified end code\n");
-		return 0;
-	case AT_GET_TEMPERATURE:
-		return act_printTemperature();
-	case AT_GET_TEST:
-		return act_printTestResponse();
-	case AT_GET_PROGRESS:
-		return act_printProgress();
-	case AT_GET_STATE:
-		return act_printState();
-	case AT_GET_SUPPORTED: {
+		rv = 2;
+		break;
+
+	case AT_GET_TEMPERATURE: rv = act_printTemperature(); break;
+	case AT_GET_TEST: rv = act_printTestResponse(); break;
+	case AT_GET_TRX_TEST: rv = act_testTransactions(); break;
+	case AT_GET_PROGRESS: rv = act_printProgress(); break;
+	case AT_GET_STATE: rv = act_printState(); break;
+	case AT_GET_SUPPORTED:
 		//TODO: implement (and remember to open/close socket)
 		const char *msg = "unimplemented: get supported";
 
 		if (!json_output) printf("[dummy] %s\n", msg);
 		else printJsonOk("\"message\": \"%s\"", msg);
 
-		return 5;
-	}
-	case AT_HEATUP:
-		return act_doHeatup(heatupTemperature);
+		rv = 5;
+		break;
+
+	case AT_HEATUP: rv = act_doHeatup(heatupTemperature); break;
 	case AT_PRINT_FILE:
 		if (!printFile) {
 			printError(json_output, "error: missing filename to print");
-			return 1;
-		}
-		if (!isAbsolutePath(printFile)) {
+			rv = 1;
+		} else if (!isAbsolutePath(printFile)) {
 			printError(json_output, "please supply an absolute path for the file to print");
-			return 1;
+			rv = 1;
 		}
 
 		return act_sendGcodeFile(printFile);
+
 	case AT_SEND_CODE:
 		if (!sendGcode) {
 			printError(json_output, "error: missing g-code to print");
 			return 1;
 		}
 		return act_sendGcode(sendGcode);
-	case AT_SEND_STDIN:
-		return act_sendGcodeFromStdin();
-	case AT_STOP_PRINT:
-		return act_stopPrint(endGcode);
+
+	case AT_SEND_STDIN: rv = act_sendGcodeFromStdin(); break;
+	case AT_STOP_PRINT: rv = act_stopPrint(endGcode); break;
 	}
 
-	return 2;
+	return rv;
 }

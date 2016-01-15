@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -32,6 +32,8 @@ public:
 	bool registerFileDescriptor(int fd);
 	bool unregisterFileDescriptor(int fd);
 
+	void cancelAllTransactions(const Client *exclude = 0);
+
 	AbstractDriver* getDriver();
 	const AbstractDriver* getDriver() const;
 
@@ -59,7 +61,7 @@ private:
 	int forkProcess();
 	int openPort();
 
-  int driverDelay;
+	int driverDelay;
 };
 
 #endif /* ! SERVER_H_SEEN */

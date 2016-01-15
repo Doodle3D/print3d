@@ -1,7 +1,7 @@
 /*
  * This file is part of the Doodle3D project (http://doodle3d.com).
  *
- * Copyright (c) 2013, Doodle3D
+ * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
  */
@@ -43,6 +43,9 @@ typedef enum IPC_COMMAND_CODE {
 	IPC_CMDR_OK = 0xE0,
 	IPC_CMDR_ERROR = 0xE1,
 	IPC_CMDR_NOT_IMPLEMENTED = 0xE2,
+	IPC_CMDR_GCODE_ADD_FAILED = 0xE3,
+	IPC_CMDR_RETRY_LATER = 0xE4,
+	IPC_CMDR_TRX_CANCELLED = 0xE5
 } IPC_COMMAND_CODE;
 
 typedef enum IPC_TEMPERATURE_PARAMETER {
@@ -75,9 +78,39 @@ typedef struct ipc_cmd_name_s {
 	const char* reply_fmt;	/// printf-like argument requirements for response
 } ipc_cmd_name_s;
 
+/** Structure to pass around consistency data for GCode chunks.
+ *
+ * Each chunk has a sequence number which must increment by one each time until a buffer clear request has been made.
+ * The total must stay the same until a buffer clear request has been made.
+ * The source must must also be the same text each time until a clear request.
+ * Note that all fields may be set to -1/NULL to have them ignored, but if one is
+ * used once, it must be used consistently until a clear request.
+ */
+typedef struct ipc_gcode_metadata_s {
+	int16_t seq_number;
+	int16_t seq_total;
+	const char *source;
+} ipc_gcode_metadata_s;
+
+/** Defintions of log level names (levels are defined in both C and C++ logger.h files).
+ */
+extern const char *LOG_LEVEL_NAMES[];
+
+/** Highest existing log level (required for looping through levels).
+ */
+extern const int NUM_LOG_LEVELS;
+
 /** Definitions of names for available IPC commands.
  */
 extern const ipc_cmd_name_s IPC_COMMANDS[];
+
+/** Transaction bits for use with the IPC_CMDQ_GCODE_APPEND command.
+ * Only use bits 0-14 (must fit in int16_t).
+ */
+typedef enum IPC_GCODE_TRANSACTION_BITS {
+	TRX_FIRST_CHUNK_BIT = 0x1,
+	TRX_LAST_CHUNK_BIT = 0x2
+} IPC_GCODE_TRANSACTION_BITS;
 
 extern const char *IPC_SOCKET_PATH_PREFIX;
 extern const char *IPC_DEFAULT_DEVICE_ID;
