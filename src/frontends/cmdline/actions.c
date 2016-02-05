@@ -314,7 +314,8 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 	switch (action) {
 	case AT_ERR_UNKNOWN:
 	case AT_ERR_MISSING:
-		printError(json_output, "Action handler called with 'unknown' or 'missing' action, this should not happen.");
+	case AT_ERR_INVALID_GET:
+		printError(json_output, "Action handler called with 'unknown', 'missing' or 'invalid_get' action, this should not happen.");
 		//leave rv at 2
 		break;
 	case AT_NONE: case AT_SHOW_HELP:

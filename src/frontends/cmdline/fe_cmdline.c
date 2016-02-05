@@ -49,6 +49,7 @@ char *deviceId = NULL;
 char *printFile = NULL, *sendGcode = NULL, *endGcode = NULL;
 int heatupTemperature = -1;
 int forceStart = 0;
+char *optarg_save = NULL;
 
 static int deviceIdRequired = 0;
 static ACTION_TYPE action = AT_NONE;
@@ -82,6 +83,9 @@ static void parseOptions(int argc, char **argv) {
 			} else if (strcmp(optarg, "progress") == 0) {
 				action = AT_GET_PROGRESS;
 				deviceIdRequired = 1;
+			} else {
+				action = AT_ERR_INVALID_GET;
+				optarg_save = strdup(optarg);
 			}
 			break;
 		case 't':
@@ -184,6 +188,10 @@ int main(int argc, char **argv) {
 		exit(2);
 	} else if (action == AT_ERR_MISSING) {
 		printError(json_output, "option '%c' to executable requires an argument, try -h", (char)optopt);
+		exit(2);
+	} else if (action == AT_ERR_INVALID_GET) {
+		printError(json_output, "invalid parameter for -g option ('%s'), try -h", optarg_save);
+		free(optarg_save);
 		exit(2);
 	}
 
