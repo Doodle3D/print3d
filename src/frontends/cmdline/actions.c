@@ -97,11 +97,21 @@ static int act_printTestResponse() {
 	return result;
 }
 
-//Note: this function is special in that the actual test function opens multiple sockets itself, so we don't do that here.
+/*
+ * Note 1: this test cancels a current print in progress, if any.
+ * Note 2: this function is special in that the actual test function opens multiple sockets itself, so we don't do that here.
+ */
 static int act_testTransactions() {
 	char *resultText = NULL;
 	int rv = comm_testTransactions(deviceId, &resultText);
-	if (!json_output) printf("transaction tester returned: %s\n", resultText);
+
+	if (rv == 0) {
+		if (!json_output) printf("ok, transaction tester returned: %s\n", resultText);
+		else printJsonOk(NULL);
+	} else {
+		printError(json_output, "test failed (code: %i, text: '%i'", rv, resultText);
+	}
+
 	free(resultText);
 	return rv == 0 ? 0 : 1;
 }
@@ -123,7 +133,7 @@ static int act_sendGcodeFile(const char *file) {
 	}
 
 	if (comm_startPrintGCode() < 0) {
-		fprintf(stderr, "sent gcode file, but could not start print (%s)", comm_getError());
+		printError(json_output, "sent gcode file, but could not start print (%s)", comm_getError());
 		return 1;
 	}
 
