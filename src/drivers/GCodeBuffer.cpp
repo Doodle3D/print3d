@@ -4,6 +4,25 @@
  * Copyright (c) 2013-2014, Doodle3D
  * This software is licensed under the terms of the GNU GPL v2 or later.
  * See file LICENSE.txt or visit http://www.gnu.org/licenses/gpl.html for full license details.
+ *
+ *
+ * The GCodeBuffer class is used by both the MarlinDriver and the MakerbotDriver to store GCode sent by clients.
+ * From the 'client perspective', it takes care of setting, appending to,
+ * cleaning and clearing the buffer, while keeping track of both the current and
+ * total amount of lines and reporting such information. From the 'printing perspective',
+ * it allows getting the next line to print and remove those lines individually.
+ *
+ * To make sure GCode is buffered correctly, it also supports sending meta data along with GCode chunks:
+ * * sequence number - index number of each chunk, which should be consecutive and at most as large as the sequence total;
+ * * sequence total - total number of chunks to be sent, to know when appending is complete as well as being able to report correct progress;
+ * * source - any piece of text which should be identical with each chunk, to make sure data from multiple soruces does not get mixed up.
+ * Apart from that, the buffer will only accept new data when there is enough room,
+ * preventing memory-limited systems like the WifiBox from running out of memory.
+ *
+ * The amount of data to be stored can get quite large and it must be modified on both
+ * ends very often, because of lines getting appended to the end and lines getting removed
+ * from the beginning after they have been sent to the printer. To deal with this,
+ * all data is split in smaller parts (called buckets), making reallocations less time consuming.
  */
 
 #include "GCodeBuffer.h"
