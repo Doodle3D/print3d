@@ -207,6 +207,20 @@ int32_t AbstractDriver::getTotalLines() const {
 	return gcodeBuffer_.getTotalLines();
 }
 
+/*
+ * Get the current buffer size in bytes, useful in combination with the maximum size to inspect how full the buffer is.
+ */
+int32_t AbstractDriver::getBufferSize() const {
+	return gcodeBuffer_.getBufferSize();
+}
+
+/*
+ * Get the current maximum buffer size in bytes, note that this may be a dynamic value
+ */
+int32_t AbstractDriver::getMaxBufferSize() const {
+	return gcodeBuffer_.getMaxBufferSize();
+}
+
 AbstractDriver::STATE AbstractDriver::getState() const {
 	return state_;
 }

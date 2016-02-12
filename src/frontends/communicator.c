@@ -517,7 +517,7 @@ int comm_heatup(int temperature) {
 	return rv;
 }
 
-int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *totalLines) {
+int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *totalLines, int32_t *bufferSize, int32_t *maxBufferSize) {
 	clearError();
 
 	int scmdlen, rcmdlen;
@@ -525,11 +525,13 @@ int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *tota
 	char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 
 	int rv = 0;
-	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 3);
+	int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 5);
 	if (result >= 0) {
 		rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 0, currentLine);
 		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 1, bufferedLines);
 		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 2, totalLines);
+		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 3, bufferSize);
+		if (rv > -1) rv = ipc_cmd_get_long_arg(rcmd, rcmdlen, 4, maxBufferSize);
 	} else {
 		rv = result;
 	}

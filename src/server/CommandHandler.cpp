@@ -271,9 +271,12 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 	int32_t currentLine = driver->getCurrentLine();
 	int32_t bufferedLines = driver->getBufferedLines();
 	int32_t totalLines = driver->getTotalLines();
+	int32_t bufferSize = driver->getBufferSize();
+	int32_t maxBufferSize = driver->getMaxBufferSize();
 
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "WWW", currentLine, bufferedLines, totalLines);
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "WWWWW",
+			currentLine, bufferedLines, totalLines, bufferSize, maxBufferSize);
 	client.sendData(cmd, cmdlen);
 	free(cmd);
 }
