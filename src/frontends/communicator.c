@@ -104,7 +104,7 @@ static char* sendAndReceiveDataWithFd(int fd, const char *sbuf, int sbuflen, int
 		return NULL;
 	}
 
-	log_ipc_cmd(LLVL_VERBOSE, sbuf, sbuflen, 0);
+	log_ipc_cmd(LLVL_BULK, sbuf, sbuflen, 0);
 	int rv = send(fd, sbuf, sbuflen, 0); //this should block until all data has been sent
 
 	if (log_check_error(rv, MOD_ABBR, "error sending ipc command 0x%x", ipc_cmd_get(sbuf, sbuflen))) {
@@ -133,7 +133,7 @@ static int handleBasicResponse(char *scmd, int scmdlen, char *rcmd, int rcmdlen,
 	if (!rcmd) return -1; //NOTE: do not log anything, this is already in sendAndReceiveData()
 
 	int rv = 0;
-	log_ipc_cmd(LLVL_VERBOSE, rcmd, rcmdlen, 1);
+	log_ipc_cmd(LLVL_BULK, rcmd, rcmdlen, 1);
 
 	switch(ipc_cmd_get(rcmd, rcmdlen)) {
 		case IPC_CMDR_OK: {

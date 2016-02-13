@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
 	int doFork = 0; //-1: don't fork, 0: leave default, 1: do fork
 	bool showHelp = false, forceStart = false;
 	Logger::ELOG_LEVEL logLevel = Logger::WARNING;
+	bool logLevelFromCmdLine = false;
 	bool useUci = false;
 	int ch;
 
@@ -55,10 +56,14 @@ int main(int argc, char** argv) {
 			case 'q':
 				if (logLevel > Logger::ERROR) logLevel = Logger::ERROR;
 				else if (logLevel > Logger::QUIET) logLevel = Logger::QUIET;
+
+				logLevelFromCmdLine = true;
 				break;
 			case 'v':
 				if (logLevel < Logger::VERBOSE) logLevel = Logger::VERBOSE;
 				else if (logLevel < Logger::BULK) logLevel = Logger::BULK;
+
+				logLevelFromCmdLine = true;
 				break;
 			case 'f': doFork = 1; break;
 			case 'F': doFork = -1; break;
@@ -165,7 +170,7 @@ int main(int argc, char** argv) {
 		const char *logFilePath = settings_get(UCI_KEY_LOG_PATH);
 		const char *logBasename = settings_get(UCI_KEY_LOG_BASENAME);
 		const char *lvlName = settings_get(UCI_KEY_LOG_LEVEL);
-		const Logger::ELOG_LEVEL logLevel = Logger::getLevelForName(lvlName, Logger::VERBOSE);
+		const Logger::ELOG_LEVEL uciLogLevel = Logger::getLevelForName(lvlName, Logger::VERBOSE);
 
 		if (!logBasename) {
 			char *msg = NULL;
@@ -174,6 +179,7 @@ int main(int argc, char** argv) {
 			free(msg);
 		}
 
+		if (logLevelFromCmdLine) logLevel = uciLogLevel;
 		int rv = log.openParameterized(logFilePath, logBasename, serialDevice.c_str(), logLevel);
 
 		if (rv == -1) cerr << "Error: could not open log with UCI settings (" << strerror(errno) << ")" << endl;
@@ -184,6 +190,7 @@ int main(int argc, char** argv) {
 	} else {
 		log.open(stderr, logLevel);
 	}
+	log.log(Logger::INFO, "MAIN", "using log level: %s", LOG_LEVEL_NAMES[logLevel]);
 
 	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()), printerName);
 

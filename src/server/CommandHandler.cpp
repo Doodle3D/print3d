@@ -12,7 +12,6 @@
 #include "CommandHandler.h"
 #include "Client.h"
 #include "Server.h"
-#include "Logger.h"
 #include "../utils.h"
 
 using std::string;
@@ -36,6 +35,7 @@ const CommandHandler::handlerFunctions CommandHandler::HANDLERS[] = {
 		{ IPC_CMDS_NONE, 0 } /* sentinel */
 };
 
+const Logger::ELOG_LEVEL CommandHandler::COMMAND_LOG_LEVEL = Logger::BULK;
 
 //static
 //expects a complete command at start of buffer
@@ -59,7 +59,7 @@ void CommandHandler::runCommand(Client& client, const char* buf, int buflen) {
 //static
 void CommandHandler::hnd_test(Client& client, const char* buf, int buflen) {
 	int numargs = ipc_cmd_num_args(buf, buflen);
-	LOG(Logger::VERBOSE, "test cmd with %i arguments", numargs);
+	LOG(COMMAND_LOG_LEVEL, "test cmd with %i arguments", numargs);
 
 	char* argtext = 0;
 	if (numargs > 0) {
@@ -87,7 +87,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 		int16_t arg;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &arg);
 		IPC_TEMPERATURE_PARAMETER which = (IPC_TEMPERATURE_PARAMETER)arg;
-		LOG(Logger::VERBOSE, "get temperature cmd with arg %i", which);
+		LOG(COMMAND_LOG_LEVEL, "get temperature cmd with arg %i", which);
 		int temp = 0;
 		switch(which) {
 		case IPC_TEMP_HOTEND: temp = driver->getTemperature(); break;
@@ -118,7 +118,7 @@ void CommandHandler::hnd_getTemperature(Client& client, const char* buf, int buf
 
 //static
 void CommandHandler::hnd_gcodeClear(Client& client, const char* buf, int buflen) {
-	LOG(Logger::VERBOSE, "clear gcode cmd");
+	LOG(COMMAND_LOG_LEVEL, "clear gcode cmd");
 	Server &server = client.getServer();
 	server.cancelAllTransactions(&client);
 	server.getDriver()->clearGCode();
@@ -148,7 +148,7 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 	}
 
 	if (transactionFlags & TRX_FIRST_CHUNK_BIT) {
-		LOG(Logger::VERBOSE, "hnd_gcodeAppend(): clearing gcode transaction buffer");
+		LOG(COMMAND_LOG_LEVEL, "hnd_gcodeAppend(): clearing gcode transaction buffer");
 		transaction.buffer.clear();
 		transaction.active = true;
 	}
@@ -168,13 +168,13 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 
 	char* data = 0;
 	ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-	LOG(Logger::VERBOSE, "hnd_gcodeAppend(): append gcode cmd with arg length %i (%i args) [ttl_lines: %i, seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
+	LOG(COMMAND_LOG_LEVEL, "hnd_gcodeAppend(): append gcode cmd with arg length %i (%i args) [ttl_lines: %i, seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
 			numArgs, totalLines, metaData.seqNumber, metaData.seqTotal, metaData.source ? metaData.source->c_str() : "(null)");
 	transaction.buffer.append(data);
 	free(data);
 
 	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
-		LOG(Logger::VERBOSE, "hnd_gcodeAppend(): appending and clearing gcode transaction buffer");
+		LOG(COMMAND_LOG_LEVEL, "hnd_gcodeAppend(): appending and clearing gcode transaction buffer");
 		AbstractDriver* driver = server.getDriver();
 		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, totalLines, &metaData);
 		transaction.buffer.clear();
@@ -205,12 +205,12 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 
 	char* filename = 0;
 	ipc_cmd_get_string_arg(buf, buflen, 0, &filename);
-	LOG(Logger::VERBOSE, "append gcode from file cmd with filename '%s'", filename);
+	LOG(COMMAND_LOG_LEVEL, "append gcode from file cmd with filename '%s'", filename);
 
 	int filesize;
 	char *data = readFileContents(filename, &filesize);
 	if (!Logger::getInstance().checkError(data ? 0 : -1, "CMDH", "could not read contents of file '%s'", filename)) {
-		LOG(Logger::VERBOSE, "  read %i bytes of gcode", strlen(data));
+		LOG(COMMAND_LOG_LEVEL, "  read %i bytes of gcode", strlen(data));
 		//LOG(Logger::BULK, "read gcode: '%s'", data);
 		string s(data);
 		free(data);
@@ -224,7 +224,7 @@ void CommandHandler::hnd_gcodeAppendFile(Client& client, const char* buf, int bu
 
 //static
 void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int buflen) {
-	LOG(Logger::VERBOSE, "start print gcode cmd");
+	LOG(COMMAND_LOG_LEVEL, "start print gcode cmd");
 	AbstractDriver* driver = client.getServer().getDriver();
 	driver->startPrint();
 	client.sendOk();
@@ -232,7 +232,7 @@ void CommandHandler::hnd_gcodeStartPrint(Client& client, const char* buf, int bu
 
 //static
 void CommandHandler::hnd_gcodeStopPrint(Client& client, const char* buf, int buflen) {
-	LOG(Logger::VERBOSE, "stop print gcode cmd");
+	LOG(COMMAND_LOG_LEVEL, "stop print gcode cmd");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	//make sure no other gcode transfers continue after sending stop gcode
@@ -255,7 +255,7 @@ void CommandHandler::hnd_heatup(Client& client, const char* buf, int buflen) {
 	if (ipc_cmd_num_args(buf, buflen) > 0) {
 		int16_t temperature = 0;
 		ipc_cmd_get_short_arg(buf, buflen, 0, &temperature);
-		LOG(Logger::VERBOSE, "heatup cmd with temperature %i", temperature);
+		LOG(COMMAND_LOG_LEVEL, "heatup cmd with temperature %i", temperature);
 		AbstractDriver* driver = client.getServer().getDriver();
 		driver->heatup(temperature);
 		client.sendOk();
@@ -267,7 +267,7 @@ void CommandHandler::hnd_heatup(Client& client, const char* buf, int buflen) {
 
 //static
 void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen) {
-	LOG(Logger::VERBOSE, "get progress cmd");
+	LOG(COMMAND_LOG_LEVEL, "get progress cmd");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	int32_t currentLine = driver->getCurrentLine();
@@ -285,7 +285,7 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 
 //static
 void CommandHandler::hnd_getState(Client& client, const char* buf, int buflen) {
-	LOG(Logger::VERBOSE, "get state cmd");
+	LOG(COMMAND_LOG_LEVEL, "get state cmd");
 	AbstractDriver* driver = client.getServer().getDriver();
 
 	const string& state = AbstractDriver::getStateString(driver->getState());

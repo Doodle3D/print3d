@@ -100,40 +100,56 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, int32_t tota
  * without this, huge chunks (>1MB) would make repeated erase operations very inefficient.
  */
 GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t totalLines, const MetaData *metaData) {
-	if (totalLines >= 0) explicitTotalLines_ = totalLines;
 	if (!metaData) {
-		LOG(Logger::VERBOSE, "append - len: %zu, excerpt: '%s'; ttl size(lines): %d (%d)",
-				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(), bufferSize_, bufferedLines_);
+		LOG(Logger::VERBOSE, "append() - len: %zu, excerpt: '%s'; ttl size (lines): %d (%d); totalLines arg: %i",
+				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(), bufferSize_, bufferedLines_, totalLines);
 	} else {
-		LOG(Logger::VERBOSE, "append - len: %zu, excerpt: %s, seq_num: %i, seq_ttl: %i, src: %s; ttl size (lines): %d (%d)",
+		LOG(Logger::VERBOSE, "append() - len: %zu, excerpt: '%s', seq_num: %i, seq_ttl: %i, src: %s; ttl size (lines): %d (%d); totalLines arg: %i",
 				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(),
 				metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)",
-				bufferSize_, bufferedLines_);
+				bufferSize_, bufferedLines_, totalLines);
 	}
+
+
+	/* sanity checks */
+	GCODE_SET_RESULT sanity = GSR_OK;
 
 	if (sequenceLastSeen_ > -1) {
-		if (!metaData || metaData->seqNumber < 0) return GSR_SEQ_NUM_MISSING;
-		if (sequenceLastSeen_ + 1 != metaData->seqNumber) return GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
+		if (!metaData || metaData->seqNumber < 0) sanity = GSR_SEQ_NUM_MISSING;
+		else if (sequenceLastSeen_ + 1 != metaData->seqNumber) sanity = GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
 	} else if (metaData) {
-		if (metaData->seqNumber != 0) return GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
-		else if (getBufferSize() > 0) return GSR_SEQ_NUM_MISMATCH; //first one must also be sent with first chunk
+		if (metaData->seqNumber != 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
+		else if (getBufferSize() > 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one must also be sent with first chunk
 	}
 
-	if (sequenceTotal_ > -1) {
-		if (!metaData || metaData->seqTotal < 0) return GSR_SEQ_TTL_MISSING;
-		if (sequenceTotal_ != metaData->seqTotal) return GSR_SEQ_TTL_MISMATCH;
-		if (metaData->seqNumber + 1 > metaData->seqTotal) return GSR_SEQ_NUM_MISMATCH;
+	if (sanity == GSR_OK && sequenceTotal_ > -1) {
+		if (!metaData || metaData->seqTotal < 0) sanity = GSR_SEQ_TTL_MISSING;
+		else if (sequenceTotal_ != metaData->seqTotal) sanity = GSR_SEQ_TTL_MISMATCH;
+		else if (metaData->seqNumber + 1 > metaData->seqTotal) sanity = GSR_SEQ_NUM_MISMATCH;
 	}
 
-	if (source_) {
-		if (!metaData || !metaData->source) return GSR_SRC_MISSING;
-		if (*source_ != *metaData->source) return GSR_SRC_MISMATCH;
+	if (sanity == GSR_OK && source_) {
+		if (!metaData || !metaData->source) sanity = GSR_SRC_MISSING;
+		else if (*source_ != *metaData->source) sanity = GSR_SRC_MISMATCH;
+	}
+
+	if (sanity != GSR_OK) {
+		LOG(Logger::ERROR, "append() - sequence numbering error %i; num/ttl/src stats: own=%i/%i/%s, received=%i/%i/%s",
+				sanity, sequenceLastSeen_, sequenceTotal_, source_ ? source_->c_str() : "(null)",
+				metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)");
+		return sanity;
 	}
 
 	if (MAX_BUFFER_SIZE > 0 && getBufferSize() + gcode.length() > MAX_BUFFER_SIZE) {
+		LOG(Logger::ERROR, "append() - buffer full, rejecting gcode; codelen=%i, bufsize=%i, bufsizemax=%i",
+				gcode.length(), getBufferSize(), MAX_BUFFER_SIZE);
 		return GSR_BUFFER_FULL;
 	}
 
+
+	/* housekeeping */
+
+	if (totalLines >= 0) explicitTotalLines_ = totalLines;
 	if (metaData) {
 		sequenceLastSeen_ = metaData->seqNumber;
 		sequenceTotal_ = metaData->seqTotal;
@@ -160,7 +176,7 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t t
 		start += len;
 	}
 
-	LOG(Logger::VERBOSE, "append(): added %zu bytes of gcode (%i chunks) in %lu ms",
+	LOG(Logger::VERBOSE, "append() - added %zu bytes of gcode (%i chunks) in %lu ms",
 		size, count, getMillis() - startTime);
 
 	return GSR_OK;

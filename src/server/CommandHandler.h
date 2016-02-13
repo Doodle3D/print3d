@@ -10,6 +10,7 @@
 #define COMMAND_HANDLER_H_SEEN
 
 #include <string>
+#include "Logger.h"
 #include "../ipc_shared.h"
 
 class Client;
@@ -18,16 +19,17 @@ class CommandHandler {
 public:
 	typedef void (*handler_func)(Client& client, const char* buf, int buflen);
 
+	static void runCommand(Client& client, const char* buf, int buflen);
+
+private:
 	struct handlerFunctions {
 		IPC_COMMAND_CODE code;
 		handler_func hndFunc;
 	};
 
 	static const handlerFunctions HANDLERS[];
+	static const Logger::ELOG_LEVEL COMMAND_LOG_LEVEL;
 
-	static void runCommand(Client& client, const char* buf, int buflen);
-
-private:
 	CommandHandler();
 	CommandHandler(const CommandHandler& o);
 	void operator=(const CommandHandler& o);
