@@ -67,8 +67,8 @@ public:
 	// should return in how much milliseconds it wants to be called again
 	virtual int update() = 0;
 
-	virtual GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
-	virtual GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
+	virtual GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, int32_t totalLines = -1, GCodeBuffer::MetaData *metaData = 0);
+	virtual GCodeBuffer::GCODE_SET_RESULT appendGCode(const std::string& gcode, int32_t totalLines = -1, GCodeBuffer::MetaData *metaData = 0);
 	virtual void clearGCode();
 
 	virtual bool startPrint(const std::string& gcode, STATE state = PRINTING);

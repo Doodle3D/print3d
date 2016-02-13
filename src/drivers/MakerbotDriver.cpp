@@ -128,8 +128,8 @@ size_t MakerbotDriver::convertGCode(const string &gcode) {
 	return queue_.size() - oldQueueSize;
 }
 
-GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, GCodeBuffer::MetaData *metaData) {
-	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::setGCode(gcode, metaData);
+GCodeBuffer::GCODE_SET_RESULT MakerbotDriver::setGCode(const string &gcode, int32_t totalLines, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = AbstractDriver::setGCode(gcode, totalLines, metaData);
 	fullStop();
 	return gsr;
 }

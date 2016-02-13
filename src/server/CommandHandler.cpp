@@ -174,7 +174,7 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
 		LOG(Logger::VERBOSE, "hnd_gcodeAppend(): appending and clearing gcode transaction buffer");
 		AbstractDriver* driver = server.getDriver();
-		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, &metaData);
+		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, -1, &metaData);
 		transaction.buffer.clear();
 		transaction.active = false;
 		if (gsr != GCodeBuffer::GSR_OK) {

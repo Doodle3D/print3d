@@ -8,23 +8,23 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 	void testSet(const string& test_name) {
 		GCodeBuffer buffer;
 
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		fructose_assert_no_exception(buffer.set("")); //actually, none of the buffer's functions should throw exceptions
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		buffer.set("abc");
-		fructose_assert_eq(buffer.getTotalLines(), 1);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 1);
 
 		buffer.clear();
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		buffer.set("abc\n");
-		fructose_assert_eq(buffer.getTotalLines(), 1);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 1);
 
 		buffer.clear();
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		buffer.set("abc\n");
-		fructose_assert_eq(buffer.getTotalLines(), 1);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 1);
 	}
 
 	void testAppend(const string& test_name) {
@@ -32,11 +32,11 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 
 		buffer.set("abc\n");
 		buffer.append("xyz\nnext line");
-		fructose_assert_eq(buffer.getTotalLines(), 3);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 3);
 
 		buffer.clear();
 		buffer.append("def\nmore data\n");
-		fructose_assert_eq(buffer.getTotalLines(), 2);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 2);
 	}
 
 	void testAppendWithoutNewlines(const string& test_name) {
@@ -45,7 +45,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 
 		buffer.set("abc");
 		buffer.append("def");
-		fructose_assert_eq(buffer.getTotalLines(), 2);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 2);
 
 		buffer.getNextLine(lineBuf); buffer.eraseLine();
 		fructose_assert_eq(lineBuf, "abc");
@@ -59,30 +59,30 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		GCodeBuffer buffer;
 		GCodeBuffer::MetaData md;
 
-		md.seqNumber = 0; md.seqTotal = 3; fructose_assert_eq(buffer.set("abc", &md), GCodeBuffer::GSR_OK);
+		md.seqNumber = 0; md.seqTotal = 3; fructose_assert_eq(buffer.set("abc", -1, &md), GCodeBuffer::GSR_OK);
 
 		//check proper functioning of using sequence numbers
-		fructose_assert_eq(buffer.append("def_no1", &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		fructose_assert_eq(buffer.append("def_no1", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
 		md.seqNumber = -1;
-		fructose_assert_eq(buffer.append("def_no2", &md), GCodeBuffer::GSR_SEQ_NUM_MISSING);
+		fructose_assert_eq(buffer.append("def_no2", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISSING);
 		md.seqNumber = 1; md.seqTotal = 4;
-		fructose_assert_eq(buffer.append("def_no3", &md), GCodeBuffer::GSR_SEQ_TTL_MISMATCH);
+		fructose_assert_eq(buffer.append("def_no3", -1, &md), GCodeBuffer::GSR_SEQ_TTL_MISMATCH);
 		md.seqTotal = -1;
-		fructose_assert_eq(buffer.append("def_no4", &md), GCodeBuffer::GSR_SEQ_TTL_MISSING);
+		fructose_assert_eq(buffer.append("def_no4", -1, &md), GCodeBuffer::GSR_SEQ_TTL_MISSING);
 		md.seqNumber = 2; md.seqTotal = 3;
-		fructose_assert_eq(buffer.append("def_no5", &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		fructose_assert_eq(buffer.append("def_no5", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
 		md.seqNumber = 1;
-		fructose_assert_eq(buffer.append("def", &md), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.append("def", -1, &md), GCodeBuffer::GSR_OK);
 
-		fructose_assert_eq(buffer.append("ghi_no1", &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		fructose_assert_eq(buffer.append("ghi_no1", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
 		md.seqNumber = 2;
-		fructose_assert_eq(buffer.append("ghi", &md), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.append("ghi", -1, &md), GCodeBuffer::GSR_OK);
 		md.seqNumber = 3;
-		fructose_assert_eq(buffer.append("ghi_no2", &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		fructose_assert_eq(buffer.append("ghi_no2", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
 
 		//check if the data has been appended properly
 		string lineBuf;
-		fructose_assert_eq(buffer.getTotalLines(), 3);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 3);
 		fructose_assert_eq(buffer.getNextLine(lineBuf), 1);
 		fructose_assert_eq(lineBuf, "abc");
 		buffer.eraseLine();
@@ -97,15 +97,15 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		string srcName1 = "from_here", srcName2 = "from_there";
 		buffer.clear();
 		md.seqNumber = 0; md.seqTotal = 3;
-		fructose_assert_eq(buffer.set("abc", &md), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.set("abc", -1, &md), GCodeBuffer::GSR_OK);
 		md.seqNumber = 1; md.source = &srcName1;
-		fructose_assert_eq(buffer.append("def", &md), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.append("def", -1, &md), GCodeBuffer::GSR_OK);
 		md.seqNumber = 2; md.source = 0;
-		fructose_assert_eq(buffer.append("ghi_no1", &md), GCodeBuffer::GSR_SRC_MISSING);
+		fructose_assert_eq(buffer.append("ghi_no1", -1, &md), GCodeBuffer::GSR_SRC_MISSING);
 		md.source = &srcName2;
-		fructose_assert_eq(buffer.append("ghi_no2", &md), GCodeBuffer::GSR_SRC_MISMATCH);
+		fructose_assert_eq(buffer.append("ghi_no2", -1, &md), GCodeBuffer::GSR_SRC_MISMATCH);
 		md.source = &srcName1;
-		fructose_assert_eq(buffer.append("ghi", &md), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.append("ghi", -1, &md), GCodeBuffer::GSR_OK);
 
 		//check if everything resets properly
 		buffer.clear();
@@ -135,7 +135,7 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 
 		const string line1 = "line 1", line2 = "line 2", line3 = "line 3", line4 = "line 4";
 		buffer.append(line1 + "\n" + line2 + "\n" + line3 + "\n" + line4);
-		fructose_assert_eq(buffer.getTotalLines(), 4);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 4);
 
 		string lineBuf;
 		int32_t rv;
@@ -174,19 +174,19 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		int32_t rv;
 
 		buffer.set("line   ;  with comment");
-		fructose_assert_eq(buffer.getTotalLines(), 1);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 1);
 		rv = buffer.getNextLine(lineBuf);
 		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, "line   ");
 
 		buffer.set(";  pure comment");
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		rv = buffer.getNextLine(lineBuf);
 		fructose_assert_eq(lineBuf, "");
 		fructose_assert_eq(rv, 0);
 
 		buffer.set("car+new mix\r\n\r\n\n\n\n");
-		fructose_assert_eq(buffer.getTotalLines(), 1);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 1);
 		rv = buffer.getNextLine(lineBuf);
 		fructose_assert_eq(rv, 1);
 		fructose_assert_eq(lineBuf, "car+new mix");
@@ -197,26 +197,26 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 
 		fructose_assert_eq(buffer.getCurrentLine(), 0);
 		fructose_assert_eq(buffer.getBufferedLines(), 0);
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 		buffer.setCurrentLine(42);
 		fructose_assert_eq(buffer.getCurrentLine(), 0);
 
 		buffer.set("line 1\nline 2\n line 3");
 		fructose_assert_eq(buffer.getCurrentLine(), 0);
 		fructose_assert_eq(buffer.getBufferedLines(), 3);
-		fructose_assert_eq(buffer.getTotalLines(), 3);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 3);
 		buffer.setCurrentLine(3);
 		fructose_assert_eq(buffer.getCurrentLine(), 3);
 
 		buffer.eraseLine();
 		fructose_assert_eq(buffer.getCurrentLine(), 3);
 		fructose_assert_eq(buffer.getBufferedLines(), 2);
-		fructose_assert_eq(buffer.getTotalLines(), 3);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 3);
 
 		buffer.clear();
 		fructose_assert_eq(buffer.getCurrentLine(), 0);
 		fructose_assert_eq(buffer.getBufferedLines(), 0);
-		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
 	}
 
 	void testBufferSize(const string& test_name) {
@@ -316,6 +316,37 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.append(exactlyEnough), GCodeBuffer::GSR_OK);
 		fructose_assert_eq(buffer.getBufferSize(), maxSize);
 	}
+
+	void testSetTotalLines(const string& test_name) {
+		GCodeBuffer buffer;
+
+		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
+
+		buffer.append("line1\nline2");
+		fructose_assert_eq(buffer.getTotalLines(), 2);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 2);
+
+		buffer.eraseLine();
+		fructose_assert_eq(buffer.getTotalLines(), 2);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 2);
+
+		buffer.append("line3", 15);
+		fructose_assert_eq(buffer.getTotalLines(), 15);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 3);
+
+		buffer.append("line3");
+		fructose_assert_eq(buffer.getTotalLines(), 15);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 4);
+
+		buffer.eraseLine();
+		fructose_assert_eq(buffer.getTotalLines(), 15);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 4);
+
+		buffer.clear();
+		fructose_assert_eq(buffer.getTotalLines(), 0);
+		fructose_assert_eq(buffer.getTotalLinesSent(), 0);
+	}
 };
 
 int main(int argc, char** argv) {
@@ -333,5 +364,6 @@ int main(int argc, char** argv) {
 	tests.add_test("multiLineErase", &t_GCodeBuffer::testMultiLineErase);
 	//tests.add_test("bucketBoundaries", &t_GCodeBuffer::testBucketBoundaries);
 	tests.add_test("maxBufferSize", &t_GCodeBuffer::testMaxBufferSize);
+	tests.add_test("setTotalLines", &t_GCodeBuffer::testSetTotalLines);
 	return tests.run(argc, argv);
 }

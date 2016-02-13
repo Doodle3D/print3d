@@ -75,8 +75,8 @@ bool AbstractDriver::isConnected() const {
 /*
  * Set (replace) the GCode buffer
  */
-GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
-	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.set(gcode, metaData);
+GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode, int32_t totalLines, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.set(gcode, totalLines, metaData);
 
 	if (gsr == GCodeBuffer::GSR_OK) {
 		extractGCodeInfo(gcode);
@@ -88,8 +88,8 @@ GCodeBuffer::GCODE_SET_RESULT AbstractDriver::setGCode(const std::string& gcode,
 /*
  * Append GCode to GCode buffer
  */
-GCodeBuffer::GCODE_SET_RESULT AbstractDriver::appendGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData) {
-	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.append(gcode, metaData);
+GCodeBuffer::GCODE_SET_RESULT AbstractDriver::appendGCode(const std::string& gcode, int32_t totalLines, GCodeBuffer::MetaData *metaData) {
+	GCodeBuffer::GCODE_SET_RESULT gsr = gcodeBuffer_.append(gcode, totalLines, metaData);
 	if (gsr == GCodeBuffer::GSR_OK) {
 		extractGCodeInfo(gcode);
 		if (getState() == IDLE) setState(BUFFERING);

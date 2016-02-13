@@ -27,7 +27,7 @@ public:
 	size_t convertGCode(const std::string &gcode); //TEMP
 
 	//overrides
-	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, GCodeBuffer::MetaData *metaData = 0);
+	GCodeBuffer::GCODE_SET_RESULT setGCode(const std::string& gcode, int32_t totalLines = -1, GCodeBuffer::MetaData *metaData = 0);
 	void clearGCode();
 
 	//overrides

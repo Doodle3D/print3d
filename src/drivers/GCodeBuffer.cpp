@@ -53,7 +53,7 @@ const string GCodeBuffer::GSR_NAMES[] = { "", "ok", "buffer_full", "seq_num_miss
 const size_t GCodeBuffer::GCODE_EXCERPT_LENGTH = 10;
 
 GCodeBuffer::GCodeBuffer()
-: currentLine_(0), bufferedLines_(0), totalLines_(0), bufferSize_(0),
+: currentLine_(0), bufferedLines_(0), totalLinesSent_(0), explicitTotalLines_(-1), bufferSize_(0),
   sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0),
   keepGpxMacroComments_(false), log_(Logger::getInstance())
 {
@@ -72,15 +72,17 @@ void GCodeBuffer::setKeepGpxMacroComments(bool keep) {
  * Sets given gcode by first calling clear(), then append(), returning its return value.
  * See append() for documentation.
  */
-GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaData *metaData) {
+GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, int32_t totalLines, const MetaData *metaData) {
 	//LOG(Logger::VERBOSE, "set (i.e. clear+append)");
 	clear();
-	return append(gcode, metaData);
+	return append(gcode, totalLines, metaData);
 }
 
 /**
  * Append given gcode to buffer, with optional consistency checks.
  *
+ * @param totalLines Total number of lines that will be sent, usable for progress reports;
+ * 		it is reset on clear and left alone if <0 is passed.
  * @param metaData data for consistency checking, see below.
  *
  * @return GSR_OK if all went well, a relevant error status otherwise.
@@ -88,6 +90,8 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
  * Meta data may be omitted, any individual fields may also be omitted. If at
  * any point one of the fields is not -1/NULL, it should be passed in a consistent
  * way with each subsequent append call until the buffer is cleared again.
+ * Sequence numbers, if passed, should be passed from the first chunk on after
+ * a clear, and should start at 0.
  * Consistent means for sequence numbers that they increment by exactly one and are
  * not greater than the total parameter (if given). The total must not change, and
  * the source must be the same text each time.
@@ -95,7 +99,8 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
  * NOTE: this function splits given code into chunk of approximately BUFFER_SPLIT_SIZE.
  * without this, huge chunks (>1MB) would make repeated erase operations very inefficient.
  */
-GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const MetaData *metaData) {
+GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t totalLines, const MetaData *metaData) {
+	if (totalLines >= 0) explicitTotalLines_ = totalLines;
 	if (!metaData) {
 		LOG(Logger::VERBOSE, "append - len: %zu, excerpt: '%s'; ttl size(lines): %d (%d)",
 				gcode.length(), gcode.substr(0, GCODE_EXCERPT_LENGTH).c_str(), bufferSize_, bufferedLines_);
@@ -170,7 +175,8 @@ void GCodeBuffer::clear() {
 		buckets_.pop_front();
 	}
 
-	currentLine_ = bufferedLines_ = totalLines_ = 0;
+	currentLine_ = bufferedLines_ = totalLinesSent_ = 0;
+	explicitTotalLines_ = -1;
 	bufferSize_ = 0;
 
 	sequenceLastSeen_ = -1;
@@ -189,8 +195,19 @@ int32_t GCodeBuffer::getBufferedLines() const {
 	return bufferedLines_;
 }
 
+/*
+ * Returns the number of lines appended so far since the last clear.
+ */
+int32_t GCodeBuffer::getTotalLinesSent() const {
+	return totalLinesSent_;
+}
+
+/*
+ * Returns previously given (through set/append) total number of lines if set (i.e., >= 0),
+ * or the total number of lines appended so far (since the last clear) otherwise.
+ */
 int32_t GCodeBuffer::getTotalLines() const {
-	return totalLines_;
+	return explicitTotalLines_ >= 0 ? explicitTotalLines_ : totalLinesSent_;
 }
 
 //const string &GCodeBuffer::getBuffer() const {
@@ -206,7 +223,7 @@ int32_t GCodeBuffer::getMaxBufferSize() const {
 }
 
 void GCodeBuffer::setCurrentLine(int32_t line) {
-	currentLine_ = std::min(line, totalLines_);
+	currentLine_ = std::min(line, totalLinesSent_);
 }
 
 //NOTE: FIXME: when requesting multiple lines, be aware that this function will currently
@@ -301,8 +318,8 @@ void GCodeBuffer::updateStats(string *buffer, size_t pos) {
 	int32_t addedLineCount = std::count(buffer->begin() + pos, buffer->end(), '\n');
 	if (buffer->length() > 0 && buffer->at(buffer->length() - 1) != '\n') addedLineCount++;
 	bufferedLines_ += addedLineCount;
-	totalLines_ += addedLineCount;
-	if (currentLine_ > totalLines_) currentLine_ = totalLines_;
+	totalLinesSent_ += addedLineCount;
+	if (currentLine_ > totalLinesSent_) currentLine_ = totalLinesSent_;
 }
 
 void GCodeBuffer::cleanupGCode(string *buffer, size_t pos) {

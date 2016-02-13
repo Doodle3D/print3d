@@ -43,12 +43,13 @@ public:
 
 	void setKeepGpxMacroComments(bool keep);
 
-	GCODE_SET_RESULT set(const std::string &gcode, const MetaData *metaData = 0);
-	GCODE_SET_RESULT append(const std::string &gcode, const MetaData *metaData = 0);
+	GCODE_SET_RESULT set(const std::string &gcode, int32_t totalLines = -1, const MetaData *metaData = 0);
+	GCODE_SET_RESULT append(const std::string &gcode, int32_t totalLines = -1, const MetaData *metaData = 0);
 	void clear();
 
 	int32_t getCurrentLine() const;
 	int32_t getBufferedLines() const;
+	int32_t getTotalLinesSent() const;
 	int32_t getTotalLines() const;
 //	const std::string &getBuffer() const;
 	int32_t getBufferSize() const;
@@ -72,7 +73,8 @@ private:
 	deque_stringP buckets_;
 	int32_t currentLine_;
 	int32_t bufferedLines_;
-	int32_t totalLines_;
+	int32_t totalLinesSent_;
+	int32_t explicitTotalLines_;
 	int32_t bufferSize_;
 
 	int32_t sequenceLastSeen_;
