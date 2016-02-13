@@ -43,8 +43,8 @@ const ipc_cmd_name_s IPC_COMMANDS[] = {
 		{ IPC_CMDQ_GET_TEMPERATURE, "getTemperature", "w", "w" }, //NOTE: accepts 'which' selector
 		{ IPC_CMDQ_GCODE_CLEAR, "gcodeClear", "", "" },
 
-		//NOTE: signature is 'xwWWs', x is gcode, all other arguments are optional
-		//w is a IPC_GCODE_TRANSACTION_BITS mask (optional, collected in CommandHandler, cleared when first_bit is set and passed to driver when last_bit is set), WWs is curr_seq/ttl_seq/src (optional)
+		//NOTE: signature is 'xwWWWs', x is gcode, all other arguments are optional
+		//w is a IPC_GCODE_TRANSACTION_BITS mask (optional, collected in CommandHandler, cleared when first_bit is set and passed to driver when last_bit is set), W is total_lines (optional), WWs is curr_seq/ttl_seq/src (optional)
 		{ IPC_CMDQ_GCODE_APPEND, "gcodeAppend", "*", "" },
 
 		{ IPC_CMDQ_GCODE_APPEND_FILE, "gcodeAppendFile", "x", "" }, //NOTE: accepts absolute path to file
@@ -181,7 +181,7 @@ char* ipc_va_construct_cmd(int* cmdlen, IPC_COMMAND_CODE code, const char* forma
 			break;
 		}
 		case 'W': {
-			int32_t arg = htonl(va_arg(args, int));
+			int32_t arg = htonl(va_arg(args, int32_t));
 			ipc_cmd_add_arg(&cmd, cmdlen, (void*)&arg, 4);
 			break;
 		}

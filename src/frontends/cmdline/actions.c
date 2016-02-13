@@ -171,7 +171,7 @@ static int act_sendGcodeFromStdin() {
 		read_len += rv;
 	}
 
-	if (comm_sendGCodeData(gcode, NULL) < 0) {
+	if (comm_sendGCodeData(gcode, -1, NULL) < 0) {
 		printError(json_output, "could not send gcode data (%s)", comm_getError());
 		return 1;
 	}
@@ -196,7 +196,7 @@ static int act_sendGcode(const char *gcode) {
 		return 1;
 	}
 
-	if (comm_sendGCodeData(gcode, NULL) < 0) {
+	if (comm_sendGCodeData(gcode, -1, NULL) < 0) {
 		printError(json_output, "could not send gcode (%s)", comm_getError());
 		return 1;
 	}
@@ -227,8 +227,11 @@ static int act_printProgress() {
 
 	if (!json_output) {
 		printf("print progress: %d of %d lines (%d buffered)", currentLine, totalLines, bufferedLines);
+
 		if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
-		printf(", at capacity %d of %d bytes max\n", bufferSize, maxBufferSize);
+
+		printf(", at capacity %d of %d bytes max (%.1f%%)\n",
+				bufferSize, maxBufferSize, (float)bufferSize / maxBufferSize * 100);
 	} else {
 		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d, \"buffer_size\": %d, \"max_buffer_size\": %d}",
 				currentLine, totalLines, bufferedLines, bufferSize, maxBufferSize);

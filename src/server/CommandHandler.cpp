@@ -153,28 +153,30 @@ void CommandHandler::hnd_gcodeAppend(Client& client, const char* buf, int buflen
 		transaction.active = true;
 	}
 
+	int32_t totalLines = -1;
 	GCodeBuffer::MetaData metaData;
 
-	if (numArgs >= 3) ipc_cmd_get_long_arg(buf, buflen, 2, &metaData.seqNumber);
-	if (numArgs >= 4) ipc_cmd_get_long_arg(buf, buflen, 3, &metaData.seqTotal);
-	if (numArgs >= 5) {
+	if (numArgs >= 3) ipc_cmd_get_long_arg(buf, buflen, 2, &totalLines);
+	if (numArgs >= 4) ipc_cmd_get_long_arg(buf, buflen, 3, &metaData.seqNumber);
+	if (numArgs >= 5) ipc_cmd_get_long_arg(buf, buflen, 4, &metaData.seqTotal);
+	if (numArgs >= 6) {
 		char *srcArg = 0;
-		ipc_cmd_get_string_arg(buf, buflen, 4, &srcArg);
+		ipc_cmd_get_string_arg(buf, buflen, 5, &srcArg);
 		metaData.source = new string(srcArg);
 		free(srcArg);
 	}
 
 	char* data = 0;
 	ipc_cmd_get_string_arg(buf, buflen, 0, &data);
-	LOG(Logger::VERBOSE, "hnd_gcodeAppend(): append gcode cmd with arg length %i (%i args) [seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
-			numArgs, metaData.seqNumber, metaData.seqTotal, metaData.source ? metaData.source->c_str() : "(null)");
+	LOG(Logger::VERBOSE, "hnd_gcodeAppend(): append gcode cmd with arg length %i (%i args) [ttl_lines: %i, seq_num %i, seq_ttl: %i, src: %s]", strlen(data),
+			numArgs, totalLines, metaData.seqNumber, metaData.seqTotal, metaData.source ? metaData.source->c_str() : "(null)");
 	transaction.buffer.append(data);
 	free(data);
 
 	if (transactionFlags & TRX_LAST_CHUNK_BIT) {
 		LOG(Logger::VERBOSE, "hnd_gcodeAppend(): appending and clearing gcode transaction buffer");
 		AbstractDriver* driver = server.getDriver();
-		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, -1, &metaData);
+		GCodeBuffer::GCODE_SET_RESULT gsr = driver->appendGCode(transaction.buffer, totalLines, &metaData);
 		transaction.buffer.clear();
 		transaction.active = false;
 		if (gsr != GCodeBuffer::GSR_OK) {

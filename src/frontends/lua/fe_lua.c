@@ -288,11 +288,12 @@ static int l_clearGcode(lua_State *L) {
 	return initStackWithReturnStatus(L, rv);
 }
 
-//requires gcode as first argument, accepts table as second argument with keys (all optional):
-//seq_number, seq_total, source (see GCodeBuffer for details)
+//requires gcode as first argument, accepts an int as second argument (total_lines, pass -1 as 'no value')
+//and accepts table as third argument with keys (all optional): seq_number, seq_total, source (see GCodeBuffer for details)
 static int l_appendGcode(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 	int nargs = lua_gettop(L);
+	int32_t total_lines = -1;
 	ipc_gcode_metadata_s metadata = { -1, -1, NULL };
 
 	if (nargs < 2) {
@@ -302,20 +303,22 @@ static int l_appendGcode(lua_State *L) {
 	}
 
 	if (nargs > 2) {
-		lua_getfield(L, 3, GCODE_MD_SEQ_NUMBER);
+		total_lines = luaL_checkinteger(L, 3);
+
+		lua_getfield(L, 4, GCODE_MD_SEQ_NUMBER);
 		if (!lua_isnoneornil(L, -1)) metadata.seq_number = luaL_checkinteger(L, -1);
 		lua_pop(L, 1);
 
-		lua_getfield(L, 3, GCODE_MD_SEQ_TOTAL);
+		lua_getfield(L, 4, GCODE_MD_SEQ_TOTAL);
 		if (!lua_isnoneornil(L, -1)) metadata.seq_total = luaL_checkinteger(L, -1);
 		lua_pop(L, 1);
 
-		lua_getfield(L, 3, GCODE_MD_SOURCE);
+		lua_getfield(L, 4, GCODE_MD_SOURCE);
 		if (!lua_isnoneornil(L, -1)) metadata.source = luaL_checkstring(L, -1);
 		lua_pop(L, 1);
 	}
 
-	int rv = comm_sendGCodeData(luaL_checkstring(L, 2), &metadata);
+	int rv = comm_sendGCodeData(luaL_checkstring(L, 2), total_lines, &metadata);
 	comm_closeSocket();
 
 	return initStackWithReturnStatus(L, rv);

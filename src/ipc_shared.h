@@ -87,8 +87,8 @@ typedef struct ipc_cmd_name_s {
  * used once, it must be used consistently until a clear request.
  */
 typedef struct ipc_gcode_metadata_s {
-	int16_t seq_number;
-	int16_t seq_total;
+	int32_t seq_number;
+	int32_t seq_total;
 	const char *source;
 } ipc_gcode_metadata_s;
 

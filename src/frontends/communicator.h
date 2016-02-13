@@ -25,7 +25,7 @@ int comm_clearGCode();
 int comm_startPrintGCode();
 int comm_stopPrintGCode(const char *endCode);
 int comm_sendGCodeFile(const char *file);
-int comm_sendGCodeData(const char *gcode, ipc_gcode_metadata_s *metadata);
+int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadata_s *metadata);
 
 int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PARAMETER which);
 int comm_heatup(int temperature);

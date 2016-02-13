@@ -404,12 +404,12 @@ int comm_sendGCodeFile(const char *file) {
 }
 
 //metadata may be NULL
-int comm_sendGCodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
+int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadata_s *metadata) {
 	uint32_t startTime = getMillis();
 	clearError();
 
-	int16_t seq_num = metadata ? metadata->seq_number : -1;
-	int16_t seq_ttl = metadata ? metadata->seq_total : -1;
+	int32_t seq_num = metadata ? metadata->seq_number : -1;
+	int32_t seq_ttl = metadata ? metadata->seq_total : -1;
 
 	int rv = 0;
 	const char *startP = gcode, *endP;
@@ -453,8 +453,11 @@ int comm_sendGCodeData(const char *gcode, ipc_gcode_metadata_s *metadata) {
 		if (endP == lastPos) trx_bits |= TRX_LAST_CHUNK_BIT;
 
 		char *scmd = 0;
-		if (!metadata || !metadata->source) scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWW", startP, endP - startP + 1, trx_bits, seq_num, seq_ttl);
-		else scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWWs", startP, endP - startP + 1, trx_bits, seq_num, seq_ttl, metadata->source);
+		if (!metadata || !metadata->source)
+			scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWWW", startP, endP - startP + 1, trx_bits, total_lines, seq_num, seq_ttl);
+		else
+			scmd = ipc_construct_cmd(&scmdlen, IPC_CMDQ_GCODE_APPEND, "xwWWWs",
+				startP, endP - startP + 1, trx_bits, total_lines, seq_num, seq_ttl, metadata->source);
 
 		char *rcmd = sendAndReceiveData(scmd, scmdlen, &rcmdlen);
 		int result = handleBasicResponse(scmd, scmdlen, rcmd, rcmdlen, 0);
