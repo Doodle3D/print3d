@@ -81,8 +81,6 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::set(const string &gcode, const MetaDa
 /**
  * Append given gcode to buffer, with optional consistency checks.
  *
- * @param seqNum Optional sequence number; once given, it should increment by 1 in
- * 		each subsequent call until clear() is called.
  * @param metaData data for consistency checking, see below.
  *
  * @return GSR_OK if all went well, a relevant error status otherwise.
@@ -110,7 +108,10 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, const Met
 
 	if (sequenceLastSeen_ > -1) {
 		if (!metaData || metaData->seqNumber < 0) return GSR_SEQ_NUM_MISSING;
-		if (sequenceLastSeen_ + 1 != metaData->seqNumber) return GSR_SEQ_NUM_MISMATCH;
+		if (sequenceLastSeen_ + 1 != metaData->seqNumber) return GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
+	} else if (metaData) {
+		if (metaData->seqNumber != 0) return GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
+		else if (getBufferSize() > 0) return GSR_SEQ_NUM_MISMATCH; //first one must also be sent with first chunk
 	}
 
 	if (sequenceTotal_ > -1) {

@@ -112,6 +112,24 @@ struct t_GCodeBuffer : public fructose::test_base<t_GCodeBuffer> {
 		fructose_assert_eq(buffer.set("abc"), GCodeBuffer::GSR_OK);
 	}
 
+	void testStartConsistencyChecks(const string& test_name) {
+		GCodeBuffer buffer;
+		GCodeBuffer::MetaData md;
+
+		//the first number sent must be 0 (mismatch otherwise)
+		md.seqNumber = 0; md.seqTotal = 3;
+		fructose_assert_eq(buffer.set("abc", -1, &md), GCodeBuffer::GSR_OK);
+		md.seqNumber = 1; fructose_assert_eq(buffer.set("abc", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		md.seqNumber = 0; fructose_assert_eq(buffer.set("abc", -1, &md), GCodeBuffer::GSR_OK);
+
+		//sequence numbers are only accepted if the first one is sent when appending to empty buffer
+		md.seqNumber = 0; md.seqTotal = 3;
+		fructose_assert_eq(buffer.set("abc", -1, NULL), GCodeBuffer::GSR_OK);
+		fructose_assert_eq(buffer.append("def", -1, &md), GCodeBuffer::GSR_SEQ_NUM_MISMATCH);
+		buffer.clear();
+		fructose_assert_eq(buffer.append("def", -1, &md), GCodeBuffer::GSR_OK);
+	}
+
 	void testGetErase(const string& test_name) {
 		GCodeBuffer buffer;
 
@@ -305,7 +323,8 @@ int main(int argc, char** argv) {
 	tests.add_test("set", &t_GCodeBuffer::testSet);
 	tests.add_test("append", &t_GCodeBuffer::testAppend);
 	tests.add_test("appendWithoutNewlines", &t_GCodeBuffer::testAppendWithoutNewlines);
-	tests.add_test("seqencedAppend", &t_GCodeBuffer::testAppendConsistencyChecks);
+	tests.add_test("appendConsistencyChecks", &t_GCodeBuffer::testAppendConsistencyChecks);
+	tests.add_test("startConsistencyChecks", &t_GCodeBuffer::testStartConsistencyChecks);
 	tests.add_test("getErase", &t_GCodeBuffer::testGetErase);
 	tests.add_test("cleanup", &t_GCodeBuffer::testCleanup);
 	tests.add_test("lineCounting", &t_GCodeBuffer::testLineCounting);
