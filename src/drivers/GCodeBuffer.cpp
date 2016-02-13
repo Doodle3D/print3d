@@ -117,8 +117,8 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t t
 	if (sequenceLastSeen_ > -1) {
 		if (!metaData || metaData->seqNumber < 0) sanity = GSR_SEQ_NUM_MISSING;
 		else if (sequenceLastSeen_ + 1 != metaData->seqNumber) sanity = GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
-	} else if (metaData) {
-		if (metaData->seqNumber != 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
+	} else if (metaData && metaData->seqNumber >= 0) { //further checks if we have metaData _and_ sequence number is specified
+		if (metaData->seqNumber > 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
 		else if (getBufferSize() > 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one must also be sent with first chunk
 	}
 
