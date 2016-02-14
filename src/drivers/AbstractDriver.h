@@ -95,6 +95,7 @@ public:
 
 protected:
 	static const bool REQUEST_EXIT_ON_PORT_FAIL;
+	static const int VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES;
 
 	bool heating_;
 	uint16_t temperature_;

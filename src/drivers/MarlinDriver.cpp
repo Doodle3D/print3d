@@ -86,7 +86,7 @@ void MarlinDriver::readResponseCode(string& code) {
 	 */
 	//filterText(code, "\x0D\x0E\x1B"); //not sure if replacing these is enough
 
-	LOG(Logger::VERBOSE, "readResponseCode(): '%s'",code.c_str());
+	LOG(Logger::BULK, "readResponseCode(): '%s'",code.c_str());
 
 	bool tempMessage = (code.find("ok T:") == 0);
 	bool heatingMessage = (code.find("T:") == 0);
@@ -121,7 +121,7 @@ void MarlinDriver::readResponseCode(string& code) {
 	} else if (code.find("Resend:") != string::npos) { // please resend line
 		//currentLine_ = atoi(strstr(code.c_str(), "Resend:") + 7); // correct current line
 		gcodeBuffer_.setCurrentLine(getCurrentLine() - 1);
-		LOG(Logger::VERBOSE, "  Resend: %i", gcodeBuffer_.getCurrentLine());
+		LOG(Logger::BULK, "  Resend: %i", gcodeBuffer_.getCurrentLine());
 		printNextLine();
 
 	}
@@ -170,7 +170,7 @@ void MarlinDriver::checkTemperature() {
 }
 
 void MarlinDriver::sendCode(const string& code) {
-	LOG(Logger::VERBOSE, "sendCode(): %s", code.c_str());
+	LOG(Logger::BULK, "sendCode(): %s", code.c_str());
 	if (isConnected()) {
 		AbstractDriver::extractGCodeInfo(code);
 		serial_.send((code + "\n").c_str());

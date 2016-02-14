@@ -23,6 +23,7 @@ using std::size_t;
 //Note: the state names are used all the way on the other end in javascript, consider this when changing them.
 const string AbstractDriver::STATE_NAMES[] = { "unknown", "disconnected", "connecting", "idle", "buffering", "printing", "stopping" };
 const bool AbstractDriver::REQUEST_EXIT_ON_PORT_FAIL = true;
+const int AbstractDriver::VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES = 25;
 
 AbstractDriver::AbstractDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : heating_(false),
@@ -235,7 +236,14 @@ const std::string &AbstractDriver::getStateString(STATE state) {
  ***********************/
 
 void AbstractDriver::printNextLine() {
-	LOG(Logger::VERBOSE, "printNextLine(): %i/%i",gcodeBuffer_.getCurrentLine(), gcodeBuffer_.getTotalLines());
+	int32_t curLine = gcodeBuffer_.getCurrentLine();
+	if (log_.getLevel() == Logger::VERBOSE && curLine % VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES == 0) {
+		LOG(Logger::VERBOSE, "printNextLine(): %i/%i%s (logging only every %i lines)",
+				curLine, gcodeBuffer_.getTotalLines(), VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES);
+	} else {
+		LOG(Logger::BULK, "printNextLine(): %i/%i%s", curLine, gcodeBuffer_.getTotalLines());
+	}
+
 	string line;
 	if(gcodeBuffer_.getNextLine(line) > 0) {
 		sendCode(line);
