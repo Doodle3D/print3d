@@ -332,7 +332,7 @@ int handleAction(int argc, char **argv, ACTION_TYPE action) {
 		printf("The following options are available:\n");
 		printf("\t-h,--help\t\tShow this help message\n");
 		printf("\t-q,--quiet\t\tDo not print any output\n");
-		printf("\t-v,--verbose\t\tPrint verbose output (repeat to increase verbosity)\n");
+		printf("\t-v,--verbose\t\tPrint verbose output (repeat to enable bulk mode; default: log only errors and warnings)\n");
 		printf("\t-j,--json\t\tEmit only JSON output (verbosity will be set to quiet)\n");
 		printf("\t-g,--get <parm>\t\tRetrieve the given parameter(s) (temperature|test|trxtest|progress)\n");
 		printf("\t-t,--temperature\tRetrieve the printer temperature\n");

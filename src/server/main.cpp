@@ -24,7 +24,7 @@ using std::endl;
 
 static const char* UCI_KEY_LOG_PATH = "wifibox.system.log_path";
 static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.p3d_log_basename";
-static const char* UCI_KEY_LOG_LEVEL = "wifibox.system.p3d_log_level";
+static const char* UCI_KEY_LOG_LEVEL = "wifibox.general.system_log_level";
 
 static struct option long_options[] = {
 		{"help", no_argument, NULL, 'h'},
@@ -94,13 +94,13 @@ int main(int argc, char** argv) {
 		printf("The following options are accepted (forking is %s by default):\n", Server::FORK_BY_DEFAULT ? "on" : "off");
 		printf("\t-h,--help\t\tDisplay this help message\n");
 		printf("\t-q,--quiet\t\tLog only errors (repeat to disable logging)\n");
-		printf("\t-v,--verbose\t\tLog verbose (repeat for bulk)\n");
+		printf("\t-v,--verbose\t\tLog verbose (repeat for bulk; default: log only errors and warnings)\n");
 		printf("\t-f,--fork\t\tFork the server process\n");
 		printf("\t-F,--no-fork\t\tDo not fork the server process\n");
 		printf("\t-S,--force\t\tForce starting the server with a default device if none could be found\n");
 		printf("\t-d,--device\t\tThe printer serial device to use (any prefix path will be cut off)\n");
 		printf("\t-p,--printer\t\tThe 3D printer driver to use (use help to get more information)\n");
-		printf("\t-u,--use-settings\t\tRead log target and level from settings\n");
+		printf("\t-u,--use-settings\tRead log target and level from (UCI) settings\n");
 		::exit(0);
 	}
 
@@ -179,11 +179,15 @@ int main(int argc, char** argv) {
 			free(msg);
 		}
 
-		if (logLevelFromCmdLine) logLevel = uciLogLevel;
+		if (!logLevelFromCmdLine) logLevel = uciLogLevel;
 		int rv = log.openParameterized(logFilePath, logBasename, serialDevice.c_str(), logLevel);
 
-		if (rv == -1) cerr << "Error: could not open log with UCI settings (" << strerror(errno) << ")" << endl;
-		else if (rv == -2) cerr << "Error: could not open log with UCI settings" << endl;
+		if (rv == -1) cerr << "Error: could not open log" <<
+				(logLevelFromCmdLine ? "" : " with UCI settings") <<
+				" (" << strerror(errno) << ")" << endl;
+		else if (rv == -2) cerr << "Error: could not open log" <<
+				(logLevelFromCmdLine ? "" : " with UCI settings") <<
+				endl;
 	} else if (useUci) { //no settings available
 		cerr << "Error: cannot read log configuration, settings not available." << endl;
 		::exit(1);

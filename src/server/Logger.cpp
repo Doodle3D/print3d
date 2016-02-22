@@ -65,7 +65,7 @@ int Logger::open(const string *file, ELOG_LEVEL level) {
  * Basename can have two special meanings:
  * If it is '<...>', the text in between can be either stdout or stderr to log to that standard stream.
  * If it is '`...`', the text in between will be executed as a command using popen; for instance to log over ssh, use: `ssh localhost "cat > /tmp/print3d.log"`.
- * Otherwise the log file that will be opened is: '<path>/<basename>[.<log_id>]?.log'.
+ * Otherwise the log file that will be opened is: '<path>/<basename>[-<log_id>].log'.
  *
  * @param path The absolute path the log file should reside in
  * @param basename Either the basename of the logfile, which will be suffixed with '.log', or <...> to use stdout or stderr
@@ -102,7 +102,7 @@ int Logger::openParameterized(const string *path, const string *basename, const 
 		}
 	} else if (path && path->at(0) == '/') { //else, if path is absolute, open a file
 		string fullFilePath = *path + "/" + *basename;
-		if (logId) fullFilePath += "." + *logId;
+		if (logId) fullFilePath += "-" + *logId;
 		fullFilePath += LOG_FILE_EXTENSION;
 
 		 rv = open(&fullFilePath, level);
