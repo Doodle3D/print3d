@@ -22,6 +22,10 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
+//NOTE: the '##__VA_ARGS__' hack is gnu-specific...no comment on the language *cough*
+//FIXME: a better alternative should be created for this
+#define LOG(lvl, fmt, ...) log.log(lvl, "MAIN", fmt, ##__VA_ARGS__)
+
 static const char* UCI_KEY_LOG_PATH = "wifibox.system.log_path";
 static const char* UCI_KEY_LOG_BASENAME = "wifibox.system.p3d_log_basename";
 static const char* UCI_KEY_LOG_LEVEL = "wifibox.general.system_log_level";
@@ -154,12 +158,6 @@ int main(int argc, char** argv) {
 		size_t lastSlash = serialDevice.rfind('/');
 		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
 	}
-	cout << "Using printer device: '" << serialDevice << "'." << endl;
-
-	if (!printerName.empty())
-		cout << "Using printer type: '" << printerName << "'." << endl;
-	else
-		cout << "Using printer type from UCI configuration." << endl;
 
 	Logger& log = Logger::getInstance();
 
@@ -194,12 +192,25 @@ int main(int argc, char** argv) {
 	} else {
 		log.open(stderr, logLevel);
 	}
-	log.log(Logger::INFO, "MAIN", "using log level: %s", LOG_LEVEL_NAMES[logLevel]);
+
+
+	/* Log some information */
+
+	LOG(Logger::INFO, "Starting Print3D server");
+	LOG(Logger::INFO, "using printer device: '%s'", serialDevice.c_str());
+
+	if (!printerName.empty())
+		LOG(Logger::INFO, "using printer type: '%s'", printerName.c_str());
+	else
+		LOG(Logger::INFO, "using printer type from UCI configuration");
+
+	LOG(Logger::INFO, "using log level: %s", LOG_LEVEL_NAMES[logLevel]);
+
 
 	Server s("/dev/" + serialDevice, ipc_construct_socket_path(serialDevice.c_str()), printerName);
 
 	if (!s.getDriver()) {
-		cerr << "Error: could not create printer driver." << endl;
+		LOG(Logger::ERROR, "could not create printer driver");
 		::exit(1);
 	}
 
