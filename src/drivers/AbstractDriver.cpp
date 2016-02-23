@@ -238,10 +238,10 @@ const std::string &AbstractDriver::getStateString(STATE state) {
 void AbstractDriver::printNextLine() {
 	int32_t curLine = gcodeBuffer_.getCurrentLine();
 	if (log_.getLevel() == Logger::VERBOSE && curLine % VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES == 0) {
-		LOG(Logger::VERBOSE, "printNextLine(): %i/%i%s (logging only every %i lines)",
+		LOG(Logger::VERBOSE, "printNextLine(): %i/%i (logging only every %i lines)",
 				curLine, gcodeBuffer_.getTotalLines(), VERBOSE_LOG_NEXT_LINE_EVERY_N_LINES);
 	} else {
-		LOG(Logger::BULK, "printNextLine(): %i/%i%s", curLine, gcodeBuffer_.getTotalLines());
+		LOG(Logger::BULK, "printNextLine(): %i/%i", curLine, gcodeBuffer_.getTotalLines());
 	}
 
 	string line;
