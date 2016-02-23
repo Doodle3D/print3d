@@ -128,36 +128,8 @@ int main(int argc, char** argv) {
 		::exit(0);
 	}
 
-	if (serialDevice.empty()) {
-		char **devlist = ipc_find_devices();
 
-		if (!devlist) { //no list
-			cerr << "Error: could not retrieve device list (" << strerror(errno) << ")." << endl;
-			exit(1);
-		}
-
-		if (!devlist[0] && !forceStart) { //no devices and no force-start
-			cerr << "Error: no devices found, please connect a printer or re-run with '-S'." << endl;
-			::exit(1);
-		} else if (!devlist[0]) { //no devices but force-start requested
-			serialDevice = IPC_DEFAULT_DEVICE_ID;
-		} else if (devlist[1] != 0) { //more than one device
-			cerr << "Error: more than one device found (listed below), please specify one of the following:" << endl;
-			for (int i = 0; devlist[i] != 0; i++) {
-				const char *item = devlist[i];
-				cerr << " '" << item << "'";
-			}
-			cerr << endl;
-			::exit(1);
-		} else {
-			serialDevice = devlist[0];
-		}
-
-		ipc_free_device_list(devlist);
-	} else {
-		size_t lastSlash = serialDevice.rfind('/');
-		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
-	}
+	/* First set up logging. */
 
 	Logger& log = Logger::getInstance();
 
@@ -173,7 +145,7 @@ int main(int argc, char** argv) {
 		if (!logBasename) {
 			char *msg = NULL;
 			settings_get_error(&msg);
-			printf("Error: could not read log basename from settings (%s)\n", msg);
+			cerr << "Error: could not read log basename from settings (" << msg << ")" << endl;
 			free(msg);
 		}
 
@@ -186,7 +158,7 @@ int main(int argc, char** argv) {
 		else if (rv == -2) cerr << "Error: could not open log" <<
 				(logLevelFromCmdLine ? "" : " with UCI settings") <<
 				endl;
-	} else if (useUci) { //no settings available
+	} else if (useUci) { //requested to use settings, but they are not available
 		cerr << "Error: cannot read log configuration, settings not available." << endl;
 		::exit(1);
 	} else {
@@ -194,9 +166,42 @@ int main(int argc, char** argv) {
 	}
 
 
-	/* Log some information */
+	/* Find out which serial device to use. */
 
-	LOG(Logger::INFO, "Starting Print3D server");
+	if (serialDevice.empty()) {
+		char **devlist = ipc_find_devices();
+
+		if (!devlist) { //no list
+			LOG(Logger::ERROR, "could not retrieve device list (%s)", strerror(errno));
+			::exit(1);
+		}
+
+		if (!devlist[0] && !forceStart) { //no devices and no force-start
+			LOG(Logger::ERROR, "no devices found, please connect a printer or re-run with '-S'");
+			::exit(1);
+		} else if (!devlist[0]) { //no devices but force-start requested
+			serialDevice = IPC_DEFAULT_DEVICE_ID;
+		} else if (devlist[1] != 0) { //more than one device
+			LOG(Logger::ERROR, "more than one device found (listed below), please specify one of the following:");
+			for (int i = 0; devlist[i] != 0; i++) {
+				const char *item = devlist[i];
+				LOG(Logger::ERROR, "  '%s'", item);
+			}
+			::exit(1);
+		} else {
+			serialDevice = devlist[0];
+		}
+
+		ipc_free_device_list(devlist);
+	} else {
+		size_t lastSlash = serialDevice.rfind('/');
+		if (lastSlash != string::npos) serialDevice = serialDevice.substr(lastSlash + 1);
+	}
+
+
+	/* Log some information before starting the actual server. */
+
+	LOG(Logger::INFO, "starting Print3D server");
 	LOG(Logger::INFO, "using printer device: '%s'", serialDevice.c_str());
 
 	if (!printerName.empty())
