@@ -225,11 +225,12 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("mamba3d") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("marlin_generic") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("doodle_dream") );
-    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_2_0_plus") );
-    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_m2020") );
-    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_x3045") );
-    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_compact") );
-    supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_diy") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_2_0_plus") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_m2020") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_x3045") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_compact") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("colido_diy") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("craftbot_plus") );
 
 		info.supportedFirmware = supportedFirmware;
 		info.creator = &MarlinDriver::create;
