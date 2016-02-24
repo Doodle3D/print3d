@@ -26,7 +26,7 @@ The Print3D package includes shell scripts that start print3D when a printer is 
 - **Print3D** is a daemon that communicates with the printer. It sends the printer gcode line by line from its buffer, it automatically checks the temperature etc. As described above, it is started when a printer is connected.
 - **P3D** is a front-end/client to talk to the daemon. It can be used for example to request the current temperature and printer state, or to execute gcode, stop printing, etc.
 
-After building they can be added to your path using for example: 
+After building they can be added to your path using for example:
 ``` bash
 sudo ln -s "$PWD/build/Debug/frontends/p3d" /usr/bin/p3d
 sudo ln -s "$PWD/build/Debug/server/print3d" /usr/bin/print3d
