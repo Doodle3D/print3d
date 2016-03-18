@@ -420,7 +420,7 @@ int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadat
 	int packetNum = 0;
 #endif
 
-	LOG(LLVL_INFO, "starting transmit of %i bytes of gcode data, maximum packet size is %i", strlen(gcode), MAX_PACKET_SIZE);
+	LOG(LLVL_BULK, "starting transmit of %i bytes of gcode data, maximum packet size is %i", strlen(gcode), MAX_PACKET_SIZE);
 	for (;;) {
 		if (startP > lastPos) break;
 
@@ -479,7 +479,7 @@ int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadat
 	}
 	uint32_t endTime = getMillis();
 
-	if (rv == 0) LOG(LLVL_INFO, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
+	if (rv == 0) LOG(LLVL_BULK, "gcode data sent in %i packets (%lu msecs)", packetNum, endTime - startTime);
 	else LOG(LLVL_ERROR, "gcode data sent in %i packets (%lu msecs) until error %i", packetNum, endTime - startTime, rv);
 
 	return rv;
