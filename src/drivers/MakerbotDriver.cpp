@@ -218,8 +218,8 @@ bool MakerbotDriver::resetPrint() {
 	return true;
 }
 
-void MakerbotDriver::sendCode(const std::string& code) {
-//	LOG(Logger::VERBOSE, "sendCode(): %s",code.c_str());
+void MakerbotDriver::sendCode(const std::string& code, bool logAsInfo) {
+//	LOG(logAsInfo ? Logger::INFO : Logger::BULK, "sendCode(): %s",code.c_str());
 //	if (isConnected()) {
 //		extractGCodeInfo(code);
 //		serial_.send((code+"\n").c_str());

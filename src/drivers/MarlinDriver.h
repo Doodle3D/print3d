@@ -28,8 +28,8 @@ protected:
 
 	void readResponseCode(std::string& code);
 	void parseTemperatures(std::string& code);
-	void checkTemperature();
-	void sendCode(const std::string& code);
+	void checkTemperature(bool logAsInfo = false);
+	void sendCode(const std::string& code, bool logAsInfo = false);
 
 private:
 	static const int UPDATE_INTERVAL;

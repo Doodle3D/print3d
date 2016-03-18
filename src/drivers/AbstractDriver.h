@@ -110,7 +110,7 @@ protected:
 	Logger& log_;
 	Server& server_;
 
-	virtual void sendCode(const std::string& code) = 0;
+	virtual void sendCode(const std::string& code, bool logAsInfo = false) = 0;
 	virtual void readResponseCode(std::string& code) = 0;
 
 	void printNextLine();

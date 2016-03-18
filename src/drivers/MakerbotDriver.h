@@ -42,7 +42,7 @@ protected:
 	bool startPrint(STATE state = PRINTING);
 	bool stopPrint();
 	bool resetPrint();
-	void sendCode(const std::string& code);
+	void sendCode(const std::string& code, bool logAsInfo = false);
 	void readResponseCode(std::string& code);
 	void fullStop();
 

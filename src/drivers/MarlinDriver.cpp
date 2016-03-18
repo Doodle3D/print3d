@@ -37,8 +37,8 @@ int MarlinDriver::update() {
 		// during startup we use this to check for a valid connection, when it's established we stop checking
 		if (checkConnection_) {
 			if (checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
-				LOG(Logger::VERBOSE, "(checking connection) check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
-				checkTemperature();
+				LOG(Logger::INFO, "(checking connection) check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
+				checkTemperature(true);
 				checkTemperatureAttempt_++;
 			} else {
 				switchBaudrate();
@@ -86,7 +86,7 @@ void MarlinDriver::readResponseCode(string& code) {
 	 */
 	//filterText(code, "\x0D\x0E\x1B"); //not sure if replacing these is enough
 
-	LOG(Logger::BULK, "readResponseCode(): '%s'",code.c_str());
+	LOG(checkConnection_ ? Logger::INFO : Logger::BULK, "readResponseCode(): '%s'",code.c_str());
 
 	bool tempMessage = (code.find("ok T:") == 0);
 	bool heatingMessage = (code.find("T:") == 0);
@@ -165,12 +165,12 @@ void MarlinDriver::parseTemperatures(string& code) {
 	}
 }
 
-void MarlinDriver::checkTemperature() {
-	sendCode("M105");
+void MarlinDriver::checkTemperature(bool logAsInfo) {
+	sendCode("M105", logAsInfo);
 }
 
-void MarlinDriver::sendCode(const string& code) {
-	LOG(Logger::BULK, "sendCode(): %s", code.c_str());
+void MarlinDriver::sendCode(const string& code, bool logAsInfo) {
+	LOG(logAsInfo ? Logger::INFO : Logger::BULK, "sendCode(): %s", code.c_str());
 	if (isConnected()) {
 		AbstractDriver::extractGCodeInfo(code);
 		serial_.send((code + "\n").c_str());
