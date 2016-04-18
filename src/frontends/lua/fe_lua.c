@@ -363,12 +363,16 @@ static int l_heatup(lua_State *L) {
 	return initStackWithReturnStatus(L, rv);
 }
 
-//returns currentLine+bufferedLines+totalLines+bufferSize+maxBufferSize or nil+errmsg
+//returns currentLine+bufferedLines+totalLines+bufferSize+maxBufferSize+sequenceNumber+sequenceTotal
+//or nil+errmsg
 static int l_getProgress(lua_State *L) {
 	if (initContext(L) != 0) return 2; //nil+msg already on stack
 
-	int32_t currentLine, bufferedLines, totalLines, bufferSize, maxBufferSize;
-	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines, &bufferSize, &maxBufferSize);
+	int32_t currentLine, bufferedLines, totalLines;
+	int32_t bufferSize, maxBufferSize;
+	int32_t sequenceNumber, sequenceTotal;
+	int rv = comm_getProgress(&currentLine, &bufferedLines, &totalLines,
+			&bufferSize, &maxBufferSize, &sequenceNumber, &sequenceTotal);
 	comm_closeSocket();
 
 	//to the south is another hack
@@ -380,7 +384,9 @@ static int l_getProgress(lua_State *L) {
 		lua_pushnumber(L, totalLines);
 		lua_pushnumber(L, bufferSize);
 		lua_pushnumber(L, maxBufferSize);
-		return 5;
+		lua_pushnumber(L, sequenceNumber);
+		lua_pushnumber(L, sequenceTotal);
+		return 7;
 	} else {
 		return numElems;
 	}

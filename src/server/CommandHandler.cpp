@@ -275,10 +275,12 @@ void CommandHandler::hnd_getProgress(Client& client, const char* buf, int buflen
 	int32_t totalLines = driver->getTotalLines();
 	int32_t bufferSize = driver->getBufferSize();
 	int32_t maxBufferSize = driver->getMaxBufferSize();
+	const GCodeBuffer::MetaData *md = driver->getMetaData();
 
 	int cmdlen;
-	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "WWWWW",
-			currentLine, bufferedLines, totalLines, bufferSize, maxBufferSize);
+	char* cmd = ipc_construct_cmd(&cmdlen, IPC_CMDR_OK, "WWWWWWW",
+			currentLine, bufferedLines, totalLines, bufferSize, maxBufferSize,
+			md->seqNumber, md->seqTotal);
 	client.sendData(cmd, cmdlen);
 	free(cmd);
 }

@@ -89,6 +89,7 @@ public:
 	virtual int32_t getTotalLines() const;
 	virtual int32_t getBufferSize() const;
 	virtual int32_t getMaxBufferSize() const;
+	virtual const GCodeBuffer::MetaData* getMetaData() const;
 
 	STATE getState() const;
 	static const std::string &getStateString(STATE state);

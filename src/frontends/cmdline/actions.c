@@ -217,8 +217,10 @@ static int act_sendGcode(const char *gcode) {
 static int act_printProgress() {
 	int32_t currentLine = INT32_MIN, bufferedLines = INT32_MIN, totalLines = INT32_MIN;
 	int32_t bufferSize = INT32_MIN, maxBufferSize = INT32_MIN;
+	int32_t sequenceNumber = INT32_MIN, sequenceTotal = INT32_MIN;
 
-	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines, &bufferSize, &maxBufferSize) < 0) {
+	if (comm_getProgress(&currentLine, &bufferedLines, &totalLines,
+			&bufferSize, &maxBufferSize, &sequenceNumber, &sequenceTotal) < 0) {
 		printError(json_output, "could not get printing progress (%s)", comm_getError());
 		return 1;
 	}
@@ -230,11 +232,13 @@ static int act_printProgress() {
 
 		if (totalLines != 0) printf(" (%.1f%%)", (float)currentLine / totalLines * 100);
 
-		printf(", at capacity %d of %d bytes max (%.1f%%)\n",
-				bufferSize, maxBufferSize, (float)bufferSize / maxBufferSize * 100);
+		printf(", at capacity %d of %d bytes max (%.1f%%); sequence number/total: %d/%d\n",
+				bufferSize, maxBufferSize, (float)bufferSize / maxBufferSize * 100,
+				sequenceNumber, sequenceTotal);
 	} else {
-		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d, \"buffer_size\": %d, \"max_buffer_size\": %d}",
-				currentLine, totalLines, bufferedLines, bufferSize, maxBufferSize);
+		printJsonOk("\"progress\": {\"current\": %d, \"total\": %d, \"buffered\": %d,"
+				" \"buffer_size\": %d, \"max_buffer_size\": %d, \"sequence_number\": %d, \"sequence_total\": %d}",
+				currentLine, totalLines, bufferedLines, bufferSize, maxBufferSize, sequenceNumber, sequenceTotal);
 	}
 
 	return 0;

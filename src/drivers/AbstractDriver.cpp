@@ -222,6 +222,13 @@ int32_t AbstractDriver::getMaxBufferSize() const {
 	return gcodeBuffer_.getMaxBufferSize();
 }
 
+/*
+ * Get metadata from the GCode buffer.
+ */
+const GCodeBuffer::MetaData* AbstractDriver::getMetaData() const {
+	return gcodeBuffer_.getMetaData();
+}
+
 AbstractDriver::STATE AbstractDriver::getState() const {
 	return state_;
 }

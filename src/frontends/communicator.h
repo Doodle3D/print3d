@@ -29,7 +29,9 @@ int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadat
 
 int comm_getTemperature(int16_t *temperature, IPC_TEMPERATURE_PARAMETER which);
 int comm_heatup(int temperature);
-int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *numLines, int32_t *bufferSize, int32_t *maxBufferSize);
+int comm_getProgress(int32_t *currentLine, int32_t *bufferedLines, int32_t *numLines,
+		int32_t *bufferSize, int32_t *maxBufferSize,
+		int32_t *seqNumber, int32_t *seqTotal);
 int comm_getState(char **state);
 
 #endif /* COMMUNICATOR_H_SEEN */
