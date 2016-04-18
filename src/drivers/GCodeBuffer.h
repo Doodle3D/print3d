@@ -55,6 +55,8 @@ public:
 	int32_t getBufferSize() const;
 	int32_t getMaxBufferSize() const;
 
+	const MetaData *getMetaData() const;
+
 	void setCurrentLine(int32_t line);
 
 	int32_t getNextLine(std::string &line, size_t amount = 1) const;
@@ -77,9 +79,7 @@ private:
 	int32_t explicitTotalLines_;
 	int32_t bufferSize_;
 
-	int32_t sequenceLastSeen_;
-	int32_t sequenceTotal_;
-	std::string *source_;
+	MetaData md_;
 
 	bool keepGpxMacroComments_;
 

@@ -54,7 +54,6 @@ const size_t GCodeBuffer::GCODE_EXCERPT_LENGTH = 10;
 
 GCodeBuffer::GCodeBuffer()
 : currentLine_(0), bufferedLines_(0), totalLinesSent_(0), explicitTotalLines_(-1), bufferSize_(0),
-  sequenceLastSeen_(-1), sequenceTotal_(-1), source_(0),
   keepGpxMacroComments_(false), log_(Logger::getInstance())
 {
 	LOG(Logger::VERBOSE, "init - max size: %.1fKiB, bucket size: %.1fKiB, split size: %.1fKiB",
@@ -114,28 +113,28 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t t
 	/* sanity checks */
 	GCODE_SET_RESULT sanity = GSR_OK;
 
-	if (sequenceLastSeen_ > -1) {
+	if (md_.seqNumber > -1) {
 		if (!metaData || metaData->seqNumber < 0) sanity = GSR_SEQ_NUM_MISSING;
-		else if (sequenceLastSeen_ + 1 != metaData->seqNumber) sanity = GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
+		else if (md_.seqNumber + 1 != metaData->seqNumber) sanity = GSR_SEQ_NUM_MISMATCH; //each next one must be previous + 1
 	} else if (metaData && metaData->seqNumber >= 0) { //further checks if we have metaData _and_ sequence number is specified
 		if (metaData->seqNumber > 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one to be sent must be 0
 		else if (getBufferSize() > 0) sanity = GSR_SEQ_NUM_MISMATCH; //first one must also be sent with first chunk
 	}
 
-	if (sanity == GSR_OK && sequenceTotal_ > -1) {
+	if (sanity == GSR_OK && md_.seqTotal > -1) {
 		if (!metaData || metaData->seqTotal < 0) sanity = GSR_SEQ_TTL_MISSING;
-		else if (sequenceTotal_ != metaData->seqTotal) sanity = GSR_SEQ_TTL_MISMATCH;
+		else if (md_.seqTotal != metaData->seqTotal) sanity = GSR_SEQ_TTL_MISMATCH;
 		else if (metaData->seqNumber + 1 > metaData->seqTotal) sanity = GSR_SEQ_NUM_MISMATCH;
 	}
 
-	if (sanity == GSR_OK && source_) {
+	if (sanity == GSR_OK && md_.source) {
 		if (!metaData || !metaData->source) sanity = GSR_SRC_MISSING;
-		else if (*source_ != *metaData->source) sanity = GSR_SRC_MISMATCH;
+		else if (*md_.source != *metaData->source) sanity = GSR_SRC_MISMATCH;
 	}
 
 	if (sanity != GSR_OK) {
 		LOG(Logger::ERROR, "append() - sequence numbering error %i; num/ttl/src stats: own=%i/%i/%s, received=%i/%i/%s",
-				sanity, sequenceLastSeen_, sequenceTotal_, source_ ? source_->c_str() : "(null)",
+				sanity, md_.seqNumber, md_.seqTotal, md_.source ? md_.source->c_str() : "(null)",
 				metaData->seqNumber, metaData->seqTotal, metaData->source ? metaData->source->c_str() : "(null)");
 		return sanity;
 	}
@@ -151,10 +150,10 @@ GCodeBuffer::GCODE_SET_RESULT GCodeBuffer::append(const string &gcode, int32_t t
 
 	if (totalLines >= 0) explicitTotalLines_ = totalLines;
 	if (metaData) {
-		sequenceLastSeen_ = metaData->seqNumber;
-		sequenceTotal_ = metaData->seqTotal;
-		if (!source_ && metaData->source) {
-			source_ = new string(*metaData->source);
+		md_.seqNumber = metaData->seqNumber;
+		md_.seqTotal = metaData->seqTotal;
+		if (!md_.source && metaData->source) {
+			md_.source = new string(*metaData->source);
 		}
 	}
 
@@ -195,11 +194,11 @@ void GCodeBuffer::clear() {
 	explicitTotalLines_ = -1;
 	bufferSize_ = 0;
 
-	sequenceLastSeen_ = -1;
-	sequenceTotal_ = -1;
-	if (source_) {
-		delete source_;
-		source_ = 0;
+	md_.seqNumber = -1;
+	md_.seqTotal = -1;
+	if (md_.source) {
+		delete md_.source;
+		md_.source = 0;
 	}
 }
 
@@ -236,6 +235,10 @@ int32_t GCodeBuffer::getBufferSize() const {
 
 int32_t GCodeBuffer::getMaxBufferSize() const {
 	return MAX_BUFFER_SIZE;
+}
+
+const GCodeBuffer::MetaData *GCodeBuffer::getMetaData() const {
+	return &md_;
 }
 
 void GCodeBuffer::setCurrentLine(int32_t line) {
