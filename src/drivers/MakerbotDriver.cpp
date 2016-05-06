@@ -72,7 +72,8 @@ int MakerbotDriver::update() {
 			string lines;
 			amt = gcodeBuffer_.getNextLine(lines, GCODE_CVT_LINES);
 			int cmds = convertGCode(lines);
-			if (!lines.empty()) LOG(Logger::BULK, "converted %i lines into %i commands: '%s'", amt, cmds, lines.c_str()); //TEMP
+			//if (!lines.empty()) LOG(Logger::BULK, "converted %i lines into %i commands: '%s'", amt, cmds, lines.c_str()); //TEMP
+			if (!lines.empty()) LOG(Logger::BULK, "converted %i lines into %i commands", amt, cmds);
 
 			if (amt > 0) {
 				gcodeBuffer_.eraseLine(amt);
@@ -502,6 +503,7 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 	int retriesLeft = 5;
 	int rv;
 	while (retriesLeft > 0) {
+		/*
 		if (Logger::getInstance().getLevel() == Logger::BULK) {
 			bool tempQuery = pktBuf[2] == 10 && (pktBuf[4] == 2 || pktBuf[4] == 30 || pktBuf[4] == 32 || pktBuf[4] == 33);
 			if (pktBuf[2] != 2 && !tempQuery) {
@@ -512,6 +514,7 @@ bool MakerbotDriver::sendPacket(uint8_t *payload, int len, bool updateBufferSpac
 				LOG(Logger::BULK, "|%i| writing packet with len %i:%s", 5 - retriesLeft, len + 3, strstr.str().c_str());
 			}
 		}
+		*/
 
 		serial_.write(pktBuf, len + 3);
 		//NOTE: in case of a tool action command (10), also pass the tool command code (payload[2])
