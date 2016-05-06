@@ -13,6 +13,10 @@ if(NOT LUA_CFLAGS)
 endif()
 
 add_definitions(--std=gnu99 -I.. ${LUA_CFLAGS})
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	#As advised on http://lua-users.org/wiki/BindingCodeToLua
+	add_definitions(-DLUA_USE_APICHECK)
+endif()
 
 if(APPLE)
 	include_directories(/opt/local/include)
