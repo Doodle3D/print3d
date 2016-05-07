@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(print3d)
 
-add_definitions(--std=gnu99)
-
 option(CMDLINE_FRONTEND "build command-line frontend" ON)
 option(LUA_FRONTEND "build Lua frontend" ON)
 

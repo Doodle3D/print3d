@@ -4,6 +4,8 @@ project(print3d)
 set(SOURCES fe_cmdline.c fe_cmdline.h actions.c)
 set(HEADERS)
 
+add_definitions(--std=gnu99)
+
 if(CMDLINE_FRONTEND)
 	set(EXEC_NAME p3d)
 	add_executable(${EXEC_NAME} ${SOURCES} ${HEADERS})

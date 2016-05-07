@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -444,7 +445,8 @@ int comm_sendGCodeData(const char *gcode, int32_t total_lines, ipc_gcode_metadat
 		}
 
 #ifdef DEBUG_GCODE_FRAGMENTATION
-		for (const char *sp = startP; sp <= endP; ++sp) if (*sp == '\n') lineNum++;
+		const char *sp;
+		for (sp = startP; sp <= endP; ++sp) if (*sp == '\n') lineNum++;
 #endif
 
 		int scmdlen, rcmdlen;

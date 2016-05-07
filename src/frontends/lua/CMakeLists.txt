@@ -12,7 +12,8 @@ if(NOT LUA_CFLAGS)
 	endif()
 endif()
 
-add_definitions(--std=gnu99 -I.. ${LUA_CFLAGS})
+add_definitions(-I.. ${LUA_CFLAGS})
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	#As advised on http://lua-users.org/wiki/BindingCodeToLua
 	add_definitions(-DLUA_USE_APICHECK)
@@ -55,3 +56,11 @@ if(LUA_FRONTEND)
 
 	install(TARGETS print3d_lua LIBRARY DESTINATION ${LUAPATH})
 endif()
+
+add_library(os_utils_lua MODULE os_utils.c lua_compat.h)
+target_link_libraries(os_utils_lua lua)
+set_target_properties(os_utils_lua PROPERTIES
+	OUTPUT_NAME os_utils
+	PREFIX ""
+)
+install(TARGETS os_utils_lua LIBRARY DESTINATION ${LUAPATH})

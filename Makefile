@@ -20,7 +20,7 @@ define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
-	DEPENDS:= +libuci +uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
+	DEPENDS:= +libuci +liblua +uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
 endef
 
 define Package/print3d/description
@@ -41,6 +41,7 @@ define Package/print3d/install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/server/print3d $(1)/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/cmdline/p3d $(1)/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/print3d.so $(1)/usr/lib/lua/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/frontends/lua/os_utils.so $(1)/usr/lib/lua/
 	
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d_init $(1)/etc/init.d/print3d
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/script/print3d-runner.sh $(1)/usr/libexec/

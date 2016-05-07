@@ -2,8 +2,9 @@ cmake_minimum_required(VERSION 2.6)
 project(print3d)
 
 if(APPLE)
-	#create multi-architecture files on OSX (mainly for library loading in older 32 bit lua binaries)
-	set(CMAKE_OSX_ARCHITECTURES x86_64;i386)
+	#previously, i386 was included here as well, but that has been removed to get os_utils to link
+	#set(CMAKE_OSX_ARCHITECTURES x86_64;i386)
+	set(CMAKE_OSX_ARCHITECTURES x86_64)
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
