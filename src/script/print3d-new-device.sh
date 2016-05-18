@@ -18,6 +18,8 @@ for DEV in $(ls /dev/ttyACM* /dev/ttyUSB*); do
 	if [ ! -S $SOCKET ]; then
 		$PRINT3D_RUNNER ${DEVBASE} &
 		#disown $!
+		#Make sure that print3d-runner and childs are never killed by the OOM-killer
+		(echo -1000 > /proc/$!/oom_score_adj)
 		sleep 2
 	fi
 done
