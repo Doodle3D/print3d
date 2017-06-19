@@ -192,6 +192,7 @@ const AbstractDriver::DriverInfo& MarlinDriver::getDriverInfo() {
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker2go") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("ultimaker_original_plus") );
+		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("renkforce_rf100") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("printrbot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("bukobot") );
 		supportedFirmware.push_back( AbstractDriver::FirmwareDescription("cartesio") );
