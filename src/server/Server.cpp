@@ -15,6 +15,7 @@
 #include <sys/select.h>
 #include <sys/socket.h>
 #include <sys/time.h>
+#include <cstring>
 #include "Server.h"
 #include "Client.h"
 #include "Logger.h"
@@ -52,7 +53,7 @@ Server::Server(const string& serialPortPath, const string& socketPath, const str
 	}
 
 	if (printerType) {
-		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 115200);
+		printerDriver_ = DriverFactory::createDriver(printerType, *this, serialPortPath, 250000);
 
 		if (!printerDriver_)
 			LOG(Logger::ERROR, "no printer driver found for type '%s'", printerType);

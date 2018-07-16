@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <string>
+#include <cstring>
 #include "../ipc_shared.h"
 #include "../settings.h"
 #include "../drivers/DriverFactory.h"

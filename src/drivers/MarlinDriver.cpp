@@ -20,10 +20,10 @@ const int MarlinDriver::UPDATE_INTERVAL = 200;
 
 MarlinDriver::MarlinDriver(Server& server, const string& serialPortPath, const uint32_t& baudrate)
 : AbstractDriver(server, serialPortPath, baudrate),
-  checkTemperatureInterval_(2000),
+  checkTemperatureInterval_(5000),
   checkConnection_(true),
   checkTemperatureAttempt_(0),
-  maxCheckTemperatureAttempts_(2) {
+  maxCheckTemperatureAttempts_(3) {
 }
 
 int MarlinDriver::update() {
@@ -37,12 +37,15 @@ int MarlinDriver::update() {
 		// during startup we use this to check for a valid connection, when it's established we stop checking
 		if (checkConnection_) {
 			if (checkTemperatureAttempt_ < maxCheckTemperatureAttempts_) {
-				LOG(Logger::INFO, "(checking connection) check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
-				checkTemperature(true);
+				LOG(Logger::INFO, "waiting to check temperature %i/%i", checkTemperatureAttempt_, maxCheckTemperatureAttempts_);
+				//checkTemperature(true);
 				checkTemperatureAttempt_++;
 			} else {
-				switchBaudrate();
-				checkTemperatureAttempt_ = 0;
+				//assume we're connected now, meaning it's safe to send M115 now
+                                LOG(Logger::INFO, "now checking temperature...");
+				checkTemperature(true);
+				//switchBaudrate();
+				//checkTemperatureAttempt_ = 0;
 			}
 		} else {
 			//LOG(Logger::VERBOSE, "  check temperature");

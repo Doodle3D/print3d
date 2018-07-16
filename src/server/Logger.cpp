@@ -14,6 +14,7 @@
 #include <time.h>
 #include "Logger.h"
 #include "../ipc_shared.h"
+#include <cstring>
 
 using std::string;
 

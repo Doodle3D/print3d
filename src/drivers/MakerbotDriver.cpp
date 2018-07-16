@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <cstring>
 #include "MakerbotDriver.h"
 #include "../server/Server.h"
 #include "../aux/GPX.git/libgpx.h"

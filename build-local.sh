@@ -6,7 +6,8 @@ CCMAKE=ccmake
 SRC_DIR=../../src
 BUILD_TARGET=Debug
 #CMAKE_FLAGS="-G \"Unix Makefiles\""
-CMAKE_FLAGS=("-G" "Unix Makefiles")
+#CMAKE_FLAGS=("-G" "Unix Makefiles")
+CMAKE_FLAGS=""
 INTERACTIVE_MODE=no
 TEST_MODE=no
 
@@ -68,6 +69,7 @@ fi
 mkdir -p build/$BUILD_TARGET
 cd build/$BUILD_TARGET
 
+pwd
 echo "Running: '$CMAKE "${CMAKE_FLAGS[@]}" $SRC_DIR'"
 $CMAKE "${CMAKE_FLAGS[@]}" $SRC_DIR
 

@@ -20,6 +20,7 @@
 extern char *strdup (__const char *__s);
 #endif
 
+#define DT_CHR 2
 #define __USE_BSD /* NOTE: to get DT_CHR in openwrt */
 //#include <sys/dir.h>
 //#include <sys/types.h>

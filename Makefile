@@ -9,7 +9,7 @@ PKG_RELEASE := 1
 
 PKG_BUILD_DIR := $(BUILD_DIR)/$(PKG_NAME)
 
-include $(INCLUDE_DIR)/uclibc++.mk
+#include $(INCLUDE_DIR)/uclibc++.mk
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
 
@@ -20,7 +20,8 @@ define Package/print3d
 	SECTION:=mods
 	CATEGORY:=Doodle3D
 	TITLE:=3D printer driver
-	DEPENDS:= +libuci +liblua +uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
+	#DEPENDS:= +libuci +liblua +uclibcxx +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
+	DEPENDS:= +libstdcpp +libuci +liblua +kmod-usb-acm +kmod-usb-serial +kmod-usb-serial-ftdi +@BUSYBOX_CUSTOM +@BUSYBOX_CONFIG_INOTIFYD
 endef
 
 define Package/print3d/description
